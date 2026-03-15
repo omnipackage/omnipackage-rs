@@ -1,4 +1,6 @@
-#[derive(Debug, serde::Deserialize)]
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize, Clone)]
 #[allow(dead_code)]
 pub struct Distro {
     pub id: String,
@@ -16,7 +18,7 @@ pub struct Distro {
     pub deprecated: Option<String>,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[allow(dead_code)]
 pub struct Distros {
     pub distros: Vec<Distro>,

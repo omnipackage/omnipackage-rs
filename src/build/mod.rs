@@ -1,8 +1,14 @@
+use crate::config::Config;
 use crate::distros::{Distro, Distros};
 use std::path::PathBuf;
 use std::time::Instant;
 
+mod extract_version;
+
 pub fn run(distro_ids: Vec<String>, path: PathBuf) {
+    let config_path = path.join(".omnipackage/config.yml");
+    let config = Config::load(&config_path).unwrap_or_else(|e| panic!("cannot load {}: {}", config_path.display(), e));
+
     let all = Distros::get();
     let distros_to_build: Vec<&Distro> = if distro_ids.is_empty() {
         all.distros.iter().collect()
@@ -14,6 +20,7 @@ pub fn run(distro_ids: Vec<String>, path: PathBuf) {
         BuildContext {
             distro: distro,
             path: path.clone(),
+            config: config.clone(),
         }
         .run();
     }
@@ -21,7 +28,8 @@ pub fn run(distro_ids: Vec<String>, path: PathBuf) {
 
 pub struct BuildContext {
     pub distro: &'static Distro,
-    pub path: std::path::PathBuf,
+    pub path: PathBuf,
+    pub config: Config,
 }
 
 impl BuildContext {
@@ -29,6 +37,6 @@ impl BuildContext {
         crate::logger::info(format!("starting build for {} at {}", self.distro.id, self.path.display()));
         let started_at = Instant::now();
 
-        crate::logger::info(format!("successfully finished build for {} in {:.3}s", self.distro.id, started_at.elapsed().as_secs_f32()));
+        crate::logger::info(format!("successfully finished build for {} in {:.1}s", self.distro.id, started_at.elapsed().as_secs_f32()));
     }
 }
