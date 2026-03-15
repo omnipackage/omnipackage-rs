@@ -63,11 +63,11 @@ fn main() {
         }
     }
 
-    /*
-    let _ = shell::Command::container(["info"]).run();
+    let _ = shell::Command::container(["run", "--rm", "opensuse/tumbleweed", "sh", "-c", "for i in $(seq 1 10); do echo $i; sleep 1; done"])
+        .log_to("/tmp/build.log")
+        .run();
 
     let _ = shell::Command::new("ls").arg("-latrh").run();
 
     logger::info("ololo");
-    */
 }

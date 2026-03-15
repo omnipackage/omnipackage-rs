@@ -1,4 +1,7 @@
 use crate::logger;
+use std::io::BufReader;
+use std::io::{BufRead, Write};
+use subprocess::{Exec, Redirection};
 
 static CONTAINER_RUNTIME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
@@ -31,48 +34,91 @@ fn container_runtime() -> &'static str {
 }
 
 pub struct Command {
-    inner: std::process::Command,
+    program: String,
+    args: Vec<String>,
+    log_file: Option<std::path::PathBuf>,
+    stream_to_stderr: bool,
 }
 
 #[allow(dead_code)]
 impl Command {
-    pub fn new(program: impl AsRef<std::ffi::OsStr>) -> Self {
+    pub fn new(program: impl Into<String>) -> Self {
         Self {
-            inner: std::process::Command::new(program),
+            program: program.into(),
+            args: vec![],
+            log_file: None,
+            stream_to_stderr: false,
         }
     }
 
-    pub fn container(args: impl IntoIterator<Item = impl AsRef<std::ffi::OsStr>>) -> Self {
-        let mut cmd = Self::new(container_runtime());
-        cmd.inner.args(args);
-        cmd
+    pub fn container(args: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        Self {
+            program: container_runtime().to_string(),
+            args: args.into_iter().map(|a| a.into()).collect(),
+            log_file: None,
+            stream_to_stderr: false,
+        }
     }
 
-    pub fn arg(mut self, arg: impl AsRef<std::ffi::OsStr>) -> Self {
-        self.inner.arg(arg);
+    pub fn arg(mut self, arg: impl Into<String>) -> Self {
+        self.args.push(arg.into());
         self
     }
 
-    pub fn args(mut self, args: impl IntoIterator<Item = impl AsRef<std::ffi::OsStr>>) -> Self {
-        self.inner.args(args);
+    pub fn args(mut self, args: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.args.extend(args.into_iter().map(|a| a.into()));
         self
     }
 
-    pub fn run(mut self) -> std::result::Result<(), i32> {
-        let program = self.inner.get_program().to_string_lossy().to_string();
-        let args = self.inner.get_args().map(|a| a.to_string_lossy().to_string()).collect::<Vec<_>>().join(" ");
+    pub fn log_to(mut self, path: impl Into<std::path::PathBuf>) -> Self {
+        self.log_file = Some(path.into());
+        self
+    }
 
-        logger::cmd(&program, &args);
+    pub fn stream_to_stderr(mut self) -> Self {
+        self.stream_to_stderr = true;
+        self
+    }
 
-        match self.inner.status() {
-            Ok(status) => {
-                let code = status.code().unwrap_or(1);
-                if code == 0 { Ok(()) } else { Err(code) }
-            }
-            Err(e) => {
+    pub fn run(self) -> std::result::Result<(), i32> {
+        logger::cmd(&self.program, &self.args.join(" "));
+
+        let mut log_file = self.log_file.as_ref().map(|path| {
+            std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(path)
+                .unwrap_or_else(|e| panic!("cannot open log file {}: {}", path.display(), e))
+        });
+
+        let mut job = Exec::cmd(&self.program)
+            .args(&self.args)
+            .stdout(Redirection::Pipe)
+            .stderr(Redirection::Merge)
+            .start()
+            .map_err(|e| {
                 eprintln!("{}", e);
-                Err(1)
+                1
+            })?;
+
+        if let Some(stdout) = job.stdout.take() {
+            for line in BufReader::new(stdout).lines().flatten() {
+                if self.stream_to_stderr {
+                    eprintln!("{}", line);
+                } else {
+                    println!("{}", line);
+                }
+                if let Some(ref mut file) = log_file {
+                    writeln!(file, "{}", line).ok();
+                }
             }
         }
+
+        let status = job.wait().map_err(|e| {
+            eprintln!("{}", e);
+            1
+        })?;
+
+        if status.success() { Ok(()) } else { Err(status.code().unwrap_or(1) as i32) }
     }
 }

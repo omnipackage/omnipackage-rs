@@ -16,6 +16,7 @@ serde-saphyr = "*"
 liquid = "*"
 regex = "*"
 tempfile = "*"
+subprocess = "*"
 
 [dev-dependencies]
 assert_cmd = "*"
