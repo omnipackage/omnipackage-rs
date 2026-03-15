@@ -51,13 +51,10 @@ pub struct Config {
     pub builds: Vec<Build>,
 }
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-
 impl Config {
-    pub fn load(path: &Path) -> Result<Self> {
-        let content = std::fs::read_to_string(path)?;
-        let config = serde_saphyr::from_str(&content)?;
-        Ok(config)
+    pub fn load(path: &Path) -> Self {
+        let content = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("cannot read {}: {}", path.display(), e));
+        serde_saphyr::from_str(&content).unwrap_or_else(|e| panic!("cannot parse {}: {}", path.display(), e))
     }
 }
 
@@ -67,8 +64,8 @@ mod tests {
 
     #[test]
     fn test_load_config() {
-        let path = std::path::Path::new("tests/fixtures/config.yml");
-        let config = Config::load(path).unwrap();
+        let path = Path::new("tests/fixtures/config.yml");
+        let config = Config::load(path);
 
         assert_eq!(config.extract_version.provider, "file");
         let file = config.extract_version.file.as_ref().unwrap();

@@ -6,8 +6,10 @@ use std::time::Instant;
 mod extract_version;
 
 pub fn run(distro_ids: Vec<String>, path: PathBuf) {
-    let config_path = path.join(".omnipackage/config.yml");
-    let config = Config::load(&config_path).unwrap_or_else(|e| panic!("cannot load {}: {}", config_path.display(), e));
+    let config = Config::load(&path.join(".omnipackage/config.yml"));
+
+    let version = extract_version::extract_version(&path, &config);
+    println!("version: {}", version);
 
     let all = Distros::get();
     let distros_to_build: Vec<&Distro> = if distro_ids.is_empty() {
