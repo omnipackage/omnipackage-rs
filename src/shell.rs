@@ -1,4 +1,5 @@
 use crate::logger;
+use std::fs::OpenOptions;
 use std::io::BufReader;
 use std::io::{BufRead, Write};
 use subprocess::{Exec, Redirection};
@@ -33,11 +34,18 @@ fn container_runtime() -> &'static str {
     CONTAINER_RUNTIME.get_or_init(detect_container_runtime)
 }
 
+#[allow(dead_code)]
+pub enum StreamOutput {
+    Silent,
+    Stdout,
+    Stderr,
+}
+
 pub struct Command {
     program: String,
     args: Vec<String>,
     log_file: Option<std::path::PathBuf>,
-    stream_to_stderr: bool,
+    output: StreamOutput,
 }
 
 #[allow(dead_code)]
@@ -47,7 +55,7 @@ impl Command {
             program: program.into(),
             args: vec![],
             log_file: None,
-            stream_to_stderr: false,
+            output: StreamOutput::Stdout,
         }
     }
 
@@ -56,7 +64,7 @@ impl Command {
             program: container_runtime().to_string(),
             args: args.into_iter().map(|a| a.into()).collect(),
             log_file: None,
-            stream_to_stderr: false,
+            output: StreamOutput::Stdout,
         }
     }
 
@@ -75,8 +83,8 @@ impl Command {
         self
     }
 
-    pub fn stream_to_stderr(mut self) -> Self {
-        self.stream_to_stderr = true;
+    pub fn stream_output_to(mut self, output: StreamOutput) -> Self {
+        self.output = output;
         self
     }
 
@@ -84,7 +92,7 @@ impl Command {
         logger::cmd(&self.program, &self.args.join(" "));
 
         let mut log_file = self.log_file.as_ref().map(|path| {
-            std::fs::OpenOptions::new()
+            OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(path)
@@ -103,10 +111,10 @@ impl Command {
 
         if let Some(stdout) = job.stdout.take() {
             for line in BufReader::new(stdout).lines().flatten() {
-                if self.stream_to_stderr {
-                    eprintln!("{}", line);
-                } else {
-                    println!("{}", line);
+                match self.output {
+                    StreamOutput::Stdout => println!("{}", line),
+                    StreamOutput::Stderr => eprintln!("{}", line),
+                    StreamOutput::Silent => {}
                 }
                 if let Some(ref mut file) = log_file {
                     writeln!(file, "{}", line).ok();
