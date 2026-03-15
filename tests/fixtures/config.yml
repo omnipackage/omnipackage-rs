@@ -1,0 +1,134 @@
+extract_version:
+  provider: 'file'
+  file:
+    file: 'lib/omnipackage_agent/version.rb'
+    regex: "VERSION = '(.+)'"
+
+common: &common
+  package_name: 'omnipackage-agent'
+  maintainer: 'Oleg Antonyan <oleg@omnipackage.org>'
+  homepage: https://omnipackage.org/
+  description: OmniPackage agent for both standalone and client-server modes
+
+rpm: &rpm
+  <<: *common
+  build_dependencies: []
+  runtime_dependencies: ['ruby', 'tar', 'xz', '(docker or podman)']
+  rpm:
+    spec_template: '.omnipackage/specfile.spec.liquid'
+
+deb: &deb
+  <<: *common
+  build_dependencies: []
+  runtime_dependencies: ['ruby', 'tar', 'xz-utils', 'docker | podman']
+  deb:
+    debian_templates: '.omnipackage/deb'
+
+builds:
+- distro: 'opensuse_15.3'
+  <<: *rpm
+  build_dependencies: ['gcc', 'make', 'libopenssl-devel', 'libyaml-devel', 'zlib-devel', 'libffi-devel', 'gmp-devel']
+  runtime_dependencies: ['tar', 'xz', '(docker or podman)']
+  before_build_script: '.omnipackage/install_ruby.sh'
+
+- distro: 'opensuse_15.4'
+  <<: *rpm
+  build_dependencies: ['gcc', 'make', 'libopenssl-devel', 'libyaml-devel', 'zlib-devel', 'libffi-devel', 'gmp-devel']
+  runtime_dependencies: ['tar', 'xz', '(docker or podman)']
+  before_build_script: '.omnipackage/install_ruby.sh'
+
+- distro: 'opensuse_15.5'
+  <<: *rpm
+  build_dependencies: ['gcc', 'make', 'libopenssl-devel', 'libyaml-devel', 'zlib-devel', 'libffi-devel', 'gmp-devel']
+  runtime_dependencies: ['tar', 'xz', '(docker or podman)']
+  before_build_script: '.omnipackage/install_ruby.sh'
+
+- distro: 'opensuse_15.6'
+  <<: *rpm
+  build_dependencies: ['gcc', 'make', 'libopenssl-devel', 'libyaml-devel', 'zlib-devel', 'libffi-devel', 'gmp-devel']
+  runtime_dependencies: ['tar', 'xz', '(docker or podman)']
+  before_build_script: '.omnipackage/install_ruby.sh'
+
+- distro: 'opensuse_16.0'
+  <<: *rpm
+
+- distro: 'opensuse_tumbleweed'
+  <<: *rpm
+
+- distro: 'fedora_38'
+  <<: *rpm
+
+- distro: 'fedora_39'
+  <<: *rpm
+
+- distro: 'fedora_40'
+  <<: *rpm
+
+- distro: 'fedora_41'
+  <<: *rpm
+
+- distro: 'fedora_42'
+  <<: *rpm
+
+- distro: 'fedora_43'
+  <<: *rpm
+
+- distro: 'fedora_rawhide'
+  <<: *rpm
+
+- distro: 'debian_10'
+  <<: *deb
+  build_dependencies: ['gcc', 'make', 'libssl-dev', 'libyaml-dev', 'zlib1g-dev', 'libffi-dev', 'libgmp-dev']
+  runtime_dependencies: ['tar', 'xz-utils', 'docker | podman']
+  before_build_script: '.omnipackage/install_ruby.sh'
+
+- distro: 'debian_11'
+  <<: *deb
+
+- distro: 'debian_12'
+  <<: *deb
+
+- distro: 'debian_testing'
+  <<: *deb
+
+- distro: 'debian_unstable'
+  <<: *deb
+
+- distro: 'ubuntu_20.04'
+  <<: *deb
+
+- distro: 'ubuntu_22.04'
+  <<: *deb
+
+- distro: 'ubuntu_24.04'
+  <<: *deb
+
+- distro: 'ubuntu_25.04'
+  <<: *deb
+
+- distro: 'almalinux_8'
+  <<: *rpm
+  build_dependencies: ['gcc', 'make', 'openssl-devel', 'zlib-devel', 'libffi-devel', 'gmp-devel']
+  runtime_dependencies: ['tar', 'xz', '(docker or podman)']
+  before_build_script: '.omnipackage/install_ruby_rh8.sh'
+
+- distro: 'almalinux_9'
+  <<: *rpm
+
+- distro: 'almalinux_10'
+  <<: *rpm
+
+- distro: 'rockylinux_8'
+  <<: *rpm
+  build_dependencies: ['gcc', 'make', 'openssl-devel', 'zlib-devel', 'libffi-devel', 'gmp-devel']
+  runtime_dependencies: ['tar', 'xz', '(docker or podman)']
+  before_build_script: '.omnipackage/install_ruby_rh8.sh'
+
+- distro: 'rockylinux_9'
+  <<: *rpm
+
+- distro: 'mageia_9'
+  <<: *rpm
+
+- distro: 'mageia_cauldron'
+  <<: *rpm
