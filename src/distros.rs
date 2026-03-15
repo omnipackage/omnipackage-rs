@@ -53,19 +53,15 @@ impl Distros {
 mod tests {
     use super::*;
 
-    fn load_test_distros() -> Distros {
-        Distros::load(std::path::Path::new("tests/fixtures/distros.yml")).unwrap()
-    }
-
     #[test]
     fn test_loads_successfully() {
-        let distros = load_test_distros();
+        let distros = Distros::get();
         assert!(!distros.distros.is_empty());
     }
 
     #[test]
     fn test_distro_fields() {
-        let distros = load_test_distros();
+        let distros = Distros::get();
         let opensuse = distros.distros.iter().find(|d| d.id == "opensuse_15.6").unwrap();
 
         assert_eq!(opensuse.image, "opensuse/leap:15.6");
@@ -79,7 +75,7 @@ mod tests {
 
     #[test]
     fn test_deprecated_field() {
-        let distros = load_test_distros();
+        let distros = Distros::get();
         let deprecated = distros.distros.iter().find(|d| d.id == "debian_10").unwrap();
         assert!(deprecated.deprecated.is_some());
 
@@ -89,7 +85,7 @@ mod tests {
 
     #[test]
     fn test_merge_keys_resolved() {
-        let distros = load_test_distros();
+        let distros = Distros::get();
 
         // these distros have no explicit setup, relies on anchor merge
         let fedora = distros.distros.iter().find(|d| d.id == "fedora_38").unwrap();
@@ -103,7 +99,7 @@ mod tests {
 
     #[test]
     fn test_all_distros_have_required_fields() {
-        let distros = load_test_distros();
+        let distros = Distros::get();
         for distro in &distros.distros {
             assert!(!distro.id.is_empty(), "distro {} has empty id", distro.id);
             assert!(!distro.name.is_empty(), "distro {} has empty name", distro.id);
