@@ -5,12 +5,12 @@ struct Config {
 
 static CONFIG: std::sync::OnceLock<Config> = std::sync::OnceLock::new();
 
-pub fn set_stderr(value: bool) {
+/*pub fn set_stderr(value: bool) {
     CONFIG.get_or_init(|| Config {
         colors: std::env::var("NO_COLOR").is_err(),
         stderr: value,
     });
-}
+}*/
 
 fn config() -> &'static Config {
     CONFIG.get_or_init(|| Config {
@@ -31,6 +31,7 @@ fn timestamp() -> String {
 }
 
 #[derive(Clone, Copy)]
+#[allow(dead_code)]
 enum Color {
     Red,
     Green,

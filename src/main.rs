@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 mod build;
 mod config;
+mod distros;
 mod logger;
 mod shell;
 
@@ -50,4 +51,6 @@ fn main() {
     let _ = shell::Command::new("ls").arg("-latrh").run();
 
     logger::info("ololo");
+
+    println!("distros: {:?}", distros::Distros::get());
 }
