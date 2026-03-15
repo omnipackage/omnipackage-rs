@@ -13,3 +13,7 @@ documentation = "https://docs.omnipackage.org/"
 clap = { version = "*", features = ["derive"] }
 serde = { version = "*", features = ["derive"] }
 serde-saphyr = "*"
+
+[dev-dependencies]
+assert_cmd = "*"
+predicates = "*"
