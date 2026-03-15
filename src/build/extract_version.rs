@@ -59,7 +59,7 @@ mod tests {
             },
             builds: vec![],
         };
-        let result = std::panic::catch_unwind(|| extract_version(&std::path::PathBuf::from("."), &config));
+        let result = std::panic::catch_unwind(|| extract_version(&PathBuf::from("."), &config));
         assert!(result.is_err());
     }
 }
