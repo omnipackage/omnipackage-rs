@@ -34,6 +34,7 @@ pub struct Command {
     inner: std::process::Command,
 }
 
+#[allow(dead_code)]
 impl Command {
     pub fn new(program: impl AsRef<std::ffi::OsStr>) -> Self {
         Self {
@@ -52,7 +53,6 @@ impl Command {
         self
     }
 
-    #[allow(dead_code)]
     pub fn args(mut self, args: impl IntoIterator<Item = impl AsRef<std::ffi::OsStr>>) -> Self {
         self.inner.args(args);
         self

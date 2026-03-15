@@ -41,16 +41,33 @@ fn main() {
                 shell::set_container_runtime(runtime);
             }
 
-            println!("Building {:?} in {}", distros, path.display());
-            println!("{:?}", config::Config::load(&path.join(".omnipackage/config.yml")));
+            build::run(distros, path);
+
+            //println!("Building {:?} in {}", distros, path.display());
+            //println!("{:?}", config::Config::load(&path.join(".omnipackage/config.yml")));
+
+            /*let all = distros::Distros::get();
+            let distros_to_build: Vec<&distros::Distro> = if distros.is_empty() {
+                all.distros.iter().collect()
+            } else {
+                distros.iter().map(|id| all.by_id(id)).collect()
+            };
+
+            for distro in distros_to_build {
+                let build = build::BuildContext {
+                    distro: distro,
+                    path: path.clone(),
+                };
+                build.run();
+            }*/
         }
     }
 
+    /*
     let _ = shell::Command::container(["info"]).run();
 
     let _ = shell::Command::new("ls").arg("-latrh").run();
 
     logger::info("ololo");
-
-    println!("distros: {:?}", distros::Distros::get());
+    */
 }

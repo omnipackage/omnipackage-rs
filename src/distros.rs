@@ -24,18 +24,19 @@ pub struct Distros {
 
 static DISTROS: std::sync::OnceLock<Distros> = std::sync::OnceLock::new();
 
+#[allow(dead_code)]
 impl Distros {
     pub fn get() -> &'static Self {
         DISTROS.get_or_init(Self::load_default)
     }
 
-    fn load_default() -> Self {
-        Self::load(&Self::default_path()).expect("failed to load default distros")
-    }
-
     pub fn load(path: &std::path::Path) -> std::result::Result<Self, Box<dyn std::error::Error>> {
         let content = std::fs::read_to_string(path)?;
         Ok(serde_saphyr::from_str(&content)?)
+    }
+
+    fn load_default() -> Self {
+        Self::load(&Self::default_path()).expect("failed to load default distros")
     }
 
     fn default_path() -> std::path::PathBuf {
@@ -46,6 +47,10 @@ impl Distros {
             }
         }
         std::path::PathBuf::from("distros.yml")
+    }
+
+    pub fn by_id(&self, id: &str) -> &Distro {
+        self.distros.iter().find(|d| d.id == id).unwrap_or_else(|| panic!("distro '{}' not found", id))
     }
 }
 
@@ -107,5 +112,19 @@ mod tests {
             assert!(!distro.package_type.is_empty(), "distro {} has empty package_type", distro.id);
             assert!(!distro.setup.is_empty(), "distro {} has empty setup", distro.id);
         }
+    }
+
+    #[test]
+    fn test_by_id_found() {
+        let distros = Distros::get();
+        let distro = distros.by_id("opensuse_15.6");
+        assert_eq!(distro.id, "opensuse_15.6");
+    }
+
+    #[test]
+    fn test_by_id_not_found() {
+        let distros = Distros::get();
+        let result = std::panic::catch_unwind(|| distros.by_id("nonexistent"));
+        assert!(result.is_err());
     }
 }
