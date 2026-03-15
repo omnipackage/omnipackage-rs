@@ -52,6 +52,7 @@ impl Command {
         self
     }
 
+    #[allow(dead_code)]
     pub fn args(mut self, args: impl IntoIterator<Item = impl AsRef<std::ffi::OsStr>>) -> Self {
         self.inner.args(args);
         self
