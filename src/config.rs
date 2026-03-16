@@ -1,4 +1,6 @@
+use crate::build::package::template::Var;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::path::Path;
 
 #[derive(Debug, Deserialize, Clone)]
@@ -49,6 +51,19 @@ impl Config {
     pub fn load(path: &Path) -> Self {
         let content = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("cannot read {}: {}", path.display(), e));
         serde_saphyr::from_str(&content).unwrap_or_else(|e| panic!("cannot parse {}: {}", path.display(), e))
+    }
+}
+
+impl Build {
+    pub fn to_vars(&self) -> HashMap<String, Var> {
+        let mut vars = HashMap::new();
+        vars.insert("package_name".to_string(), self.package_name.clone().into());
+        vars.insert("maintainer".to_string(), self.maintainer.clone().into());
+        vars.insert("homepage".to_string(), self.homepage.clone().into());
+        vars.insert("description".to_string(), self.description.clone().into());
+        vars.insert("build_dependencies".to_string(), self.build_dependencies.clone().into());
+        vars.insert("runtime_dependencies".to_string(), self.runtime_dependencies.clone().into());
+        vars
     }
 }
 

@@ -4,8 +4,9 @@ use crate::distros::Distro;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-mod deb;
-mod rpm;
+pub mod deb;
+pub mod rpm;
+pub mod template;
 
 pub trait Package {
     fn setup(&self);

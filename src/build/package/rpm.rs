@@ -1,5 +1,6 @@
 use crate::build::job_variables::JobVariables;
 use crate::build::package::Package;
+use crate::build::package::template::{Template, Var};
 use crate::config::Build;
 use crate::distros::Distro;
 use std::collections::HashMap;
@@ -9,7 +10,7 @@ pub struct Rpm {
     pub build_config: Build,
     pub build_dir: PathBuf,
     pub job_variables: JobVariables,
-    pub source_path: String,
+    pub source_path: PathBuf,
     pub distro: &'static Distro,
 }
 
@@ -25,6 +26,13 @@ impl Package for Rpm {
 
         let source_folder_name = format!("{}-{}", self.build_config.package_name, self.job_variables.version);
         let specfile_name = format!("{}-{}.spec", source_folder_name, self.distro.name);
+
+        let mut vars: HashMap<String, Var> = self.job_variables.to_vars();
+        vars.extend(self.build_config.to_vars());
+        vars.insert("source_folder_name".to_string(), source_folder_name.into());
+        let template = Template::new(self.source_path.join(&specfile_path_template_path));
+        let result = template.render(vars);
+        println!("{}", result);
     }
 
     fn output_path(&self) -> PathBuf {

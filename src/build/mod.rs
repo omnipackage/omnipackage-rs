@@ -5,9 +5,11 @@ use std::time::Instant;
 
 mod extract_version;
 mod job_variables;
-mod package;
+pub mod package;
 
 use job_variables::JobVariables;
+use package::Package;
+use package::rpm::Rpm;
 
 pub fn run(distro_ids: Vec<String>, path: PathBuf) {
     let config = Config::load(&path.join(".omnipackage/config.yml"));
@@ -49,6 +51,21 @@ impl BuildContext {
             self.job_variables
         ));
         let started_at = Instant::now();
+
+        match self.distro.package_type.as_str() {
+            "rpm" => Rpm {
+                build_config: self.config.clone(),
+                build_dir: "/tmp/123".into(),
+                job_variables: self.job_variables.clone(),
+                source_path: self.path.clone(),
+                distro: self.distro,
+            }
+            .setup(),
+            "deb" => {}
+            _ => {
+                panic!("unknown package type {}", self.distro.package_type)
+            }
+        }
 
         crate::logger::info(format!("successfully finished build for {} in {:.1}s", self.distro.id, started_at.elapsed().as_secs_f32()));
     }

@@ -1,8 +1,8 @@
+use crate::build::package::template::Var;
 use chrono::Utc;
-use liquid::{ObjectView, ValueView};
-use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-#[derive(ObjectView, ValueView, Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct JobVariables {
     pub version: String,
     pub current_time_rfc2822: String,
@@ -14,6 +14,13 @@ impl JobVariables {
             version,
             current_time_rfc2822: Utc::now().to_rfc2822(),
         }
+    }
+
+    pub fn to_vars(&self) -> HashMap<String, Var> {
+        let mut vars = HashMap::new();
+        vars.insert("version".to_string(), self.version.clone().into());
+        vars.insert("current_time_rfc2822".to_string(), self.current_time_rfc2822.clone().into());
+        vars
     }
 }
 
