@@ -19,13 +19,25 @@ pub struct Deb {
 }
 
 impl Package for Rpm {
-    fn name(&self) -> &str { &self.name }
-    fn version(&self) -> &str { &self.job_variables.version }
-    fn source_path(&self) -> &str { &self.source_path }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn version(&self) -> &str {
+        &self.job_variables.version
+    }
+    fn source_path(&self) -> &str {
+        &self.source_path
+    }
 }
 
 impl Package for Deb {
-    fn name(&self) -> &str { &self.name }
-    fn version(&self) -> &str { &self.job_variables.version }
-    fn source_path(&self) -> &str { &self.source_path }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn version(&self) -> &str {
+        &self.job_variables.version
+    }
+    fn source_path(&self) -> &str {
+        &self.source_path
+    }
 }
