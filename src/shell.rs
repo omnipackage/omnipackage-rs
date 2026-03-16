@@ -34,7 +34,6 @@ fn container_runtime() -> &'static str {
     CONTAINER_RUNTIME.get_or_init(detect_container_runtime)
 }
 
-#[allow(dead_code)]
 pub enum StreamOutput {
     Silent,
     Stdout,
@@ -48,7 +47,6 @@ pub struct Command {
     output: StreamOutput,
 }
 
-#[allow(dead_code)]
 impl Command {
     pub fn new(program: impl Into<String>) -> Self {
         Self {

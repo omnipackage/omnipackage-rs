@@ -1,7 +1,6 @@
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone)]
-#[allow(dead_code)]
 pub struct Distro {
     pub id: String,
     pub name: String,
@@ -26,7 +25,6 @@ pub struct Distros {
 const DISTROS_YAML: &str = include_str!("../distros.yml");
 static DISTROS: std::sync::OnceLock<Distros> = std::sync::OnceLock::new();
 
-#[allow(dead_code)]
 impl Distros {
     pub fn get() -> &'static Self {
         DISTROS.get_or_init(Self::load_default)

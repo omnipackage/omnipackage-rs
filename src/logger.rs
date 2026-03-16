@@ -5,7 +5,6 @@ struct Config {
 
 static CONFIG: std::sync::OnceLock<Config> = std::sync::OnceLock::new();
 
-#[allow(dead_code)]
 pub fn set_stderr(value: bool) {
     CONFIG.get_or_init(|| Config {
         colors: std::env::var("NO_COLOR").is_err(),
@@ -32,7 +31,6 @@ fn timestamp() -> String {
 }
 
 #[derive(Clone, Copy)]
-#[allow(dead_code)]
 enum Color {
     Red,
     Green,
@@ -69,17 +67,14 @@ fn print(msg: String) {
     }
 }
 
-#[allow(dead_code)]
 pub fn info(msg: impl std::fmt::Display) {
     print(format!("{} {} {}", colorize(Color::Cyan, timestamp()), colorize(Color::Green, "[INFO]"), msg));
 }
 
-#[allow(dead_code)]
 pub fn warn(msg: impl std::fmt::Display) {
     print(format!("{} {} {}", colorize(Color::Cyan, timestamp()), colorize(Color::Yellow, "[WARN]"), msg));
 }
 
-#[allow(dead_code)]
 pub fn error(msg: impl std::fmt::Display) {
     print(format!("{} {} {}", colorize(Color::Cyan, timestamp()), colorize(Color::Red, "[ERROR]"), msg));
 }

@@ -5,6 +5,7 @@ use std::time::Instant;
 
 mod extract_version;
 mod job_variables;
+mod package;
 
 use job_variables::JobVariables;
 
