@@ -13,7 +13,7 @@ pub fn run(distro_ids: Vec<String>, path: PathBuf) {
 
     let all = Distros::get();
     let distros_to_build: Vec<&Distro> = if distro_ids.is_empty() {
-        all.distros.iter().collect()
+        all.iter().collect()
     } else {
         distro_ids.iter().map(|id| all.by_id(id)).collect()
     };

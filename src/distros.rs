@@ -19,11 +19,11 @@ pub struct Distro {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-#[allow(dead_code)]
 pub struct Distros {
-    pub distros: Vec<Distro>,
+    distros: Vec<Distro>,
 }
 
+const DISTROS_YAML: &str = include_str!("../distros.yml");
 static DISTROS: std::sync::OnceLock<Distros> = std::sync::OnceLock::new();
 
 #[allow(dead_code)]
@@ -38,21 +38,15 @@ impl Distros {
     }
 
     fn load_default() -> Self {
-        Self::load(&Self::default_path()).expect("failed to load default distros")
+        serde_saphyr::from_str(DISTROS_YAML).expect("failed to parse embedded distros.yml")
     }
 
-    fn default_path() -> std::path::PathBuf {
-        if let Ok(exe) = std::env::current_exe() {
-            let near_binary = exe.parent().unwrap_or(std::path::Path::new(".")).join("distros.yml");
-            if near_binary.exists() {
-                return near_binary;
-            }
-        }
-        std::path::PathBuf::from("distros.yml")
+    pub fn iter(&self) -> impl Iterator<Item = &Distro> {
+        self.distros.iter()
     }
 
     pub fn by_id(&self, id: &str) -> &Distro {
-        self.distros.iter().find(|d| d.id == id).unwrap_or_else(|| panic!("distro '{}' not found", id))
+        self.iter().find(|d| d.id == id).unwrap_or_else(|| panic!("distro '{}' not found", id))
     }
 }
 
