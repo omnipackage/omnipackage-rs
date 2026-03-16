@@ -17,6 +17,7 @@ liquid = "*"
 regex = "*"
 tempfile = "*"
 subprocess = "*"
+chrono = "*"
 
 [dev-dependencies]
 assert_cmd = "*"
