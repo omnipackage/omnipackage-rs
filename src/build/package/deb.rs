@@ -7,6 +7,7 @@ use std::path::PathBuf;
 
 pub struct Deb {
     pub build_config: Build,
+    pub build_dir: PathBuf,
     pub job_variables: JobVariables,
     pub source_path: String,
     pub distro: &'static Distro,
