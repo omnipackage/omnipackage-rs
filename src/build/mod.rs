@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::config::{Build, Config};
 use crate::distros::{Distro, Distros};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -8,21 +8,21 @@ mod extract_version;
 pub fn run(distro_ids: Vec<String>, path: PathBuf) {
     let config = Config::load(&path.join(".omnipackage/config.yml"));
 
-    let version = extract_version::extract_version(&path, &config);
+    let version = extract_version::extract_version(&path, &config.extract_version);
     println!("version: {}", version);
 
-    let all = Distros::get();
-    let distros_to_build: Vec<&Distro> = if distro_ids.is_empty() {
-        all.iter().collect()
-    } else {
-        distro_ids.iter().map(|id| all.by_id(id)).collect()
-    };
+    for build in &config.builds {
+        if !Distros::get().contains(&build.distro) {
+            continue;
+        }
+        if !distro_ids.is_empty() && !distro_ids.contains(&build.distro) {
+            continue;
+        };
 
-    for distro in distros_to_build {
         BuildContext {
-            distro: distro,
+            distro: Distros::get().by_id(&build.distro),
             path: path.clone(),
-            config: config.clone(),
+            config: build.clone(),
         }
         .run();
     }
@@ -31,7 +31,7 @@ pub fn run(distro_ids: Vec<String>, path: PathBuf) {
 pub struct BuildContext {
     pub distro: &'static Distro,
     pub path: PathBuf,
-    pub config: Config,
+    pub config: Build,
 }
 
 impl BuildContext {

@@ -1,11 +1,11 @@
-use crate::config::Config;
+use crate::config::ExtractVersion;
 use regex::Regex;
 use std::path::PathBuf;
 
-pub fn extract_version(path: &PathBuf, config: &Config) -> String {
-    match config.extract_version.provider.as_str() {
+pub fn extract_version(path: &PathBuf, config: &ExtractVersion) -> String {
+    match config.provider.as_str() {
         "file" => {
-            let file_config = &config.extract_version.file.clone().unwrap_or_else(|| panic!("cannot read file config"));
+            let file_config = &config.file.clone().unwrap_or_else(|| panic!("cannot read file config"));
 
             let file_path = path.join(&file_config.file);
             let content = std::fs::read_to_string(&file_path).unwrap_or_else(|e| panic!("cannot read {}: {}", file_path.display(), e));
@@ -18,25 +18,22 @@ pub fn extract_version(path: &PathBuf, config: &Config) -> String {
                 .map(|m| m.as_str().to_string())
                 .unwrap_or_else(|| panic!("regex '{}' did not match in {}", regex, file_path.display()))
         }
-        _ => panic!("unknown version provider {}", config.extract_version.provider),
+        _ => panic!("unknown version provider {}", config.provider),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{Config, ExtractVersion, ExtractVersionFile};
+    use crate::config::{ExtractVersion, ExtractVersionFile};
 
-    fn make_config(file: &str, regex: &str) -> Config {
-        Config {
-            extract_version: ExtractVersion {
-                provider: "file".to_string(),
-                file: Some(ExtractVersionFile {
-                    file: file.to_string(),
-                    regex: regex.to_string(),
-                }),
-            },
-            builds: vec![],
+    fn make_config(file: &str, regex: &str) -> ExtractVersion {
+        ExtractVersion {
+            provider: "file".to_string(),
+            file: Some(ExtractVersionFile {
+                file: file.to_string(),
+                regex: regex.to_string(),
+            }),
         }
     }
 
@@ -52,12 +49,9 @@ mod tests {
 
     #[test]
     fn test_extract_version_unknown_provider() {
-        let config = Config {
-            extract_version: ExtractVersion {
-                provider: "unknown".to_string(),
-                file: None,
-            },
-            builds: vec![],
+        let config = ExtractVersion {
+            provider: "unknown".to_string(),
+            file: None,
         };
         let result = std::panic::catch_unwind(|| extract_version(&PathBuf::from("."), &config));
         assert!(result.is_err());

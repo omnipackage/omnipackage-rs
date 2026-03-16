@@ -52,6 +52,10 @@ impl Distros {
     pub fn by_id(&self, id: &str) -> &Distro {
         self.iter().find(|d| d.id == id).unwrap_or_else(|| panic!("distro '{}' not found", id))
     }
+
+    pub fn contains(&self, id: &str) -> bool {
+        self.iter().any(|d| d.id == id)
+    }
 }
 
 #[cfg(test)]
