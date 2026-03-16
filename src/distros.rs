@@ -45,6 +45,10 @@ impl Distros {
         self.distros.iter()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.distros.is_empty()
+    }
+
     pub fn by_id(&self, id: &str) -> &Distro {
         self.iter().find(|d| d.id == id).unwrap_or_else(|| panic!("distro '{}' not found", id))
     }
@@ -57,13 +61,13 @@ mod tests {
     #[test]
     fn test_loads_successfully() {
         let distros = Distros::get();
-        assert!(!distros.distros.is_empty());
+        assert!(!distros.is_empty());
     }
 
     #[test]
     fn test_distro_fields() {
         let distros = Distros::get();
-        let opensuse = distros.distros.iter().find(|d| d.id == "opensuse_15.6").unwrap();
+        let opensuse = distros.iter().find(|d| d.id == "opensuse_15.6").unwrap();
 
         assert_eq!(opensuse.image, "opensuse/leap:15.6");
         assert_eq!(opensuse.package_type, "rpm");
@@ -77,10 +81,10 @@ mod tests {
     #[test]
     fn test_deprecated_field() {
         let distros = Distros::get();
-        let deprecated = distros.distros.iter().find(|d| d.id == "debian_10").unwrap();
+        let deprecated = distros.iter().find(|d| d.id == "debian_10").unwrap();
         assert!(deprecated.deprecated.is_some());
 
-        let active = distros.distros.iter().find(|d| d.id == "debian_12").unwrap();
+        let active = distros.iter().find(|d| d.id == "debian_12").unwrap();
         assert!(active.deprecated.is_none());
     }
 
@@ -89,11 +93,11 @@ mod tests {
         let distros = Distros::get();
 
         // these distros have no explicit setup, relies on anchor merge
-        let fedora = distros.distros.iter().find(|d| d.id == "fedora_38").unwrap();
+        let fedora = distros.iter().find(|d| d.id == "fedora_38").unwrap();
         assert!(!fedora.setup.is_empty());
         assert_eq!(fedora.package_type, "rpm");
 
-        let ubuntu = distros.distros.iter().find(|d| d.id == "ubuntu_22.04").unwrap();
+        let ubuntu = distros.iter().find(|d| d.id == "ubuntu_22.04").unwrap();
         assert!(!ubuntu.setup.is_empty());
         assert_eq!(ubuntu.package_type, "deb");
     }
@@ -101,7 +105,7 @@ mod tests {
     #[test]
     fn test_all_distros_have_required_fields() {
         let distros = Distros::get();
-        for distro in &distros.distros {
+        for distro in distros.iter() {
             assert!(!distro.id.is_empty(), "distro {} has empty id", distro.id);
             assert!(!distro.name.is_empty(), "distro {} has empty name", distro.id);
             assert!(!distro.image.is_empty(), "distro {} has empty image", distro.id);
