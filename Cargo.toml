@@ -18,6 +18,7 @@ regex = "*"
 tempfile = "*"
 subprocess = "*"
 chrono = "*"
+glob = "*"
 
 [dev-dependencies]
 assert_cmd = "*"

@@ -57,19 +57,20 @@ impl BuildContext {
             self.job_variables
         ));
         let started_at = Instant::now();
-
         let package = self.setup_package();
-        match self.execute(&package) {
+        let result = self.execute(&package);
+        let finished_at = started_at.elapsed().as_secs_f32();
+        match result {
             Ok(()) => {
-                crate::logger::info(format!("successfully finished build for {} in {:.1}s", self.distro.id, started_at.elapsed().as_secs_f32()));
+                let artefacts = self.artefacts(&package);
+                let artefacts_str = artefacts.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join(", ");
+                crate::logger::info(format!(
+                    "successfully finished build for {} in {:.1}s, artefacts: {}",
+                    self.distro.id, finished_at, artefacts_str
+                ));
             }
             Err((code, log_path)) => {
-                crate::logger::error(format!(
-                    "failed build for {} in {:.1}s, log: {}",
-                    self.distro.id,
-                    started_at.elapsed().as_secs_f32(),
-                    log_path.display()
-                ));
+                crate::logger::error(format!("failed build for {} in {:.1}s, log: {}", self.distro.id, finished_at, log_path.display()));
             }
         }
     }
@@ -80,6 +81,16 @@ impl BuildContext {
             "deb" => self.setup_deb(),
             _ => panic!("unknown package type {}", self.distro.package_type),
         }
+    }
+
+    fn artefacts(&self, package: &Package) -> Vec<PathBuf> {
+        let search_path = match self.distro.package_type.as_str() {
+            "rpm" => format!("{}/RPMS/**/*.rpm", package.output_path.display()),
+            "deb" => format!("{}/*.deb", package.output_path.display()),
+            _ => panic!("unknown package type {}", self.distro.package_type),
+        };
+
+        glob::glob(&search_path).unwrap().filter_map(|e| e.ok()).collect::<Vec<_>>()
     }
 
     fn before_build_script(&self, relative_to: &str) -> Option<String> {
