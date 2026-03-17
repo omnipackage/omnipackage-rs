@@ -66,4 +66,16 @@ impl BuildContext {
             _ => panic!("unknown package type {}", self.distro.package_type),
         }
     }
+
+    fn before_build_script(&self, relative_to: &str) -> Option<String> {
+        let bbs = self.config.before_build_script.as_ref()?;
+
+        let path = if self.source_path.join(bbs).exists() {
+            PathBuf::from(relative_to).join(bbs).to_string_lossy().to_string()
+        } else {
+            bbs.clone()
+        };
+
+        Some(path)
+    }
 }

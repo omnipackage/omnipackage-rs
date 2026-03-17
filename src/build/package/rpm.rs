@@ -29,14 +29,17 @@ impl BuildContext {
         mounts.insert(rpmbuild_path.to_string_lossy().to_string(), "/root/rpmbuild".to_string());
 
         let mut commands: Vec<String> = self.distro.setup(&self.config.build_dependencies);
-        // commands.push(before_build_script('/source'));
-        commands.push("rpmdev-setuptree".to_string());
-        commands.push("rm -rf /root/rpmbuild/SOURCES/*".to_string());
-        commands.push(format!("cp -R /source /root/rpmbuild/SOURCES/{source_folder_name}").to_string());
-        commands.push("cd /root/rpmbuild/SOURCES/".to_string());
-        commands.push(format!("tar -cvzf {source_folder_name}.tar.gz {source_folder_name}/").to_string());
-        commands.push(format!("cd /root/rpmbuild/SOURCES/{source_folder_name}/").to_string());
-        commands.push(format!("QA_RPATHS=$(( 0x0001|0x0010|0x0002|0x0004|0x0008|0x0020 )) rpmbuild --clean -bb /root/rpmbuild/{specfile_name}").to_string());
+        if let Some(bbs) = self.before_build_script("/source") {
+            commands.push(bbs);
+        }
+        commands.extend([
+            "rpmdev-setuptree".to_string(),
+            "rm -rf /root/rpmbuild/SOURCES/*".to_string(),
+            format!("cp -R /source /root/rpmbuild/SOURCES/{source_folder_name}"),
+            format!("tar -cvzf {source_folder_name}.tar.gz {source_folder_name}/"),
+            format!("cd /root/rpmbuild/SOURCES/{source_folder_name}/"),
+            format!("QA_RPATHS=$(( 0x0001|0x0010|0x0002|0x0004|0x0008|0x0020 )) rpmbuild --clean -bb /root/rpmbuild/{specfile_name}"),
+        ]);
 
         Package {
             mounts,
@@ -45,14 +48,4 @@ impl BuildContext {
             output_path: rpmbuild_path.clone(),
         }
     }
-
-    /*fn before_build_script(&self, relative_to: String) -> Option<String> {
-        if self.config.before_build_script
-
-        if some_condition {
-            Some("value".to_string())
-        } else {
-            None
-        }
-    }*/
 }
