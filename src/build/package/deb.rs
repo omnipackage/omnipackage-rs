@@ -1,9 +1,6 @@
 use crate::build::BuildContext;
-use crate::build::job_variables::JobVariables;
 use crate::build::package::Package;
 use crate::build::package::template::{Template, Var};
-use crate::config::Build;
-use crate::distros::Distro;
 use std::collections::HashMap;
 use std::path::PathBuf;
 

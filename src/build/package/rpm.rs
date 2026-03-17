@@ -1,11 +1,7 @@
 use crate::build::BuildContext;
-use crate::build::job_variables::JobVariables;
 use crate::build::package::Package;
 use crate::build::package::template::{Template, Var};
-use crate::config::Build;
-use crate::distros::Distro;
 use std::collections::HashMap;
-use std::path::PathBuf;
 
 impl BuildContext {
     pub fn setup_rpm(&self) -> Package {
@@ -72,7 +68,7 @@ mod tests {
         }
     }
 
-    fn make_build_config(source_path: &std::path::Path) -> Build {
+    fn make_build_config() -> Build {
         Build {
             distro: "opensuse_15.6".to_string(),
             package_name: "myapp".to_string(),
@@ -106,7 +102,7 @@ mod tests {
         let context = BuildContext {
             distro: distro_ref,
             source_path: source_path.clone(),
-            config: make_build_config(&source_path),
+            config: make_build_config(),
             job_variables: JobVariables::build("1.2.3".to_string()),
             build_dir: build_dir.path().to_path_buf(),
         };

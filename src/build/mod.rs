@@ -70,7 +70,7 @@ impl BuildContext {
                     log_path.display()
                 ));
             }
-            Err((code, log_path)) => {
+            Err((_code, log_path)) => {
                 crate::logger::error(format!("failed build for {} in {:.1}s, log: {}", self.distro.id, finished_at, log_path.display()));
             }
         }
@@ -123,7 +123,7 @@ impl BuildContext {
         args.push(commands.join(" && "));
 
         let log_path = package.output_path.join("build.log");
-        std::fs::remove_file(&log_path);
+        let _ = std::fs::remove_file(&log_path);
 
         Command::container(args)
             .stream_output_to(StreamOutput::Stderr) // TODO: cli option to choose log destination
