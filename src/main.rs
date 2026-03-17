@@ -24,7 +24,7 @@ enum Commands {
         #[arg(default_value = ".")]
         path: PathBuf,
 
-        /// Distros to build
+        /// Distros to build, e.g. opensuse_15.6, debian_12, fedora_40, by default build for all configured distros
         #[arg(short, long, num_args = 0..)]
         distros: Vec<String>,
 
