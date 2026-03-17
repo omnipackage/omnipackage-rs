@@ -31,3 +31,23 @@ fn test_build_help() {
         .success()
         .stdout(predicate::str::contains("--distros"));
 }
+
+#[test]
+fn test_build_dir_default() {
+    Command::cargo_bin("omnipackage")
+        .unwrap()
+        .args(["build", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(std::env::temp_dir().to_string_lossy().as_ref()));
+}
+
+/* TODO integration test with smaple_project in fixtures
+#[test]
+fn test_build_dir_custom() {
+    Command::cargo_bin("omnipackage")
+        .unwrap()
+        .args(["build", ".", "--build-dir", "/tmp/custom"])
+        .assert()
+        .success();
+}*/

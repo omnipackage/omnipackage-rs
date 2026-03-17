@@ -39,6 +39,10 @@ impl Distros {
         serde_saphyr::from_str(DISTROS_YAML).expect("failed to parse embedded distros.yml")
     }
 
+    pub fn ids(&self) -> Vec<String> {
+        self.iter().map(|d| d.id.clone()).collect()
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &Distro> {
         self.distros.iter()
     }

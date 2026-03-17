@@ -11,7 +11,7 @@ use job_variables::JobVariables;
 use package::Package;
 use package::rpm::Rpm;
 
-pub fn run(distro_ids: Vec<String>, path: PathBuf) {
+pub fn run(distro_ids: Vec<String>, path: PathBuf, build_dir: PathBuf) {
     let config = Config::load(&path.join(".omnipackage/config.yml"));
 
     let version = extract_version::extract_version(&path, &config.extract_version);
@@ -30,6 +30,7 @@ pub fn run(distro_ids: Vec<String>, path: PathBuf) {
             path: path.clone(),
             config: build.clone(),
             job_variables: job_variables.clone(),
+            build_dir: build_dir.clone(),
         }
         .run();
     }
@@ -40,6 +41,7 @@ pub struct BuildContext {
     pub path: PathBuf,
     pub config: Build,
     pub job_variables: JobVariables,
+    pub build_dir: PathBuf,
 }
 
 impl BuildContext {

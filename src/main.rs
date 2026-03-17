@@ -31,6 +31,10 @@ enum Commands {
         /// Container runtime, autodetect by default
         #[arg(short, long, value_parser = ["docker", "podman"])]
         container_runtime: Option<String>,
+
+        /// Root directory for temporary build files
+        #[arg(short, long, default_value_t = std::env::temp_dir().to_string_lossy().into_owned())]
+        build_dir: String,
     },
 }
 
@@ -38,12 +42,17 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Build { path, distros, container_runtime } => {
+        Commands::Build {
+            path,
+            distros,
+            container_runtime,
+            build_dir,
+        } => {
             if let Some(runtime) = container_runtime {
                 shell::set_container_runtime(runtime);
             }
 
-            build::run(distros, path);
+            build::run(distros, path, PathBuf::from(&build_dir));
 
             //println!("Building {:?} in {}", distros, path.display());
             //println!("{:?}", config::Config::load(&path.join(".omnipackage/config.yml")));
