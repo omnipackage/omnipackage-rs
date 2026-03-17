@@ -1,6 +1,5 @@
 use liquid::ParserBuilder;
 use liquid::model::Value;
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 pub struct Var(Value);
@@ -43,7 +42,7 @@ impl Template {
     pub fn new(path: PathBuf) -> Self {
         let content = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("cannot read template {}: {}", path.display(), e));
 
-        let template = liquid::ParserBuilder::with_stdlib()
+        let template = ParserBuilder::with_stdlib()
             .build()
             .unwrap()
             .parse(&content)
