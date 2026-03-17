@@ -1,21 +1,13 @@
 use crate::build::job_variables::JobVariables;
-use crate::build::package::Package;
 use crate::build::package::template::{Template, Var};
+use crate::build::package::{PackageInput, PackageOutput};
 use crate::config::Build;
 use crate::distros::Distro;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-pub struct Rpm {
-    pub build_config: Build,
-    pub build_dir: PathBuf,
-    pub job_variables: JobVariables,
-    pub source_path: PathBuf,
-    pub distro: &'static Distro,
-}
-
-impl Package for Rpm {
-    fn setup(&self) {
+impl PackageInput {
+    pub fn setup_rpm(&self) -> PackageOutput {
         let specfile_path_template_path = self.build_config.rpm.clone().unwrap().spec_template;
 
         let rpmbuild_folder_name = format!("{}-{}", self.build_config.package_name, self.distro.id);
@@ -31,17 +23,12 @@ impl Package for Rpm {
         vars.insert("source_folder_name".to_string(), source_folder_name.into());
         let template = Template::new(self.source_path.join(&specfile_path_template_path));
         template.render_to_file(vars, self.build_dir.join(&rpmbuild_folder_name).join(&specfile_name));
-    }
 
-    fn output_path(&self) -> PathBuf {
-        "123".into()
-    }
-
-    fn mounts(&self) -> HashMap<String, String> {
-        HashMap::new()
-    }
-
-    fn commands(&self) -> Vec<String> {
-        Vec::new()
+        PackageOutput {
+            mounts: HashMap::new(),
+            commands: Vec::new(),
+            source_path: self.source_path.clone(),
+            output_path: rpmbuild_path.clone(),
+        }
     }
 }

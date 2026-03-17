@@ -4,13 +4,21 @@ use crate::distros::Distro;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-pub mod deb;
-pub mod rpm;
+mod deb;
+mod rpm;
 pub mod template;
 
-pub trait Package {
-    fn setup(&self);
-    fn output_path(&self) -> PathBuf;
-    fn mounts(&self) -> HashMap<String, String>;
-    fn commands(&self) -> Vec<String>;
+pub struct PackageInput {
+    pub build_config: Build,
+    pub build_dir: PathBuf,
+    pub job_variables: JobVariables,
+    pub source_path: PathBuf,
+    pub distro: &'static Distro,
+}
+
+pub struct PackageOutput {
+    pub mounts: HashMap<String, String>,
+    pub commands: Vec<String>,
+    pub source_path: PathBuf,
+    pub output_path: PathBuf,
 }

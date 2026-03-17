@@ -8,8 +8,7 @@ mod job_variables;
 pub mod package;
 
 use job_variables::JobVariables;
-use package::Package;
-use package::rpm::Rpm;
+use package::{PackageInput, PackageOutput};
 
 pub fn run(distro_ids: Vec<String>, path: PathBuf, build_dir: PathBuf) {
     let config = Config::load(&path.join(".omnipackage/config.yml"));
@@ -54,20 +53,19 @@ impl BuildContext {
         ));
         let started_at = Instant::now();
 
-        match self.distro.package_type.as_str() {
-            "rpm" => Rpm {
-                build_config: self.config.clone(),
-                build_dir: self.build_dir.clone(),
-                job_variables: self.job_variables.clone(),
-                source_path: self.path.clone(),
-                distro: self.distro,
-            }
-            .setup(),
-            "deb" => {}
-            _ => {
-                panic!("unknown package type {}", self.distro.package_type)
-            }
-        }
+        let package_input = PackageInput {
+            build_config: self.config.clone(),
+            build_dir: self.build_dir.clone(),
+            job_variables: self.job_variables.clone(),
+            source_path: self.path.clone(),
+            distro: self.distro,
+        };
+
+        let package_output = match self.distro.package_type.as_str() {
+            "rpm" => package_input.setup_rpm(),
+            "deb" => package_input.setup_deb(),
+            _ => panic!("unknown package type {}", self.distro.package_type),
+        };
 
         crate::logger::info(format!("successfully finished build for {} in {:.1}s", self.distro.id, started_at.elapsed().as_secs_f32()));
     }
