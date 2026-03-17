@@ -1,5 +1,6 @@
 use crate::build::job_variables::JobVariables;
 use crate::config::Build;
+use crate::build::BuildContext;
 use crate::distros::Distro;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -9,11 +10,7 @@ mod rpm;
 pub mod template;
 
 pub struct PackageInput {
-    pub build_config: Build,
-    pub build_dir: PathBuf,
-    pub job_variables: JobVariables,
-    pub source_path: PathBuf,
-    pub distro: &'static Distro,
+    pub build_context: BuildContext,
 }
 
 pub struct PackageOutput {

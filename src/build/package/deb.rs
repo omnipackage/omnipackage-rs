@@ -10,7 +10,7 @@ impl PackageInput {
         PackageOutput {
             mounts: HashMap::new(),
             commands: Vec::new(),
-            source_path: self.source_path.clone(),
+            source_path: self.build_context.source_path.clone(),
             output_path: "ololo".into(),
         }
     }
