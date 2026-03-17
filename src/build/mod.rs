@@ -8,12 +8,14 @@ use std::time::Instant;
 
 mod extract_version;
 mod job_variables;
+pub mod output;
 pub mod package;
 
 use job_variables::JobVariables;
+use output::Output;
 use package::Package;
 
-pub fn run(args: &BuildArgs) {
+pub fn run(args: &BuildArgs) -> Vec<Output> {
     let config = Config::load(&args.source_path.join(".omnipackage/config.yml"));
 
     let version = extract_version::extract_version(&args.source_path, &config.extract_version);
@@ -21,23 +23,22 @@ pub fn run(args: &BuildArgs) {
     // TODO: add secrets
     // TODO: add limits
 
-    for build in &config.builds {
-        if !Distros::get().contains(&build.distro) {
-            continue;
-        }
-        if !args.distros.is_empty() && !args.distros.contains(&build.distro) {
-            continue;
-        };
-
-        BuildContext {
-            distro: Distros::get().by_id(&build.distro),
-            source_path: args.source_path.clone(),
-            config: build.clone(),
-            job_variables: job_variables.clone(),
-            build_dir: PathBuf::from(&args.build_dir),
-        }
-        .run();
-    }
+    config
+        .builds
+        .iter()
+        .filter(|build| Distros::get().contains(&build.distro))
+        .filter(|build| args.distros.is_empty() || args.distros.contains(&build.distro))
+        .map(|build| {
+            BuildContext {
+                distro: Distros::get().by_id(&build.distro),
+                source_path: args.source_path.clone(),
+                config: build.clone(),
+                job_variables: job_variables.clone(),
+                build_dir: PathBuf::from(&args.build_dir),
+            }
+            .run()
+        })
+        .collect()
 }
 
 #[derive(Debug, Clone)]
@@ -50,7 +51,7 @@ pub struct BuildContext {
 }
 
 impl BuildContext {
-    pub fn run(&self) {
+    pub fn run(&self) -> Output {
         crate::logger::info(format!(
             "starting build for {} at {}, variables: {}",
             self.distro.id,
@@ -62,17 +63,31 @@ impl BuildContext {
         let result = self.execute(&package);
         let finished_at = started_at.elapsed().as_secs_f32();
         match result {
-            Ok((artefacts, log_path)) => {
+            Ok((artefacts, build_log)) => {
                 crate::logger::info(format!(
                     "successfully finished build for {} in {:.1}s, artefacts: {:?}, log: {}",
                     self.distro.id,
                     finished_at,
                     artefacts,
-                    log_path.display()
+                    build_log.display()
                 ));
+
+                Output {
+                    success: true,
+                    artefacts,
+                    build_log,
+                    distro: self.distro,
+                }
             }
-            Err((_code, log_path)) => {
-                crate::logger::error(format!("failed build for {} in {:.1}s, log: {}", self.distro.id, finished_at, log_path.display()));
+            Err((_code, build_log)) => {
+                crate::logger::error(format!("failed build for {} in {:.1}s, log: {}", self.distro.id, finished_at, build_log.display()));
+
+                Output {
+                    success: false,
+                    artefacts: Vec::new(),
+                    build_log,
+                    distro: self.distro,
+                }
             }
         }
     }

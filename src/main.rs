@@ -53,6 +53,9 @@ fn main() {
     }
 
     match cli.command {
-        Commands::Build(args) => build::run(&args),
+        Commands::Build(args) => {
+            let outputs = build::run(&args);
+            build::output::log_all(&outputs);
+        }
     }
 }

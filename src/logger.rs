@@ -33,12 +33,16 @@ fn timestamp() -> String {
 }
 
 #[derive(Clone, Copy)]
-enum Color {
+pub enum Color {
     Red,
     Green,
     Yellow,
     Cyan,
     Bold,
+    BoldRed,
+    BoldGreen,
+    BoldYellow,
+    BoldCyan,
 }
 
 impl Color {
@@ -49,6 +53,10 @@ impl Color {
             Color::Yellow => "\x1b[33m",
             Color::Cyan => "\x1b[36m",
             Color::Bold => "\x1b[1m",
+            Color::BoldRed => "\x1b[1;31m",
+            Color::BoldGreen => "\x1b[1;32m",
+            Color::BoldYellow => "\x1b[1;33m",
+            Color::BoldCyan => "\x1b[1;36m",
         }
     }
 }
@@ -57,7 +65,7 @@ fn colorize_with(colors: bool, color: Color, text: impl std::fmt::Display) -> St
     if colors { format!("{}{}\x1b[0m", color.code(), text) } else { format!("{}", text) }
 }
 
-fn colorize(color: Color, text: impl std::fmt::Display) -> String {
+pub fn colorize(color: Color, text: impl std::fmt::Display) -> String {
     colorize_with(config().colors, color, text)
 }
 
