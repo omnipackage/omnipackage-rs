@@ -20,20 +20,39 @@ impl BuildContext {
 
         let mut vars: HashMap<String, Var> = self.job_variables.to_vars();
         vars.extend(self.config.to_vars());
-        vars.insert("source_folder_name".to_string(), source_folder_name.into());
+        vars.insert("source_folder_name".to_string(), source_folder_name.clone().into());
         let template = Template::new(self.source_path.join(&specfile_path_template_path));
         template.render_to_file(vars, self.build_dir.join(&rpmbuild_folder_name).join(&specfile_name));
-
 
         let mut mounts: HashMap<String, String> = HashMap::new();
         mounts.insert(self.source_path.to_string_lossy().to_string(), "/source".to_string());
         mounts.insert(rpmbuild_path.to_string_lossy().to_string(), "/root/rpmbuild".to_string());
 
+        let mut commands: Vec<String> = self.distro.setup(&self.config.build_dependencies);
+        // commands.push(before_build_script('/source'));
+        commands.push("rpmdev-setuptree".to_string());
+        commands.push("rm -rf /root/rpmbuild/SOURCES/*".to_string());
+        commands.push(format!("cp -R /source /root/rpmbuild/SOURCES/{source_folder_name}").to_string());
+        commands.push("cd /root/rpmbuild/SOURCES/".to_string());
+        commands.push(format!("tar -cvzf {source_folder_name}.tar.gz {source_folder_name}/").to_string());
+        commands.push(format!("cd /root/rpmbuild/SOURCES/{source_folder_name}/").to_string());
+        commands.push(format!("QA_RPATHS=$(( 0x0001|0x0010|0x0002|0x0004|0x0008|0x0020 )) rpmbuild --clean -bb /root/rpmbuild/{specfile_name}").to_string());
+
         Package {
-            mounts: mounts,
-            commands: Vec::new(),
+            mounts,
+            commands,
             source_path: self.source_path.clone(),
             output_path: rpmbuild_path.clone(),
         }
     }
+
+    /*fn before_build_script(&self, relative_to: String) -> Option<String> {
+        if self.config.before_build_script
+
+        if some_condition {
+            Some("value".to_string())
+        } else {
+            None
+        }
+    }*/
 }

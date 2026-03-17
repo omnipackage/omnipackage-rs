@@ -17,6 +17,13 @@ pub struct Distro {
     pub deprecated: Option<String>,
 }
 
+impl Distro {
+    pub fn setup(&self, build_dependencies: &[String]) -> Vec<String> {
+        let deps = build_dependencies.join(" ");
+        self.setup.iter().map(|command| command.replace("%{build_dependencies}", &deps)).collect()
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct Distros {
     distros: Vec<Distro>,
@@ -132,5 +139,46 @@ mod tests {
         let distros = Distros::get();
         let result = std::panic::catch_unwind(|| distros.by_id("nonexistent"));
         assert!(result.is_err());
+    }
+
+    fn make_distro(setup: Vec<String>) -> Distro {
+        Distro {
+            id: "test".to_string(),
+            name: "Test".to_string(),
+            image: "test:latest".to_string(),
+            arch: "x86_64".to_string(),
+            package_type: "rpm".to_string(),
+            setup,
+            setup_repo: vec![],
+            install_steps: vec![],
+            image_info_url: None,
+            deprecated: None,
+        }
+    }
+
+    #[test]
+    fn test_setup_replaces_build_dependencies() {
+        let distro = make_distro(vec!["zypper install -y %{build_dependencies}".to_string(), "echo done".to_string()]);
+
+        let result = distro.setup(&["gcc".to_string(), "make".to_string()]);
+
+        assert_eq!(result[0], "zypper install -y gcc make");
+        assert_eq!(result[1], "echo done");
+    }
+
+    #[test]
+    fn test_setup_empty_dependencies() {
+        let distro = make_distro(vec!["zypper install -y %{build_dependencies}".to_string()]);
+
+        let result = distro.setup(&[]);
+        assert_eq!(result[0], "zypper install -y ");
+    }
+
+    #[test]
+    fn test_setup_no_placeholder() {
+        let distro = make_distro(vec!["echo hello".to_string()]);
+
+        let result = distro.setup(&["gcc".to_string()]);
+        assert_eq!(result[0], "echo hello");
     }
 }
