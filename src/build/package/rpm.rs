@@ -45,7 +45,6 @@ impl BuildContext {
         Package {
             mounts,
             commands,
-            source_path: self.source_path.clone(),
             output_path: rpmbuild_path.clone(),
         }
     }

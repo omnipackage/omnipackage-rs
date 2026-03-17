@@ -15,9 +15,8 @@ impl BuildContext {
 
         let build_path = self.build_dir.join(&build_folder_name).join("build");
         let output_path = self.build_dir.join(&build_folder_name).join("output");
-
-        //::FileUtils.mkdir_p(build_path)
-        //::FileUtils.mkdir_p(output_path)
+        std::fs::create_dir_all(&build_path).unwrap_or_else(|e| panic!("cannot create directory {}: {}", build_path.display(), e));
+        std::fs::create_dir_all(&output_path).unwrap_or_else(|e| panic!("cannot create directory {}: {}", output_path.display(), e));
 
         //template_params = build_conf.merge(job_variables)
         //debian_folder.save(::OmnipackageAgent::Utils::Path.mkpath(build_path, 'debian'), template_params)
@@ -37,11 +36,6 @@ impl BuildContext {
             "DEB_BUILD_OPTIONS=noddebs dpkg-buildpackage -b -tc".to_string(),
         ]);
 
-        Package {
-            mounts,
-            commands,
-            source_path: self.source_path.clone(),
-            output_path,
-        }
+        Package { mounts, commands, output_path }
     }
 }

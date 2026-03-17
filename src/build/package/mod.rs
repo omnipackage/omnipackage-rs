@@ -8,6 +8,5 @@ pub mod template;
 pub struct Package {
     pub mounts: HashMap<String, String>,
     pub commands: Vec<String>,
-    pub source_path: PathBuf,
     pub output_path: PathBuf,
 }
