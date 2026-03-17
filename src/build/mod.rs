@@ -61,12 +61,13 @@ impl BuildContext {
         let result = self.execute(&package);
         let finished_at = started_at.elapsed().as_secs_f32();
         match result {
-            Ok(()) => {
-                let artefacts = self.artefacts(&package);
-                let artefacts_str = artefacts.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join(", ");
+            Ok((artefacts, log_path)) => {
                 crate::logger::info(format!(
-                    "successfully finished build for {} in {:.1}s, artefacts: {}",
-                    self.distro.id, finished_at, artefacts_str
+                    "successfully finished build for {} in {:.1}s, artefacts: {:?}, log: {}",
+                    self.distro.id,
+                    finished_at,
+                    artefacts,
+                    log_path.display()
                 ));
             }
             Err((code, log_path)) => {
@@ -83,7 +84,7 @@ impl BuildContext {
         }
     }
 
-    fn artefacts(&self, package: &Package) -> Vec<PathBuf> {
+    fn find_artefacts(&self, package: &Package) -> Vec<PathBuf> {
         let search_path = match self.distro.package_type.as_str() {
             "rpm" => format!("{}/RPMS/**/*.rpm", package.output_path.display()),
             "deb" => format!("{}/*.deb", package.output_path.display()),
@@ -105,7 +106,7 @@ impl BuildContext {
         Some(path)
     }
 
-    fn execute(&self, package: &Package) -> Result<(), (i32, PathBuf)> {
+    fn execute(&self, package: &Package) -> Result<(Vec<PathBuf>, PathBuf), (i32, PathBuf)> {
         let mut args = vec!["run".to_string(), "--rm".to_string(), "--entrypoint".to_string(), "/bin/sh".to_string()];
 
         let mut commands = package.commands.clone();
@@ -128,6 +129,7 @@ impl BuildContext {
             .stream_output_to(StreamOutput::Stderr) // TODO: cli option to choose log destination
             .log_to(&log_path)
             .run()
-            .map_err(|code| (code, log_path))
+            .map(|_| (self.find_artefacts(&package), log_path.clone()))
+            .map_err(|code| (code, log_path.clone()))
     }
 }
