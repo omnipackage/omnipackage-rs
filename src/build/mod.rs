@@ -94,6 +94,10 @@ impl BuildContext {
 
     fn execute(&self, package: &Package) -> Result<(), (i32, std::path::PathBuf)> {
         let mut args = vec!["run".to_string(), "--rm".to_string(), "--entrypoint".to_string(), "/bin/sh".to_string()];
+
+        let mut commands = package.commands.clone();
+        commands.insert(0, "set -x".to_string()); // TODO: cli option to enable this
+
         let mount_args: Vec<String> = package
             .mounts
             .iter()
@@ -102,13 +106,13 @@ impl BuildContext {
         args.extend(mount_args);
         args.push(self.distro.image.clone());
         args.push("-c".to_string());
-        args.push(package.commands.join(" && "));
+        args.push(commands.join(" && "));
 
         let log_path = package.output_path.join("build.log");
         std::fs::remove_file(&log_path);
 
         Command::container(args)
-            .stream_output_to(StreamOutput::Stderr)
+            .stream_output_to(StreamOutput::Stderr) // TODO: cli option to choose log destination
             .log_to(&log_path)
             .run()
             .map_err(|code| (code, log_path))
