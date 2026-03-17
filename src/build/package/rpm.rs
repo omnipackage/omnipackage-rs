@@ -36,6 +36,7 @@ impl BuildContext {
             "rpmdev-setuptree".to_string(),
             "rm -rf /root/rpmbuild/SOURCES/*".to_string(),
             format!("cp -R /source /root/rpmbuild/SOURCES/{source_folder_name}"),
+            "cd /root/rpmbuild/SOURCES/".to_string(),
             format!("tar -cvzf {source_folder_name}.tar.gz {source_folder_name}/"),
             format!("cd /root/rpmbuild/SOURCES/{source_folder_name}/"),
             format!("QA_RPATHS=$(( 0x0001|0x0010|0x0002|0x0004|0x0008|0x0020 )) rpmbuild --clean -bb /root/rpmbuild/{specfile_name}"),
@@ -47,5 +48,89 @@ impl BuildContext {
             source_path: self.source_path.clone(),
             output_path: rpmbuild_path.clone(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::build::job_variables::JobVariables;
+    use crate::config::{Build, RpmConfig};
+    use crate::distros::Distro;
+
+    fn make_distro() -> Distro {
+        Distro {
+            id: "opensuse_15.6".to_string(),
+            name: "openSUSE Leap 15.6".to_string(),
+            image: "opensuse/leap:15.6".to_string(),
+            arch: "x86_64".to_string(),
+            package_type: "rpm".to_string(),
+            setup: vec!["zypper install -y %{build_dependencies}".to_string()],
+            setup_repo: vec![],
+            install_steps: vec![],
+            image_info_url: None,
+            deprecated: None,
+        }
+    }
+
+    fn make_build_config(source_path: &std::path::Path) -> Build {
+        Build {
+            distro: "opensuse_15.6".to_string(),
+            package_name: "myapp".to_string(),
+            maintainer: "Test <test@test.com>".to_string(),
+            homepage: "https://example.com".to_string(),
+            description: "Test package".to_string(),
+            build_dependencies: vec!["gcc".to_string(), "make".to_string()],
+            runtime_dependencies: vec![],
+            before_build_script: None,
+            rpm: Some(RpmConfig {
+                spec_template: ".omnipackage/specfile.spec.liquid".to_string(),
+            }),
+            deb: None,
+        }
+    }
+
+    #[test]
+    fn test_setup_rpm() {
+        let dir = tempfile::tempdir().unwrap();
+        let source_path = dir.path().to_path_buf();
+        let build_dir = tempfile::tempdir().unwrap();
+
+        // create spec template
+        let spec_dir = source_path.join(".omnipackage");
+        std::fs::create_dir_all(&spec_dir).unwrap();
+        std::fs::write(spec_dir.join("specfile.spec.liquid"), "Name: {{ package_name }}\nVersion: {{ version }}").unwrap();
+
+        let distro = Box::new(make_distro());
+        let distro_ref: &'static Distro = Box::leak(distro);
+
+        let context = BuildContext {
+            distro: distro_ref,
+            source_path: source_path.clone(),
+            config: make_build_config(&source_path),
+            job_variables: JobVariables::build("1.2.3".to_string()),
+            build_dir: build_dir.path().to_path_buf(),
+        };
+
+        let package = context.setup_rpm();
+
+        // verify mounts
+        assert!(package.mounts.contains_key(&source_path.to_string_lossy().to_string()));
+        assert!(package.mounts.values().any(|v| v == "/source"));
+        assert!(package.mounts.values().any(|v| v == "/root/rpmbuild"));
+
+        // verify commands contain expected steps
+        let cmds = package.commands.join(" ");
+        assert!(cmds.contains("zypper install"));
+        assert!(cmds.contains("rpmdev-setuptree"));
+        assert!(cmds.contains("rpmbuild"));
+        assert!(cmds.contains("myapp-1.2.3"));
+
+        // verify specfile was rendered
+        let specfile = build_dir.path().join("myapp-opensuse_15.6").join("myapp-1.2.3-opensuse_15.6.spec");
+        assert!(specfile.exists());
+        let content = std::fs::read_to_string(&specfile).unwrap();
+        assert!(content.contains("myapp"));
+        assert!(content.contains("1.2.3"));
     }
 }

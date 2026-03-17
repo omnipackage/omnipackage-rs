@@ -1,5 +1,6 @@
 use crate::config::{Build, Config};
 use crate::distros::{Distro, Distros};
+use crate::shell::{Command, StreamOutput};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -54,7 +55,8 @@ impl BuildContext {
         ));
         let started_at = Instant::now();
 
-        let package_output = self.setup_package();
+        let package = self.setup_package();
+        self.execute(&package);
 
         crate::logger::info(format!("successfully finished build for {} in {:.1}s", self.distro.id, started_at.elapsed().as_secs_f32()));
     }
@@ -77,5 +79,23 @@ impl BuildContext {
         };
 
         Some(path)
+    }
+
+    fn execute(&self, package: &Package) {
+        let mut args = vec!["run".to_string(), "--rm".to_string(), "--entrypoint".to_string(), "/bin/sh".to_string()];
+        let mount_args: Vec<String> = package
+            .mounts
+            .iter()
+            .flat_map(|(from, to)| ["--mount".to_string(), format!("type=bind,source={from},target={to}")])
+            .collect();
+        args.extend(mount_args);
+        args.push(self.distro.image.clone());
+        args.push("-c".to_string());
+        args.push(package.commands.join(" && "));
+
+        Command::container(args)
+            .stream_output_to(StreamOutput::Stderr)
+            .log_to(package.output_path.join("build.log"))
+            .run();
     }
 }

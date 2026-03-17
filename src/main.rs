@@ -75,12 +75,12 @@ fn main() {
         }
     }
 
-    let _ = shell::Command::container(["run", "--rm", "opensuse/tumbleweed", "sh", "-c", "for i in $(seq 1 10); do echo $i; sleep 1; done"])
+    /*let _ = shell::Command::container(["run", "--rm", "opensuse/tumbleweed", "sh", "-c", "for i in $(seq 1 10); do echo $i; sleep 1; done"])
         .log_to("/tmp/build.log")
         .stream_output_to(shell::StreamOutput::Stderr)
         .run();
 
     let _ = shell::Command::new("ls").arg("-latrh").run();
 
-    logger::info("ololo");
+    logger::info("ololo");*/
 }
