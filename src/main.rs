@@ -1,5 +1,3 @@
-#![allow(dead_code)] // TODO: remove
-
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 

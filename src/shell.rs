@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::logger;
 use std::fs::OpenOptions;
 use std::io::BufReader;

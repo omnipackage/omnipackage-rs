@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 struct Config {
     colors: bool,
     stderr: bool,
