@@ -17,6 +17,8 @@ pub fn run(distro_ids: Vec<String>, source_path: PathBuf, build_dir: PathBuf) {
 
     let version = extract_version::extract_version(&source_path, &config.extract_version);
     let job_variables = JobVariables::build(version);
+    // TODO: add secrets
+    // TODO: add limits
 
     for build in &config.builds {
         if !Distros::get().contains(&build.distro) {
@@ -92,7 +94,7 @@ impl BuildContext {
         Some(path)
     }
 
-    fn execute(&self, package: &Package) -> Result<(), (i32, std::path::PathBuf)> {
+    fn execute(&self, package: &Package) -> Result<(), (i32, PathBuf)> {
         let mut args = vec!["run".to_string(), "--rm".to_string(), "--entrypoint".to_string(), "/bin/sh".to_string()];
 
         let mut commands = package.commands.clone();
