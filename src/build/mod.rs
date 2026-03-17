@@ -57,7 +57,7 @@ impl BuildContext {
         match self.distro.package_type.as_str() {
             "rpm" => Rpm {
                 build_config: self.config.clone(),
-                build_dir: "/tmp/123".into(),
+                build_dir: self.build_dir.clone(),
                 job_variables: self.job_variables.clone(),
                 source_path: self.path.clone(),
                 distro: self.distro,

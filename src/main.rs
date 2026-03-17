@@ -29,11 +29,11 @@ enum Commands {
         distros: Vec<String>,
 
         /// Container runtime, autodetect by default
-        #[arg(short, long, value_parser = ["docker", "podman"])]
+        #[arg(long, value_parser = ["docker", "podman"])]
         container_runtime: Option<String>,
 
         /// Root directory for temporary build files
-        #[arg(short, long, default_value_t = std::env::temp_dir().to_string_lossy().into_owned())]
+        #[arg(short, long, default_value_t = std::env::temp_dir().join("omnipackage").to_string_lossy().into_owned())]
         build_dir: String,
     },
 }

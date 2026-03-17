@@ -59,6 +59,10 @@ impl Template {
     }
 
     pub fn render_to_file(&self, vars: impl IntoIterator<Item = (String, Var)>, output_path: PathBuf) {
+        if let Some(parent) = output_path.parent() {
+            std::fs::create_dir_all(parent).unwrap_or_else(|e| panic!("cannot create directory {}: {}", parent.display(), e));
+        }
+
         let output = self.render(vars);
         std::fs::write(&output_path, output).unwrap_or_else(|e| panic!("cannot write to {}: {}", output_path.display(), e));
     }
@@ -107,6 +111,18 @@ mod tests {
     fn test_render_to_file() {
         let (template, dir) = make_template("Hello, {{ name }}!");
         let output_path = dir.path().join("output.txt");
+
+        template.render_to_file([("name".to_string(), "world".into())], output_path.clone());
+
+        let content = std::fs::read_to_string(&output_path).unwrap();
+        assert_eq!(content, "Hello, world!");
+    }
+
+    #[test]
+    fn test_render_to_file_creates_directories() {
+        let (template, _dir) = make_template("Hello, {{ name }}!");
+        let dir = tempfile::tempdir().unwrap();
+        let output_path = dir.path().join("nested/dirs/output.txt");
 
         template.render_to_file([("name".to_string(), "world".into())], output_path.clone());
 

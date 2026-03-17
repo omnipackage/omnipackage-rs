@@ -18,21 +18,19 @@ impl Package for Rpm {
     fn setup(&self) {
         let specfile_path_template_path = self.build_config.rpm.clone().unwrap().spec_template;
 
-        let rpmbuild_folder_name = format!("{}-{}", self.build_config.package_name, self.distro.name);
-
+        let rpmbuild_folder_name = format!("{}-{}", self.build_config.package_name, self.distro.id);
         let rpmbuild_path = self.build_dir.join(&rpmbuild_folder_name);
         std::fs::create_dir_all(&rpmbuild_path).unwrap_or_else(|e| panic!("cannot create directory {}: {}", rpmbuild_path.display(), e));
         // @output_path = rpmbuild_path
 
         let source_folder_name = format!("{}-{}", self.build_config.package_name, self.job_variables.version);
-        let specfile_name = format!("{}-{}.spec", source_folder_name, self.distro.name);
+        let specfile_name = format!("{}-{}.spec", source_folder_name, self.distro.id);
 
         let mut vars: HashMap<String, Var> = self.job_variables.to_vars();
         vars.extend(self.build_config.to_vars());
         vars.insert("source_folder_name".to_string(), source_folder_name.into());
         let template = Template::new(self.source_path.join(&specfile_path_template_path));
-        let result = template.render(vars);
-        println!("{}", result);
+        template.render_to_file(vars, self.build_dir.join(&rpmbuild_folder_name).join(&specfile_name));
     }
 
     fn output_path(&self) -> PathBuf {
