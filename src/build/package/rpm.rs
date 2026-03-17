@@ -24,8 +24,13 @@ impl BuildContext {
         let template = Template::new(self.source_path.join(&specfile_path_template_path));
         template.render_to_file(vars, self.build_dir.join(&rpmbuild_folder_name).join(&specfile_name));
 
+
+        let mut mounts: HashMap<String, String> = HashMap::new();
+        mounts.insert(self.source_path.to_string_lossy().to_string(), "/source".to_string());
+        mounts.insert(rpmbuild_path.to_string_lossy().to_string(), "/root/rpmbuild".to_string());
+
         Package {
-            mounts: HashMap::new(),
+            mounts: mounts,
             commands: Vec::new(),
             source_path: self.source_path.clone(),
             output_path: rpmbuild_path.clone(),
