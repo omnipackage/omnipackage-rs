@@ -2,6 +2,7 @@ use crate::config::{Build, Config};
 use crate::distros::{Distro, Distros};
 use crate::shell::{Command, StreamOutput};
 use std::path::PathBuf;
+use std::result::Result;
 use std::time::Instant;
 
 mod extract_version;
@@ -56,9 +57,19 @@ impl BuildContext {
         let started_at = Instant::now();
 
         let package = self.setup_package();
-        self.execute(&package);
-
-        crate::logger::info(format!("successfully finished build for {} in {:.1}s", self.distro.id, started_at.elapsed().as_secs_f32()));
+        match self.execute(&package) {
+            Ok(()) => {
+                crate::logger::info(format!("successfully finished build for {} in {:.1}s", self.distro.id, started_at.elapsed().as_secs_f32()));
+            }
+            Err((code, log_path)) => {
+                crate::logger::error(format!(
+                    "failed build for {} in {:.1}s, log: {}",
+                    self.distro.id,
+                    started_at.elapsed().as_secs_f32(),
+                    log_path.display()
+                ));
+            }
+        }
     }
 
     fn setup_package(&self) -> Package {
@@ -81,7 +92,7 @@ impl BuildContext {
         Some(path)
     }
 
-    fn execute(&self, package: &Package) {
+    fn execute(&self, package: &Package) -> Result<(), (i32, std::path::PathBuf)> {
         let mut args = vec!["run".to_string(), "--rm".to_string(), "--entrypoint".to_string(), "/bin/sh".to_string()];
         let mount_args: Vec<String> = package
             .mounts
@@ -93,9 +104,13 @@ impl BuildContext {
         args.push("-c".to_string());
         args.push(package.commands.join(" && "));
 
+        let log_path = package.output_path.join("build.log");
+        std::fs::remove_file(&log_path);
+
         Command::container(args)
             .stream_output_to(StreamOutput::Stderr)
-            .log_to(package.output_path.join("build.log"))
-            .run();
+            .log_to(&log_path)
+            .run()
+            .map_err(|code| (code, log_path))
     }
 }
