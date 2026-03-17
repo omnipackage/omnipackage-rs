@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
 mod build;
@@ -7,77 +7,52 @@ mod distros;
 mod logger;
 mod shell;
 
+#[derive(Debug, Args)]
+pub struct GlobalOpts {
+    /// Container runtime, autodetect by default
+    #[arg(long, global = true, value_parser = ["docker", "podman"])]
+    pub container_runtime: Option<String>,
+}
+
 #[derive(Parser)]
 #[command(version, about)]
-struct Cli {
+pub struct Cli {
+    #[command(flatten)]
+    pub global: GlobalOpts,
+
     #[command(subcommand)]
-    command: Commands,
+    pub command: Commands,
+}
+
+#[derive(Args)]
+pub struct BuildArgs {
+    /// Path to the project
+    #[arg(default_value = ".")]
+    source_path: PathBuf,
+
+    /// Distros to build, e.g. opensuse_15.6, debian_12, fedora_40, by default build for all configured distros
+    #[arg(short, long, num_args = 0..)]
+    distros: Vec<String>,
+
+    /// Root directory for temporary build files
+    #[arg(short, long, default_value_t = std::env::temp_dir().join("omnipackage").to_string_lossy().into_owned())]
+    build_dir: String,
 }
 
 #[derive(Subcommand)]
-enum Commands {
+pub enum Commands {
     /// Build the project with omnipackage
-    Build {
-        /// Path to the project
-        #[arg(default_value = ".")]
-        path: PathBuf,
-
-        /// Distros to build, e.g. opensuse_15.6, debian_12, fedora_40, by default build for all configured distros
-        #[arg(short, long, num_args = 0..)]
-        distros: Vec<String>,
-
-        /// Container runtime, autodetect by default
-        #[arg(long, value_parser = ["docker", "podman"])]
-        container_runtime: Option<String>,
-
-        /// Root directory for temporary build files
-        #[arg(short, long, default_value_t = std::env::temp_dir().join("omnipackage").to_string_lossy().into_owned())]
-        build_dir: String,
-    },
+    Build(BuildArgs),
 }
 
 fn main() {
     let cli = Cli::parse();
 
-    match cli.command {
-        Commands::Build {
-            path,
-            distros,
-            container_runtime,
-            build_dir,
-        } => {
-            if let Some(runtime) = container_runtime {
-                shell::set_container_runtime(runtime);
-            }
-
-            build::run(distros, path, PathBuf::from(&build_dir));
-
-            //println!("Building {:?} in {}", distros, path.display());
-            //println!("{:?}", config::Config::load(&path.join(".omnipackage/config.yml")));
-
-            /*let all = distros::Distros::get();
-            let distros_to_build: Vec<&distros::Distro> = if distros.is_empty() {
-                all.distros.iter().collect()
-            } else {
-                distros.iter().map(|id| all.by_id(id)).collect()
-            };
-
-            for distro in distros_to_build {
-                let build = build::BuildContext {
-                    distro: distro,
-                    path: path.clone(),
-                };
-                build.run();
-            }*/
-        }
+    if let Some(runtime) = cli.global.container_runtime {
+        shell::set_container_runtime(runtime);
     }
 
-    /*let _ = shell::Command::container(["run", "--rm", "opensuse/tumbleweed", "sh", "-c", "for i in $(seq 1 10); do echo $i; sleep 1; done"])
-        .log_to("/tmp/build.log")
-        .stream_output_to(shell::StreamOutput::Stderr)
-        .run();
-
-    let _ = shell::Command::new("ls").arg("-latrh").run();
-
-    logger::info("ololo");*/
+    match cli.command {
+        Commands::Build(args) => build::run(&args),
+    }
 }

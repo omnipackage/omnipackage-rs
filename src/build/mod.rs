@@ -1,3 +1,4 @@
+use crate::BuildArgs;
 use crate::config::{Build, Config};
 use crate::distros::{Distro, Distros};
 use crate::shell::{Command, StreamOutput};
@@ -12,10 +13,10 @@ pub mod package;
 use job_variables::JobVariables;
 use package::Package;
 
-pub fn run(distro_ids: Vec<String>, source_path: PathBuf, build_dir: PathBuf) {
-    let config = Config::load(&source_path.join(".omnipackage/config.yml"));
+pub fn run(args: &BuildArgs) {
+    let config = Config::load(&args.source_path.join(".omnipackage/config.yml"));
 
-    let version = extract_version::extract_version(&source_path, &config.extract_version);
+    let version = extract_version::extract_version(&args.source_path, &config.extract_version);
     let job_variables = JobVariables::build(version);
     // TODO: add secrets
     // TODO: add limits
@@ -24,16 +25,16 @@ pub fn run(distro_ids: Vec<String>, source_path: PathBuf, build_dir: PathBuf) {
         if !Distros::get().contains(&build.distro) {
             continue;
         }
-        if !distro_ids.is_empty() && !distro_ids.contains(&build.distro) {
+        if !args.distros.is_empty() && !args.distros.contains(&build.distro) {
             continue;
         };
 
         BuildContext {
             distro: Distros::get().by_id(&build.distro),
-            source_path: source_path.clone(),
+            source_path: args.source_path.clone(),
             config: build.clone(),
             job_variables: job_variables.clone(),
-            build_dir: build_dir.clone(),
+            build_dir: PathBuf::from(&args.build_dir),
         }
         .run();
     }
