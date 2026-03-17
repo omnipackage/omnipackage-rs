@@ -16,7 +16,7 @@ impl JobVariables {
         }
     }
 
-    pub fn to_vars(&self) -> HashMap<String, Var> {
+    pub fn to_template_vars(&self) -> HashMap<String, Var> {
         let mut vars = HashMap::new();
         vars.insert("version".to_string(), self.version.clone().into());
         vars.insert("current_time_rfc2822".to_string(), self.current_time_rfc2822.clone().into());

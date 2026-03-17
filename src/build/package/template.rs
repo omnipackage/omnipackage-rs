@@ -2,6 +2,7 @@ use liquid::ParserBuilder;
 use liquid::model::Value;
 use std::path::PathBuf;
 
+#[derive(Clone)]
 pub struct Var(Value);
 
 impl From<String> for Var {

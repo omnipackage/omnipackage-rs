@@ -18,11 +18,11 @@ impl BuildContext {
         let source_folder_name = format!("{}-{}", self.config.package_name, self.job_variables.version);
         let specfile_name = format!("{}-{}.spec", source_folder_name, self.distro.id);
 
-        let mut vars: HashMap<String, Var> = self.job_variables.to_vars();
-        vars.extend(self.config.to_vars());
-        vars.insert("source_folder_name".to_string(), source_folder_name.clone().into());
+        let mut template_vars: HashMap<String, Var> = self.job_variables.to_template_vars();
+        template_vars.extend(self.config.to_template_vars());
+        template_vars.insert("source_folder_name".to_string(), source_folder_name.clone().into());
         let template = Template::new(self.source_path.join(&specfile_path_template_path));
-        template.render_to_file(vars, self.build_dir.join(&rpmbuild_folder_name).join(&specfile_name));
+        template.render_to_file(template_vars, self.build_dir.join(&rpmbuild_folder_name).join(&specfile_name));
 
         let mut mounts: HashMap<String, String> = HashMap::new();
         mounts.insert(self.source_path.to_string_lossy().to_string(), "/source".to_string());

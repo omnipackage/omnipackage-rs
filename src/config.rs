@@ -55,7 +55,7 @@ impl Config {
 }
 
 impl Build {
-    pub fn to_vars(&self) -> HashMap<String, Var> {
+    pub fn to_template_vars(&self) -> HashMap<String, Var> {
         let mut vars = HashMap::new();
         vars.insert("package_name".to_string(), self.package_name.clone().into());
         vars.insert("maintainer".to_string(), self.maintainer.clone().into());
