@@ -90,7 +90,14 @@ fn main() {
         Commands::Gpg { command } => match command {
             GpgCommands::Generate { output: _, name, email } => {
                 let keys = gpg::Gpg::new().generate_keys(&name, &email);
-                println!("generate {}\n\n{}", keys.priv_key, keys.pub_key);
+                println!("{}\n{}", keys.priv_key, keys.pub_key);
+
+                println!(
+                    "key id: {}\n{}\n{}",
+                    gpg::Gpg::new().key_id(&keys.priv_key),
+                    gpg::Gpg::new().key_info(&keys.priv_key),
+                    gpg::Gpg::new().key_info(&keys.pub_key)
+                );
             }
         },
     }
