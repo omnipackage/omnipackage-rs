@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::logger;
+use crate::logger::Logger;
 use std::fs::OpenOptions;
 use std::io::BufReader;
 use std::io::{BufRead, Write};
@@ -89,7 +89,7 @@ impl Command {
     }
 
     pub fn run(self) -> std::result::Result<(), i32> {
-        logger::cmd(&self.program, &self.args.join(" "));
+        Logger::new().cmd(&self.program, &self.args.join(" "));
 
         let mut log_file = self.log_file.as_ref().map(|path| {
             OpenOptions::new()

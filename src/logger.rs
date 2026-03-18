@@ -2,22 +2,13 @@
 
 struct Config {
     colors: bool,
-    stderr: bool,
 }
 
 static CONFIG: std::sync::OnceLock<Config> = std::sync::OnceLock::new();
 
-pub fn set_stderr(value: bool) {
-    CONFIG.get_or_init(|| Config {
-        colors: std::env::var("NO_COLOR").is_err(),
-        stderr: value,
-    });
-}
-
 fn config() -> &'static Config {
     CONFIG.get_or_init(|| Config {
         colors: std::env::var("NO_COLOR").is_err(),
-        stderr: false,
     })
 }
 
@@ -69,33 +60,49 @@ pub fn colorize(color: Color, text: impl std::fmt::Display) -> String {
     colorize_with(config().colors, color, text)
 }
 
-fn print(msg: String) {
-    if config().stderr {
-        eprintln!("{}", msg);
-    } else {
+pub struct Logger {
+    secrets: Vec<String>,
+}
+
+impl Logger {
+    pub fn new() -> Self {
+        Self { secrets: vec![] }
+    }
+
+    pub fn with_secrets(mut self, secrets: Vec<String>) -> Self {
+        self.secrets = secrets;
+        self
+    }
+
+    fn redact(&self, msg: String) -> String {
+        self.secrets.iter().fold(msg, |acc, s| if s.is_empty() { acc } else { acc.replace(s.as_str(), "***") })
+    }
+
+    fn print(&self, msg: String) {
+        let msg = self.redact(msg);
         println!("{}", msg);
     }
-}
 
-pub fn info(msg: impl std::fmt::Display) {
-    print(format!("{} {} {}", colorize(Color::Cyan, timestamp()), colorize(Color::Green, "[INFO]"), msg));
-}
+    pub fn info(&self, msg: impl std::fmt::Display) {
+        self.print(format!("{} {} {}", colorize(Color::Cyan, timestamp()), colorize(Color::Green, "[INFO]"), msg));
+    }
 
-pub fn warn(msg: impl std::fmt::Display) {
-    print(format!("{} {} {}", colorize(Color::Cyan, timestamp()), colorize(Color::Yellow, "[WARN]"), msg));
-}
+    pub fn warn(&self, msg: impl std::fmt::Display) {
+        self.print(format!("{} {} {}", colorize(Color::Cyan, timestamp()), colorize(Color::Yellow, "[WARN]"), msg));
+    }
 
-pub fn error(msg: impl std::fmt::Display) {
-    print(format!("{} {} {}", colorize(Color::Cyan, timestamp()), colorize(Color::Red, "[ERROR]"), msg));
-}
+    pub fn error(&self, msg: impl std::fmt::Display) {
+        self.print(format!("{} {} {}", colorize(Color::Cyan, timestamp()), colorize(Color::Red, "[ERROR]"), msg));
+    }
 
-pub fn cmd(program: &str, args: &str) {
-    print(format!(
-        "{} {} {}",
-        colorize(Color::Cyan, timestamp()),
-        colorize(Color::Cyan, "$"),
-        colorize(Color::Bold, format!("{} {}", program, args))
-    ));
+    pub fn cmd(&self, program: &str, args: &str) {
+        self.print(format!(
+            "{} {} {}",
+            colorize(Color::Cyan, timestamp()),
+            colorize(Color::Cyan, "$"),
+            colorize(Color::Bold, format!("{} {}", program, args))
+        ));
+    }
 }
 
 #[cfg(test)]

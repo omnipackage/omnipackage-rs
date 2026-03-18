@@ -1,6 +1,7 @@
 use crate::BuildArgs;
 use crate::config::{Build, Config};
 use crate::distros::{Distro, Distros};
+use crate::logger::Logger;
 use crate::shell::{Command, StreamOutput};
 use std::path::PathBuf;
 use std::result::Result;
@@ -52,7 +53,7 @@ pub struct BuildContext {
 
 impl BuildContext {
     pub fn run(&self) -> Output {
-        crate::logger::info(format!(
+        Logger::new().info(format!(
             "starting build for {} at {}, variables: {}",
             self.distro.id,
             self.source_path.display(),
@@ -64,7 +65,7 @@ impl BuildContext {
         let finished_at = started_at.elapsed().as_secs_f32();
         match result {
             Ok((artefacts, build_log)) => {
-                crate::logger::info(format!(
+                Logger::new().info(format!(
                     "successfully finished build for {} in {:.1}s, artefacts: {:?}, log: {}",
                     self.distro.id,
                     finished_at,
@@ -80,7 +81,7 @@ impl BuildContext {
                 }
             }
             Err((_code, build_log)) => {
-                crate::logger::error(format!("failed build for {} in {:.1}s, log: {}", self.distro.id, finished_at, build_log.display()));
+                Logger::new().error(format!("failed build for {} in {:.1}s, log: {}", self.distro.id, finished_at, build_log.display()));
 
                 Output {
                     success: false,

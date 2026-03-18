@@ -1,5 +1,5 @@
 use crate::distros::Distro;
-use crate::logger::{Color, colorize, info};
+use crate::logger::{Color, Logger, colorize};
 use std::fmt;
 use std::path::PathBuf;
 
@@ -41,5 +41,5 @@ pub fn log_all(outputs: &Vec<Output>) {
         }
     }
 
-    info(format!("finished building all\n{}", summary));
+    Logger::new().info(format!("finished building all\n{}", summary));
 }
