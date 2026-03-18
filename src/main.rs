@@ -4,6 +4,7 @@ use std::path::PathBuf;
 mod build;
 mod config;
 mod distros;
+mod gpg;
 mod logger;
 mod shell;
 
@@ -12,7 +13,7 @@ fn parse_key_val(s: &str) -> Result<(String, String), String> {
 }
 
 #[derive(Debug, Args)]
-pub struct GlobalOpts {
+struct GlobalOpts {
     /// Container runtime, autodetect by default
     #[arg(long, global = true, value_parser = ["docker", "podman"])]
     pub container_runtime: Option<String>,
@@ -20,7 +21,7 @@ pub struct GlobalOpts {
 
 #[derive(Parser)]
 #[command(version, about)]
-pub struct Cli {
+struct Cli {
     #[command(flatten)]
     pub global: GlobalOpts,
 
@@ -48,9 +49,30 @@ pub struct BuildArgs {
 }
 
 #[derive(Subcommand)]
-pub enum Commands {
+enum GpgCommands {
+    /// Generate a new GPG key
+    Generate {
+        #[arg(short, long)]
+        name: String,
+
+        #[arg(short, long)]
+        email: String,
+
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+}
+
+#[derive(Subcommand)]
+enum Commands {
     /// Build the project with omnipackage
     Build(BuildArgs),
+
+    /// GPG key management
+    Gpg {
+        #[command(subcommand)]
+        command: GpgCommands,
+    },
 }
 
 fn main() {
@@ -65,5 +87,11 @@ fn main() {
             let outputs = build::run(&args);
             build::output::log_all(&outputs);
         }
+        Commands::Gpg { command } => match command {
+            GpgCommands::Generate { output: _, name, email } => {
+                let keys = gpg::Gpg::new().generate_keys(&name, &email);
+                println!("generate {}\n\n{}", keys.priv_key, keys.pub_key);
+            }
+        },
     }
 }

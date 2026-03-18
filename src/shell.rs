@@ -42,6 +42,7 @@ pub struct Command {
     log_file: Option<std::path::PathBuf>,
     logger: Logger,
     stdin_fn: Option<Box<dyn FnOnce(&mut dyn std::io::Write)>>,
+    env_vars: Vec<(String, String)>,
 }
 
 impl Command {
@@ -52,6 +53,7 @@ impl Command {
             log_file: None,
             logger: Logger::new(),
             stdin_fn: None,
+            env_vars: vec![],
         }
     }
 
@@ -62,11 +64,17 @@ impl Command {
             log_file: None,
             logger: Logger::new(),
             stdin_fn: None,
+            env_vars: vec![],
         }
     }
 
     pub fn with_stdin(mut self, f: impl FnOnce(&mut dyn std::io::Write) + 'static) -> Self {
         self.stdin_fn = Some(Box::new(f));
+        self
+    }
+
+    pub fn with_env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.env_vars.push((key.into(), value.into()));
         self
     }
 
@@ -90,6 +98,26 @@ impl Command {
         self
     }
 
+    fn build_exec(&self) -> Exec {
+        let stdin_redirect = if self.stdin_fn.is_some() { Redirection::Pipe } else { Redirection::None };
+
+        let mut exec = Exec::cmd(&self.program).args(&self.args).stdin(stdin_redirect).stdout(Redirection::Pipe).stderr(Redirection::Merge);
+
+        for (k, v) in &self.env_vars {
+            exec = exec.env(k, v);
+        }
+
+        exec
+    }
+
+    fn feed_stdin(stdin_fn: Option<Box<dyn FnOnce(&mut dyn std::io::Write)>>, job: &mut subprocess::Job) {
+        if let Some(f) = stdin_fn {
+            if let Some(mut stdin) = job.stdin.take() {
+                f(&mut stdin);
+            }
+        }
+    }
+
     pub fn run(self) -> std::result::Result<(), i32> {
         self.logger.cmd(&self.program, &self.args.join(" "));
 
@@ -101,24 +129,12 @@ impl Command {
                 .unwrap_or_else(|e| panic!("cannot open log file {}: {}", path.display(), e))
         });
 
-        let stdin_redirect = if self.stdin_fn.is_some() { Redirection::Pipe } else { Redirection::None };
+        let mut job = self.build_exec().start().map_err(|e| {
+            eprintln!("{}", e);
+            1
+        })?;
 
-        let mut job = Exec::cmd(&self.program)
-            .args(&self.args)
-            .stdin(stdin_redirect)
-            .stdout(Redirection::Pipe)
-            .stderr(Redirection::Merge)
-            .start()
-            .map_err(|e| {
-                eprintln!("{}", e);
-                1
-            })?;
-
-        if let Some(f) = self.stdin_fn {
-            if let Some(mut stdin) = job.stdin.take() {
-                f(&mut stdin);
-            }
-        }
+        Self::feed_stdin(self.stdin_fn, &mut job);
 
         if let Some(stdout) = job.stdout.take() {
             for line in BufReader::new(stdout).lines().flatten() {
@@ -133,7 +149,31 @@ impl Command {
             eprintln!("{}", e);
             1
         })?;
-
         if status.success() { Ok(()) } else { Err(status.code().unwrap_or(1) as i32) }
+    }
+
+    pub fn capture(self) -> std::result::Result<String, i32> {
+        self.logger.cmd(&self.program, &self.args.join(" "));
+
+        let mut job = self.build_exec().start().map_err(|e| {
+            eprintln!("{}", e);
+            1
+        })?;
+
+        Self::feed_stdin(self.stdin_fn, &mut job);
+
+        let mut output = String::new();
+        if let Some(stdout) = job.stdout.take() {
+            for line in BufReader::new(stdout).lines().flatten() {
+                output.push_str(&line);
+                output.push('\n');
+            }
+        }
+
+        let status = job.wait().map_err(|e| {
+            eprintln!("{}", e);
+            1
+        })?;
+        if status.success() { Ok(output) } else { Err(status.code().unwrap_or(1) as i32) }
     }
 }
