@@ -20,8 +20,7 @@ pub fn run(args: &BuildArgs) -> Vec<Output> {
     let config = Config::load(&args.source_path.join(".omnipackage/config.yml"));
 
     let version = extract_version::extract_version(&args.source_path, &config.extract_version);
-    let job_variables = JobVariables::build(version);
-    // TODO: add secrets
+    let job_variables = JobVariables::build(version).with_secrets(args.secrets.clone().into_iter().collect());
     // TODO: add limits
 
     config
@@ -125,6 +124,10 @@ impl BuildContext {
             .flat_map(|(from, to)| ["--mount".to_string(), format!("type=bind,source={from},target={to}")])
             .collect();
         args.extend(mount_args);
+
+        let env_args: Vec<String> = self.job_variables.secrets.iter().flat_map(|(k, v)| ["-e".to_string(), format!("{k}={v}")]).collect();
+        args.extend(env_args);
+
         args.push(self.distro.image.clone());
         args.push("-c".to_string());
         args.push(commands.join(" && "));

@@ -7,6 +7,12 @@ mod distros;
 mod logger;
 mod shell;
 
+fn parse_key_val(s: &str) -> Result<(String, String), String> {
+    s.split_once('=')
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .ok_or_else(|| format!("invalid KEY=VALUE: '{}'", s))
+}
+
 #[derive(Debug, Args)]
 pub struct GlobalOpts {
     /// Container runtime, autodetect by default
@@ -37,6 +43,10 @@ pub struct BuildArgs {
     /// Root directory for temporary build files
     #[arg(short, long, default_value_t = std::env::temp_dir().join("omnipackage").to_string_lossy().into_owned())]
     build_dir: String,
+
+    /// Secrets passed as 'secrets' hashmap to templates and as environment variables to the container (KEY=VALUE)
+    #[arg(long, short = 'e', value_parser = parse_key_val, value_name = "KEY=VALUE")]
+    pub secrets: Vec<(String, String)>,
 }
 
 #[derive(Subcommand)]
