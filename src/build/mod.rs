@@ -112,6 +112,12 @@ impl BuildContext {
         Some(path)
     }
 
+    fn container_logger(&self) -> Logger {
+        Logger::new()
+            .with_output(LogOutput::Stderr) // TODO: cli option to choose log destination
+            .with_secrets(self.job_variables.secrets.values().cloned().collect::<Vec<String>>())
+    }
+
     fn execute(&self, package: &Package) -> Result<(Vec<PathBuf>, PathBuf), (i32, PathBuf)> {
         let mut args = vec!["run".to_string(), "--rm".to_string(), "--entrypoint".to_string(), "/bin/sh".to_string()];
 
@@ -135,9 +141,8 @@ impl BuildContext {
         let log_path = package.output_path.join("build.log");
         let _ = std::fs::remove_file(&log_path);
 
-        let logger = Logger::new().with_output(LogOutput::Stderr); // TODO: cli option to choose log destination
         Command::container(args)
-            .stream_output_to(logger)
+            .stream_output_to(self.container_logger())
             .log_to(&log_path)
             .run()
             .map(|_| (package.artefacts(), log_path.clone()))
