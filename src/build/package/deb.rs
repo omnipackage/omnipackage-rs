@@ -34,7 +34,12 @@ impl BuildContext {
             "DEB_BUILD_OPTIONS=noddebs dpkg-buildpackage -b -tc".to_string(),
         ]);
 
-        Package { mounts, commands, output_path }
+        Package {
+            distro: self.distro,
+            mounts,
+            commands,
+            output_path,
+        }
     }
 
     fn render_templates(&self, vars: HashMap<String, Var>, from: PathBuf, to: PathBuf) {

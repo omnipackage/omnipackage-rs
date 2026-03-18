@@ -39,6 +39,7 @@ impl BuildContext {
         ]);
 
         Package {
+            distro: self.distro,
             mounts,
             commands,
             output_path: rpmbuild_path.clone(),

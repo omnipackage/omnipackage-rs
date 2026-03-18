@@ -100,16 +100,6 @@ impl BuildContext {
         }
     }
 
-    fn find_artefacts(&self, package: &Package) -> Vec<PathBuf> {
-        let search_path = match self.distro.package_type.as_str() {
-            "rpm" => format!("{}/RPMS/**/*.rpm", package.output_path.display()),
-            "deb" => format!("{}/*.deb", package.output_path.display()),
-            _ => panic!("unknown package type {}", self.distro.package_type),
-        };
-
-        glob::glob(&search_path).unwrap().filter_map(|e| e.ok()).collect::<Vec<_>>()
-    }
-
     fn before_build_script(&self, relative_to: &str) -> Option<String> {
         let bbs = self.config.before_build_script.as_ref()?;
 
@@ -145,7 +135,7 @@ impl BuildContext {
             .stream_output_to(StreamOutput::Stderr) // TODO: cli option to choose log destination
             .log_to(&log_path)
             .run()
-            .map(|_| (self.find_artefacts(&package), log_path.clone()))
+            .map(|_| (package.artefacts(), log_path.clone()))
             .map_err(|code| (code, log_path.clone()))
     }
 }
