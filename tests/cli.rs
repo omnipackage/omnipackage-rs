@@ -3,12 +3,7 @@ use predicates::prelude::*;
 
 #[test]
 fn test_help() {
-    Command::cargo_bin("omnipackage")
-        .unwrap()
-        .arg("--help")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Usage"));
+    Command::cargo_bin("omnipackage").unwrap().arg("--help").assert().success().stdout(predicate::str::contains("Usage"));
 }
 
 #[test]

@@ -121,9 +121,7 @@ impl Logger {
     }
 
     pub fn redact(&self, msg: String) -> String {
-        self.secrets
-            .iter()
-            .fold(msg, |acc, s| if s.is_empty() { acc } else { acc.replace(s.as_str(), "[REDACTED]") })
+        self.secrets.iter().fold(msg, |acc, s| if s.is_empty() { acc } else { acc.replace(s.as_str(), "[REDACTED]") })
     }
 }
 

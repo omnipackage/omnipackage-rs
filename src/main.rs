@@ -8,9 +8,7 @@ mod logger;
 mod shell;
 
 fn parse_key_val(s: &str) -> Result<(String, String), String> {
-    s.split_once('=')
-        .map(|(k, v)| (k.to_string(), v.to_string()))
-        .ok_or_else(|| format!("invalid KEY=VALUE: '{}'", s))
+    s.split_once('=').map(|(k, v)| (k.to_string(), v.to_string())).ok_or_else(|| format!("invalid KEY=VALUE: '{}'", s))
 }
 
 #[derive(Debug, Args)]

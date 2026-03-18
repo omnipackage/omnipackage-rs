@@ -93,15 +93,10 @@ impl Command {
                 .unwrap_or_else(|e| panic!("cannot open log file {}: {}", path.display(), e))
         });
 
-        let mut job = Exec::cmd(&self.program)
-            .args(&self.args)
-            .stdout(Redirection::Pipe)
-            .stderr(Redirection::Merge)
-            .start()
-            .map_err(|e| {
-                eprintln!("{}", e);
-                1
-            })?;
+        let mut job = Exec::cmd(&self.program).args(&self.args).stdout(Redirection::Pipe).stderr(Redirection::Merge).start().map_err(|e| {
+            eprintln!("{}", e);
+            1
+        })?;
 
         if let Some(stdout) = job.stdout.take() {
             for line in BufReader::new(stdout).lines().flatten() {

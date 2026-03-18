@@ -13,12 +13,7 @@ pub struct Output {
 impl fmt::Display for Output {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.success {
-            write!(
-                f,
-                "{}: {}",
-                self.distro.name,
-                self.artefacts.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join(", ")
-            )
+            write!(f, "{}: {}", self.distro.name, self.artefacts.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join(", "))
         } else {
             write!(f, "{}: {}", self.distro.name, self.build_log.display())
         }

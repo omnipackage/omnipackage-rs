@@ -52,12 +52,7 @@ pub struct BuildContext {
 
 impl BuildContext {
     pub fn run(&self) -> Output {
-        Logger::new().info(format!(
-            "starting build for {} at {}, variables: {}",
-            self.distro.id,
-            self.source_path.display(),
-            self.job_variables
-        ));
+        Logger::new().info(format!("starting build for {} at {}, variables: {}", self.distro.id, self.source_path.display(), self.job_variables));
         let started_at = Instant::now();
         let package = self.setup_package();
         let result = self.execute(&package);
