@@ -41,5 +41,5 @@ pub fn log_all(outputs: &Vec<Output>) {
         }
     }
 
-    Logger::new().info(format!("finished building all\n{}", summary));
+    Logger::new().info(format!("all build results\n{}", summary));
 }
