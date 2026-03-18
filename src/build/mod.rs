@@ -1,8 +1,8 @@
 use crate::BuildArgs;
 use crate::config::{Build, Config};
 use crate::distros::{Distro, Distros};
-use crate::logger::Logger;
-use crate::shell::{Command, StreamOutput};
+use crate::logger::{LogOutput, Logger};
+use crate::shell::Command;
 use std::path::PathBuf;
 use std::result::Result;
 use std::time::Instant;
@@ -132,8 +132,9 @@ impl BuildContext {
         let log_path = package.output_path.join("build.log");
         let _ = std::fs::remove_file(&log_path);
 
+        let logger = Logger::new().with_output(LogOutput::Stderr); // TODO: cli option to choose log destination
         Command::container(args)
-            .stream_output_to(StreamOutput::Stderr) // TODO: cli option to choose log destination
+            .stream_output_to(logger)
             .log_to(&log_path)
             .run()
             .map(|_| (package.artefacts(), log_path.clone()))

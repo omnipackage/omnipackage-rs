@@ -36,17 +36,11 @@ fn container_runtime() -> &'static str {
     CONTAINER_RUNTIME.get_or_init(detect_container_runtime)
 }
 
-pub enum StreamOutput {
-    Silent,
-    Stdout,
-    Stderr,
-}
-
 pub struct Command {
     program: String,
     args: Vec<String>,
     log_file: Option<std::path::PathBuf>,
-    output: StreamOutput,
+    logger: Logger,
 }
 
 impl Command {
@@ -55,7 +49,7 @@ impl Command {
             program: program.into(),
             args: vec![],
             log_file: None,
-            output: StreamOutput::Stdout,
+            logger: Logger::new(),
         }
     }
 
@@ -64,7 +58,7 @@ impl Command {
             program: container_runtime().to_string(),
             args: args.into_iter().map(|a| a.into()).collect(),
             log_file: None,
-            output: StreamOutput::Stdout,
+            logger: Logger::new(),
         }
     }
 
@@ -83,13 +77,13 @@ impl Command {
         self
     }
 
-    pub fn stream_output_to(mut self, output: StreamOutput) -> Self {
-        self.output = output;
+    pub fn stream_output_to(mut self, logger: Logger) -> Self {
+        self.logger = logger;
         self
     }
 
     pub fn run(self) -> std::result::Result<(), i32> {
-        Logger::new().cmd(&self.program, &self.args.join(" "));
+        self.logger.cmd(&self.program, &self.args.join(" "));
 
         let mut log_file = self.log_file.as_ref().map(|path| {
             OpenOptions::new()
@@ -111,13 +105,9 @@ impl Command {
 
         if let Some(stdout) = job.stdout.take() {
             for line in BufReader::new(stdout).lines().flatten() {
-                match self.output {
-                    StreamOutput::Stdout => println!("{}", line),
-                    StreamOutput::Stderr => eprintln!("{}", line),
-                    StreamOutput::Silent => {}
-                }
+                self.logger.print(line.clone());
                 if let Some(ref mut file) = log_file {
-                    writeln!(file, "{}", line).ok();
+                    writeln!(file, "{}", self.logger.redact(line)).ok();
                 }
             }
         }

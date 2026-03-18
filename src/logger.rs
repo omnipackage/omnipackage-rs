@@ -60,13 +60,28 @@ pub fn colorize(color: Color, text: impl std::fmt::Display) -> String {
     colorize_with(config().colors, color, text)
 }
 
+pub enum LogOutput {
+    Silent,
+    Stdout,
+    Stderr,
+}
+
 pub struct Logger {
     secrets: Vec<String>,
+    output: LogOutput,
 }
 
 impl Logger {
     pub fn new() -> Self {
-        Self { secrets: vec![] }
+        Self {
+            secrets: vec![],
+            output: LogOutput::Stdout,
+        }
+    }
+
+    pub fn with_output(mut self, output: LogOutput) -> Self {
+        self.output = output;
+        self
     }
 
     pub fn with_secrets(mut self, secrets: Vec<String>) -> Self {
@@ -74,13 +89,13 @@ impl Logger {
         self
     }
 
-    fn redact(&self, msg: String) -> String {
-        self.secrets.iter().fold(msg, |acc, s| if s.is_empty() { acc } else { acc.replace(s.as_str(), "***") })
-    }
-
-    fn print(&self, msg: String) {
-        let msg = self.redact(msg);
-        println!("{}", msg);
+    pub fn print(&self, msg: impl std::fmt::Display) {
+        let msg = self.redact(msg.to_string());
+        match self.output {
+            LogOutput::Stdout => println!("{}", msg),
+            LogOutput::Stderr => eprintln!("{}", msg),
+            LogOutput::Silent => {}
+        }
     }
 
     pub fn info(&self, msg: impl std::fmt::Display) {
@@ -102,6 +117,12 @@ impl Logger {
             colorize(Color::Cyan, "$"),
             colorize(Color::Bold, format!("{} {}", program, args))
         ));
+    }
+
+    pub fn redact(&self, msg: String) -> String {
+        self.secrets
+            .iter()
+            .fold(msg, |acc, s| if s.is_empty() { acc } else { acc.replace(s.as_str(), "[REDACTED]") })
     }
 }
 
@@ -128,5 +149,35 @@ mod tests {
         assert_eq!(ts.len(), 8);
         assert_eq!(ts.chars().nth(2), Some(':'));
         assert_eq!(ts.chars().nth(5), Some(':'));
+    }
+
+    #[test]
+    fn test_redact_single_secret() {
+        let logger = Logger::new().with_secrets(vec!["secret123".to_string()]);
+        assert_eq!(logger.redact("token is secret123".to_string()), "token is [REDACTED]");
+    }
+
+    #[test]
+    fn test_redact_multiple_secrets() {
+        let logger = Logger::new().with_secrets(vec!["secret123".to_string(), "password".to_string()]);
+        assert_eq!(logger.redact("secret123 and password".to_string()), "[REDACTED] and [REDACTED]");
+    }
+
+    #[test]
+    fn test_redact_no_match() {
+        let logger = Logger::new().with_secrets(vec!["secret123".to_string()]);
+        assert_eq!(logger.redact("hello world".to_string()), "hello world");
+    }
+
+    #[test]
+    fn test_redact_empty_secrets() {
+        let logger = Logger::new();
+        assert_eq!(logger.redact("hello world".to_string()), "hello world");
+    }
+
+    #[test]
+    fn test_redact_empty_secret_string() {
+        let logger = Logger::new().with_secrets(vec!["".to_string()]);
+        assert_eq!(logger.redact("hello world".to_string()), "hello world");
     }
 }
