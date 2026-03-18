@@ -105,9 +105,9 @@ impl Command {
 
         if let Some(stdout) = job.stdout.take() {
             for line in BufReader::new(stdout).lines().flatten() {
-                self.logger.print(line.clone());
+                let msg = self.logger.print(line);
                 if let Some(ref mut file) = log_file {
-                    writeln!(file, "{}", self.logger.redact(line)).ok();
+                    writeln!(file, "{}", msg).ok();
                 }
             }
         }

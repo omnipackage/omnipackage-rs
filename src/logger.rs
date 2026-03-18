@@ -89,13 +89,14 @@ impl Logger {
         self
     }
 
-    pub fn print(&self, msg: impl std::fmt::Display) {
+    pub fn print(&self, msg: impl std::fmt::Display) -> String {
         let msg = self.redact(msg.to_string());
         match self.output {
             LogOutput::Stdout => println!("{}", msg),
             LogOutput::Stderr => eprintln!("{}", msg),
             LogOutput::Silent => {}
         }
+        msg
     }
 
     pub fn info(&self, msg: impl std::fmt::Display) {
