@@ -83,6 +83,7 @@ mod tests {
                 spec_template: ".omnipackage/specfile.spec.liquid".to_string(),
             }),
             deb: None,
+            rest: HashMap::new(),
         }
     }
 

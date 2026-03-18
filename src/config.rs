@@ -26,6 +26,15 @@ pub struct DebConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum AnyValue {
+    String(String),
+    Bool(bool),
+    Int(i64),
+    Float(f64),
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct Build {
     pub distro: String,
     pub package_name: String,
@@ -39,6 +48,8 @@ pub struct Build {
     pub before_build_script: Option<String>,
     pub rpm: Option<RpmConfig>,
     pub deb: Option<DebConfig>,
+    #[serde(flatten, default)]
+    pub rest: HashMap<String, AnyValue>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -63,6 +74,17 @@ impl Build {
         vars.insert("description".to_string(), self.description.clone().into());
         vars.insert("build_dependencies".to_string(), self.build_dependencies.clone().into());
         vars.insert("runtime_dependencies".to_string(), self.runtime_dependencies.clone().into());
+
+        for (k, v) in &self.rest {
+            let var = match v {
+                AnyValue::String(s) => s.clone().into(),
+                AnyValue::Bool(b) => (*b).into(),
+                AnyValue::Int(i) => (*i).into(),
+                AnyValue::Float(f) => f.to_string().into(),
+            };
+            vars.insert(k.clone(), var);
+        }
+
         vars
     }
 }
@@ -98,5 +120,29 @@ mod tests {
         let simple_rpm = config.builds.iter().find(|b| b.distro == "fedora_38").unwrap();
         assert_eq!(simple_rpm.package_name, "omnipackage-agent");
         assert_eq!(simple_rpm.homepage, "https://omnipackage.org/");
+    }
+
+    #[test]
+    fn test_extra_fields_in_template_vars() {
+        let yaml = r#"
+    distro: test
+    package_name: myapp
+    maintainer: Test <test@test.com>
+    homepage: https://example.com
+    description: Test
+    custom_string: hello
+    custom_bool: true
+    "#;
+
+        let build: Build = serde_saphyr::from_str(yaml).unwrap();
+        let vars = build.to_template_vars();
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("template.liquid");
+        std::fs::write(&path, "{{ description }} {{ custom_string }} {{ custom_bool }}").unwrap();
+
+        let template = crate::build::package::template::Template::new(path);
+        let output = template.render(vars);
+        assert_eq!(output, "Test hello true");
     }
 }

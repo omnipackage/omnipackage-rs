@@ -97,6 +97,7 @@ mod tests {
             deb: Some(DebConfig {
                 debian_templates: ".omnipackage/deb".to_string(),
             }),
+            rest: HashMap::new(),
         }
     }
 
