@@ -6,6 +6,7 @@ use std::collections::HashMap;
 pub struct JobVariables {
     pub version: String,
     pub current_time_rfc2822: String,
+    pub secrets: HashMap<String, String>,
 }
 
 impl JobVariables {
@@ -13,20 +14,28 @@ impl JobVariables {
         JobVariables {
             version,
             current_time_rfc2822: Utc::now().to_rfc2822(),
+            secrets: HashMap::new(),
         }
+    }
+
+    pub fn with_secrets(mut self, secrets: HashMap<String, String>) -> Self {
+        self.secrets = secrets;
+        self
     }
 
     pub fn to_template_vars(&self) -> HashMap<String, Var> {
         let mut vars = HashMap::new();
         vars.insert("version".to_string(), self.version.clone().into());
         vars.insert("current_time_rfc2822".to_string(), self.current_time_rfc2822.clone().into());
+        vars.insert("secrets".to_string(), self.secrets.clone().into());
         vars
     }
 }
 
 impl std::fmt::Display for JobVariables {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "version={} current_time_rfc2822={}", self.version, self.current_time_rfc2822)
+        let secret_keys = self.secrets.keys().cloned().collect::<Vec<_>>().join(", ");
+        write!(f, "version={} current_time_rfc2822={} secrets=[{}]", self.version, self.current_time_rfc2822, secret_keys)
     }
 }
 
@@ -49,11 +58,70 @@ mod tests {
     }
 
     #[test]
+    fn test_to_template_vars() {
+        let mut secrets = HashMap::new();
+        secrets.insert("api_key".to_string(), "abc123".to_string());
+
+        let vars = JobVariables {
+            version: "1.2.3".to_string(),
+            current_time_rfc2822: "Mon, 1 Jan 2024 12:00:00 +0000".to_string(),
+            secrets,
+        };
+
+        let template_vars = vars.to_template_vars();
+
+        assert!(template_vars.contains_key("version"));
+        assert!(template_vars.contains_key("current_time_rfc2822"));
+        assert!(template_vars.contains_key("secrets"));
+    }
+
+    #[test]
+    fn test_to_template_vars_rendered() {
+        let mut secrets = HashMap::new();
+        secrets.insert("api_key".to_string(), "abc123".to_string());
+
+        let vars = JobVariables {
+            version: "1.2.3".to_string(),
+            current_time_rfc2822: "Mon, 1 Jan 2024 12:00:00 +0000".to_string(),
+            secrets,
+        };
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("template.liquid");
+        std::fs::write(&path, "{{ version }} {{ secrets.api_key }}").unwrap();
+
+        let template = crate::build::package::template::Template::new(path);
+        let output = template.render(vars.to_template_vars());
+        assert_eq!(output, "1.2.3 abc123");
+    }
+
+    #[test]
     fn test_display() {
         let vars = JobVariables {
             version: "3.2.1".to_string(),
             current_time_rfc2822: "Mon, 1 Jan 2024 12:00:00 +0000".to_string(),
+            secrets: HashMap::new(),
         };
-        assert_eq!(vars.to_string(), "version=3.2.1 current_time_rfc2822=Mon, 1 Jan 2024 12:00:00 +0000");
+        assert_eq!(vars.to_string(), "version=3.2.1 current_time_rfc2822=Mon, 1 Jan 2024 12:00:00 +0000 secrets=[]");
+    }
+
+    #[test]
+    fn test_display_with_secrets() {
+        let mut secrets = HashMap::new();
+        secrets.insert("api_key".to_string(), "abc123".to_string());
+        secrets.insert("token".to_string(), "xyz789".to_string());
+
+        let vars = JobVariables {
+            version: "3.2.1".to_string(),
+            current_time_rfc2822: "Mon, 1 Jan 2024 12:00:00 +0000".to_string(),
+            secrets,
+        };
+
+        let display = vars.to_string();
+        assert!(display.contains("version=3.2.1"));
+        assert!(display.contains("api_key"));
+        assert!(display.contains("token"));
+        assert!(!display.contains("abc123"));
+        assert!(!display.contains("xyz789"));
     }
 }

@@ -1,5 +1,6 @@
 use liquid::ParserBuilder;
 use liquid::model::Value;
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[derive(Clone)]
@@ -32,6 +33,13 @@ impl From<bool> for Var {
 impl From<Vec<String>> for Var {
     fn from(v: Vec<String>) -> Self {
         Var(Value::Array(v.into_iter().map(|s| Value::scalar(s)).collect()))
+    }
+}
+
+impl From<HashMap<String, String>> for Var {
+    fn from(map: HashMap<String, String>) -> Self {
+        let obj: liquid::Object = map.into_iter().map(|(k, v)| (k.into(), Value::scalar(v))).collect();
+        Var(Value::Object(obj))
     }
 }
 
