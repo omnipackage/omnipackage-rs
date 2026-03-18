@@ -41,6 +41,7 @@ pub struct Command {
     args: Vec<String>,
     log_file: Option<std::path::PathBuf>,
     logger: Logger,
+    stdin_fn: Option<Box<dyn FnOnce(&mut dyn std::io::Write)>>,
 }
 
 impl Command {
@@ -50,6 +51,7 @@ impl Command {
             args: vec![],
             log_file: None,
             logger: Logger::new(),
+            stdin_fn: None,
         }
     }
 
@@ -59,7 +61,13 @@ impl Command {
             args: args.into_iter().map(|a| a.into()).collect(),
             log_file: None,
             logger: Logger::new(),
+            stdin_fn: None,
         }
+    }
+
+    pub fn with_stdin(mut self, f: impl FnOnce(&mut dyn std::io::Write) + 'static) -> Self {
+        self.stdin_fn = Some(Box::new(f));
+        self
     }
 
     pub fn arg(mut self, arg: impl Into<String>) -> Self {
@@ -93,10 +101,24 @@ impl Command {
                 .unwrap_or_else(|e| panic!("cannot open log file {}: {}", path.display(), e))
         });
 
-        let mut job = Exec::cmd(&self.program).args(&self.args).stdout(Redirection::Pipe).stderr(Redirection::Merge).start().map_err(|e| {
-            eprintln!("{}", e);
-            1
-        })?;
+        let stdin_redirect = if self.stdin_fn.is_some() { Redirection::Pipe } else { Redirection::None };
+
+        let mut job = Exec::cmd(&self.program)
+            .args(&self.args)
+            .stdin(stdin_redirect)
+            .stdout(Redirection::Pipe)
+            .stderr(Redirection::Merge)
+            .start()
+            .map_err(|e| {
+                eprintln!("{}", e);
+                1
+            })?;
+
+        if let Some(f) = self.stdin_fn {
+            if let Some(mut stdin) = job.stdin.take() {
+                f(&mut stdin);
+            }
+        }
 
         if let Some(stdout) = job.stdout.take() {
             for line in BufReader::new(stdout).lines().flatten() {
