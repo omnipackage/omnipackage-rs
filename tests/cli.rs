@@ -37,6 +37,19 @@ fn test_build_dir_default() {
         .stdout(predicate::str::contains(std::env::temp_dir().to_string_lossy().as_ref()));
 }
 
+#[test]
+fn test_gpg_generate() {
+    let dir = tempfile::tempdir().unwrap();
+
+    Command::cargo_bin("omnipackage")
+        .unwrap()
+        .args(["gpg", "generate", "--name", "John Doe", "--email", "john@example.com", dir.path().to_str().unwrap()])
+        .assert()
+        .success();
+
+    assert!(dir.path().join("private.asc").exists());
+    assert!(dir.path().join("public.asc").exists());
+}
 /* TODO integration test with smaple_project in fixtures
 #[test]
 fn test_build_dir_custom() {

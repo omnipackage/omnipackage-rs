@@ -73,14 +73,14 @@ pub struct BuildArgs {
 enum GpgCommands {
     /// Generate a new GPG key
     Generate {
+        #[arg(default_value = ".")]
+        output_dir: PathBuf,
+
         #[arg(short, long)]
         name: String,
 
         #[arg(short, long)]
         email: String,
-
-        #[arg(short, long)]
-        output: Option<PathBuf>,
     },
 }
 
@@ -120,16 +120,17 @@ fn main() {
             build::output::log_all(&outputs);
         }
         Commands::Gpg { command } => match command {
-            GpgCommands::Generate { output: _, name, email } => {
+            GpgCommands::Generate { output_dir, name, email } => {
                 let keys = gpg::Gpg::new().generate_keys(&name, &email);
-                println!("{}\n{}", keys.priv_key, keys.pub_key);
 
-                println!(
-                    "key id: {}\n{}\n{}",
-                    gpg::Gpg::new().key_id(&keys.priv_key),
-                    gpg::Gpg::new().key_info(&keys.priv_key),
-                    gpg::Gpg::new().key_info(&keys.pub_key)
-                );
+                let priv_path = output_dir.join("private.asc");
+                let pub_path = output_dir.join("public.asc");
+                // std::fs::create_dir_all(&output_dir).unwrap_or_else(|e| panic!("cannot create directory {}: {}", output_dir.display(), e));
+                std::fs::write(&priv_path, &keys.priv_key).unwrap_or_else(|e| panic!("cannot write {}: {}", priv_path.display(), e));
+                std::fs::write(&pub_path, &keys.pub_key).unwrap_or_else(|e| panic!("cannot write {}: {}", pub_path.display(), e));
+
+                logger::Logger::new().info(format!("private key written to {}", priv_path.display()));
+                logger::Logger::new().info(format!("public key written to {}", pub_path.display()));
             }
         },
     }
