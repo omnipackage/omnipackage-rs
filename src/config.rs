@@ -60,8 +60,25 @@ pub struct Config {
 
 impl Config {
     pub fn load(path: &Path) -> Self {
+        Self::load_with_env(path, Path::new(".env"))
+    }
+
+    pub fn load_with_env(path: &Path, env_path: &Path) -> Self {
+        let env_map: std::collections::HashMap<String, String> = dotenvy::from_path_iter(env_path).map(|iter| iter.filter_map(|e| e.ok()).collect()).unwrap_or_default();
+
         let content = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("cannot read {}: {}", path.display(), e));
+
+        let content = Self::expand_env_vars_with(&content, |var| env_map.get(var).cloned().or_else(|| std::env::var(var).ok()).unwrap_or_default());
+
         serde_saphyr::from_str(&content).unwrap_or_else(|e| panic!("cannot parse {}: {}", path.display(), e))
+    }
+
+    fn expand_env_vars_with<F>(content: &str, resolver: F) -> String
+    where
+        F: Fn(&str) -> String,
+    {
+        let re = regex::Regex::new(r"\$\{([^}]+)\}").unwrap();
+        re.replace_all(content, |caps: &regex::Captures| resolver(&caps[1])).to_string()
     }
 }
 
@@ -144,5 +161,57 @@ mod tests {
         let template = crate::build::package::template::Template::new(path);
         let output = template.render(vars);
         assert_eq!(output, "Test hello true");
+    }
+
+    #[test]
+    fn test_expand_env_vars_basic() {
+        let result = Config::expand_env_vars_with("value: ${FOO} and ${BAR}", |var| match var {
+            "FOO" => "hello".to_string(),
+            "BAR" => "world".to_string(),
+            _ => String::new(),
+        });
+        assert_eq!(result, "value: hello and world");
+    }
+
+    #[test]
+    fn test_expand_env_vars_missing() {
+        let result = Config::expand_env_vars_with("value: ${MISSING}", |_| String::new());
+        assert_eq!(result, "value: ");
+    }
+
+    #[test]
+    fn test_expand_env_vars_no_placeholders() {
+        let result = Config::expand_env_vars_with("plain: value", |_| String::new());
+        assert_eq!(result, "plain: value");
+    }
+
+    #[test]
+    fn test_expand_env_vars_multiple_same() {
+        let result = Config::expand_env_vars_with("${FOO} and ${FOO}", |_| "bar".to_string());
+        assert_eq!(result, "bar and bar");
+    }
+
+    #[test]
+    fn test_load_expands_env_vars() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("config.yml");
+        let env_path = dir.path().join(".env");
+
+        std::fs::write(&env_path, "MY_VAR=expanded_value").unwrap();
+        std::fs::write(
+            &config_path,
+            "
+    extract_version:
+      provider: file
+      file:
+        file: ${MY_VAR}
+        regex: VERSION
+    builds: []
+    ",
+        )
+        .unwrap();
+
+        let config = Config::load_with_env(&config_path, &env_path);
+        assert_eq!(config.extract_version.file.unwrap().file, "expanded_value");
     }
 }

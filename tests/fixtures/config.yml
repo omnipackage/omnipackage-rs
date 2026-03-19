@@ -4,6 +4,22 @@ extract_version:
     file: 'lib/omnipackage_agent/version.rb'
     regex: "VERSION = '(.+)'"
 
+repositories:
+  - name: Local test
+    provider: localfs
+    localfs:
+      path: /tmp/omnipackage-repos
+  - name: CloudFlare R2
+    provider: s3
+    s3:
+      bucket: repositories-test
+      bucket_public_url: 'https://repositories-test.omnipackage.org'
+      endpoint: '${CLOUDFLARE_R2_ENDPOINT}'
+      access_key_id: '${CLOUDFLARE_R2_ACCESS_KEY_ID}'
+      secret_access_key: '${CLOUDFLARE_R2_SECRET_ACCESS_KEY}'
+      region: auto
+      force_path_style: true
+
 common: &common
   package_name: 'omnipackage-agent'
   maintainer: 'Oleg Antonyan <oleg@omnipackage.org>'

@@ -19,6 +19,7 @@ tempfile = "*"
 subprocess = "*"
 chrono = "*"
 glob = "*"
+dotenvy = "*"
 
 [dev-dependencies]
 assert_cmd = "*"
