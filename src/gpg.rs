@@ -126,3 +126,59 @@ impl Gpg {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_gpg() -> Gpg {
+        Gpg::new()
+    }
+
+    #[test]
+    fn test_generate_keys() {
+        let gpg = make_gpg();
+        let key = gpg.generate_keys("Test User", "test@example.com");
+
+        assert!(!key.priv_key.is_empty());
+        assert!(!key.pub_key.is_empty());
+        assert!(key.priv_key.contains("BEGIN PGP PRIVATE KEY BLOCK"));
+        assert!(key.pub_key.contains("BEGIN PGP PUBLIC KEY BLOCK"));
+    }
+
+    #[test]
+    fn test_key_id() {
+        let gpg = make_gpg();
+        let key = gpg.generate_keys("Test User", "test@example.com");
+        let id = gpg.key_id(&key.pub_key);
+
+        assert!(!id.is_empty());
+    }
+
+    #[test]
+    fn test_key_info() {
+        let gpg = make_gpg();
+        let key = gpg.generate_keys("Test User", "test@example.com");
+        let info = gpg.key_info(&key.pub_key);
+
+        assert!(info.contains("Test User"));
+        assert!(info.contains("test@example.com"));
+    }
+
+    #[test]
+    fn test_test_key_valid() {
+        let gpg = make_gpg();
+        let key = gpg.generate_keys("Test User", "test@example.com");
+        assert!(gpg.test_key(&key).is_ok());
+    }
+
+    #[test]
+    fn test_test_key_invalid() {
+        let gpg = make_gpg();
+        let key = Key {
+            priv_key: "invalid key".to_string(),
+            pub_key: "invalid key".to_string(),
+        };
+        assert!(gpg.test_key(&key).is_err());
+    }
+}
