@@ -1,10 +1,13 @@
 #![allow(dead_code)]
 
+use std::sync::OnceLock;
+use std::time::{SystemTime, UNIX_EPOCH};
+
 struct Config {
     colors: bool,
 }
 
-static CONFIG: std::sync::OnceLock<Config> = std::sync::OnceLock::new();
+static CONFIG: OnceLock<Config> = OnceLock::new();
 
 fn config() -> &'static Config {
     CONFIG.get_or_init(|| Config {
@@ -13,7 +16,7 @@ fn config() -> &'static Config {
 }
 
 fn timestamp() -> String {
-    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
 
     let secs = now.as_secs();
     let hours = (secs % 86400) / 3600;
