@@ -29,7 +29,7 @@ struct Cli {
     pub command: Commands,
 }
 
-#[derive(Args)]
+#[derive(Args, Clone, Debug)]
 pub struct BuildArgs {
     /// Path to the project
     #[arg(default_value = ".")]
@@ -46,6 +46,14 @@ pub struct BuildArgs {
     /// Secrets passed as 'secrets' hashmap to templates and as environment variables to the container (KEY=VALUE)
     #[arg(long, short = 'e', value_parser = parse_key_val, value_name = "KEY=VALUE")]
     pub secrets: Vec<(String, String)>,
+
+    /// Where to print output from the containers (i.e. actual build terminal output)
+    #[arg(long, default_value = "stderr", value_parser = ["null", "stdout", "stderr"])]
+    pub container_output: String,
+
+    /// Disale echo (set -x) of commands inside the container
+    #[arg(long)]
+    pub disable_container_echo: bool,
 }
 
 #[derive(Subcommand)]
@@ -73,6 +81,17 @@ enum Commands {
         #[command(subcommand)]
         command: GpgCommands,
     },
+}
+
+impl Default for BuildArgs {
+    fn default() -> Self {
+        #[derive(Parser)]
+        struct Dummy {
+            #[command(flatten)]
+            args: BuildArgs,
+        }
+        Dummy::parse_from(["dummy"]).args
+    }
 }
 
 fn main() {

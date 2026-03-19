@@ -35,6 +35,7 @@ pub fn run(args: &BuildArgs) -> Vec<Output> {
                 config: build.clone(),
                 job_variables: job_variables.clone(),
                 build_dir: PathBuf::from(&args.build_dir),
+                args: args.clone(),
             }
             .run()
         })
@@ -48,6 +49,7 @@ pub struct BuildContext {
     pub config: Build,
     pub job_variables: JobVariables,
     pub build_dir: PathBuf,
+    args: BuildArgs,
 }
 
 impl BuildContext {
@@ -108,16 +110,22 @@ impl BuildContext {
     }
 
     fn container_logger(&self) -> Logger {
-        Logger::new()
-            .with_output(LogOutput::Stderr) // TODO: cli option to choose log destination
-            .with_secrets(self.job_variables.secrets.values().cloned().collect::<Vec<String>>())
+        let output = match self.args.container_output.as_str() {
+            "stderr" => LogOutput::Stderr,
+            "stdout" => LogOutput::Stdout,
+            "null" => LogOutput::Silent,
+            _ => LogOutput::Silent,
+        };
+        Logger::new().with_output(output).with_secrets(self.job_variables.secrets.values().cloned().collect::<Vec<String>>())
     }
 
     fn execute(&self, package: &Package) -> Result<(Vec<PathBuf>, PathBuf), (i32, PathBuf)> {
         let mut args = vec!["run".to_string(), "--rm".to_string(), "--entrypoint".to_string(), "/bin/sh".to_string()];
 
         let mut commands = package.commands.clone();
-        commands.insert(0, "set -x".to_string()); // TODO: cli option to enable this
+        if !self.args.disable_container_echo {
+            commands.insert(0, "set -x".to_string());
+        }
 
         let mount_args: Vec<String> = package
             .mounts

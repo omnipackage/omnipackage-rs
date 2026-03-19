@@ -64,6 +64,7 @@ impl BuildContext {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::BuildArgs;
     use crate::build::job_variables::JobVariables;
     use crate::config::{Build, DebConfig};
     use crate::distros::Distro;
@@ -121,6 +122,7 @@ mod tests {
             config: make_build_config(),
             job_variables: JobVariables::build("1.2.3".to_string()),
             build_dir: build_dir.path().to_path_buf(),
+            args: BuildArgs::default(),
         };
 
         let package = context.setup_deb();
