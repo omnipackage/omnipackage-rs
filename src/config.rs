@@ -1,4 +1,5 @@
 use crate::build::package::template::Var;
+use crate::logger::Logger;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -59,12 +60,24 @@ pub struct Config {
 }
 
 impl Config {
+    #[allow(dead_code)]
     pub fn load(path: &Path) -> Self {
         Self::load_with_env(path, Path::new(".env"))
     }
 
     pub fn load_with_env(path: &Path, env_path: &Path) -> Self {
-        let env_map: std::collections::HashMap<String, String> = dotenvy::from_path_iter(env_path).map(|iter| iter.filter_map(|e| e.ok()).collect()).unwrap_or_default();
+        let env_map: std::collections::HashMap<String, String> = match dotenvy::from_path_iter(env_path) {
+            Ok(iter) => {
+                let map: std::collections::HashMap<String, String> = iter.filter_map(|e| e.ok()).collect();
+                Logger::new().info(format!(
+                    "env loaded from {}: {}",
+                    std::env::current_dir().unwrap_or_default().join(env_path).display(),
+                    map.keys().cloned().collect::<Vec<_>>().join(", ")
+                ));
+                map
+            }
+            Err(_) => std::collections::HashMap::new(),
+        };
 
         let content = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("cannot read {}: {}", path.display(), e));
 

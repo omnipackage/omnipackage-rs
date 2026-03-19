@@ -17,7 +17,7 @@ use output::Output;
 use package::Package;
 
 pub fn run(args: &BuildArgs) -> Vec<Output> {
-    let config = Config::load(&args.source_path.join(".omnipackage/config.yml"));
+    let config = Config::load_with_env(&args.source_path.join(&args.config_path), &args.env_path);
 
     let version = extract_version::extract_version(&args.source_path, &config.extract_version);
     let job_variables = JobVariables::build(version).with_secrets(args.secrets.clone().into_iter().collect());

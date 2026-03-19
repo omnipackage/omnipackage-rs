@@ -51,16 +51,24 @@ pub struct BuildArgs {
     #[arg(default_value = ".")]
     source_path: PathBuf,
 
+    /// Relative path within source_path to the omnipackage config
+    #[arg(long, default_value = ".omnipackage/config.yml")]
+    config_path: PathBuf,
+
+    /// Full path to .env file containing secrets rendered in config
+    #[arg(long, default_value = ".env")]
+    env_path: PathBuf,
+
     /// Distros to build, e.g. opensuse_15.6, debian_12, fedora_40, by default build for all configured distros
     #[arg(short, long, num_args = 0..)]
     distros: Vec<String>,
 
     /// Root directory for temporary build files
-    #[arg(short, long, default_value_t = std::env::temp_dir().join("omnipackage").to_string_lossy().into_owned())]
+    #[arg(long, default_value_t = std::env::temp_dir().join("omnipackage").to_string_lossy().into_owned())]
     build_dir: String,
 
     /// Secrets passed as 'secrets' hashmap to templates and as environment variables to the container (KEY=VALUE)
-    #[arg(long, short = 'e', value_parser = parse_key_val, value_name = "KEY=VALUE")]
+    #[arg(long, short = 's', value_parser = parse_key_val, value_name = "KEY=VALUE")]
     pub secrets: Vec<(String, String)>,
 
     /// Where to print output from the containers (i.e. actual build terminal output)
