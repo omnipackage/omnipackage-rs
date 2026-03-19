@@ -9,6 +9,9 @@ mod gpg;
 mod logger;
 mod shell;
 
+use gpg::Gpg;
+use logger::{Color, Logger, colorize};
+
 fn parse_key_val(s: &str) -> Result<(String, String), String> {
     s.split_once('=').map(|(k, v)| (k.to_string(), v.to_string())).ok_or_else(|| format!("invalid KEY=VALUE: '{}'", s))
 }
@@ -121,7 +124,7 @@ fn main() {
         }
         Commands::Gpg { command } => match command {
             GpgCommands::Generate { output_dir, name, email } => {
-                let keys = gpg::Gpg::new().generate_keys(&name, &email);
+                let keys = Gpg::new().generate_keys(&name, &email);
 
                 let priv_path = output_dir.join("private.asc");
                 let pub_path = output_dir.join("public.asc");
@@ -129,8 +132,8 @@ fn main() {
                 std::fs::write(&priv_path, &keys.priv_key).unwrap_or_else(|e| panic!("cannot write {}: {}", priv_path.display(), e));
                 std::fs::write(&pub_path, &keys.pub_key).unwrap_or_else(|e| panic!("cannot write {}: {}", pub_path.display(), e));
 
-                logger::Logger::new().info(format!("private key written to {}", logger::colorize(logger::Color::BoldYellow, priv_path.display())));
-                logger::Logger::new().info(format!("public key written to {}", logger::colorize(logger::Color::BoldYellow, pub_path.display())));
+                Logger::new().info(format!("private key written to {}", colorize(Color::BoldYellow, priv_path.display())));
+                Logger::new().info(format!("public key written to {}", colorize(Color::BoldYellow, pub_path.display())));
             }
         },
     }
