@@ -15,7 +15,15 @@ pub struct Gpg {
 
 impl Gpg {
     pub fn new() -> Self {
-        Self { exe: "gpg".to_string(), env: vec![] }
+        Self {
+            exe: "gpg".to_string(),
+            env: vec![
+                // always override GNUPGHOME — never fall back to ~/.gnupg
+                ("GNUPGHOME".to_string(), "/dev/null".to_string()),
+                // prevent gpg-agent from connecting to existing agent socket
+                ("GPG_AGENT_INFO".to_string(), "".to_string()),
+            ],
+        }
     }
 
     pub fn generate_keys(&self, name: &str, email: &str) -> Key {
@@ -32,28 +40,32 @@ impl Gpg {
     }
 
     pub fn key_id(&self, key_string: &str) -> String {
-        let key = key_string.to_string();
-        self.cmd(["--show-keys"])
-            .with_stdin(move |stdin| {
-                stdin.write_all(key.as_bytes()).unwrap();
-            })
-            .capture()
-            .expect("gpg --show-keys failed")
-            .lines()
-            .nth(1)
-            .unwrap_or("")
-            .trim()
-            .to_string()
+        self.within_tmp_dir(|gpg, _dir| {
+            let key = key_string.to_string();
+            gpg.cmd(["--show-keys"])
+                .with_stdin(move |stdin| {
+                    stdin.write_all(key.as_bytes()).unwrap();
+                })
+                .capture()
+                .expect("gpg --show-keys failed")
+                .lines()
+                .nth(1)
+                .unwrap_or("")
+                .trim()
+                .to_string()
+        })
     }
 
     pub fn key_info(&self, key_string: &str) -> String {
-        let key = key_string.to_string();
-        self.cmd(["--show-keys", "--with-fingerprint"])
-            .with_stdin(move |stdin| {
-                stdin.write_all(key.as_bytes()).unwrap();
-            })
-            .capture()
-            .expect("gpg --show-keys failed")
+        self.within_tmp_dir(|gpg, _dir| {
+            let key = key_string.to_string();
+            gpg.cmd(["--show-keys", "--with-fingerprint"])
+                .with_stdin(move |stdin| {
+                    stdin.write_all(key.as_bytes()).unwrap();
+                })
+                .capture()
+                .expect("gpg --show-keys failed")
+        })
     }
 
     pub fn test_key(&self, key: &Key) -> std::result::Result<(), i32> {
@@ -100,17 +112,26 @@ impl Gpg {
 
     fn within_tmp_dir<F, R>(&self, f: F) -> R
     where
-        F: FnOnce(&mut Self, PathBuf) -> R,
+        F: FnOnce(&Self, PathBuf) -> R,
     {
-        let dir = tempfile::tempdir().expect("cannot create tmp dir");
-        std::fs::set_permissions(dir.path(), std::os::unix::fs::PermissionsExt::from_mode(0o700)).expect("cannot set permissions");
+        // create and configure temp dir atomically before any gpg command can run
+        let dir = tempfile::tempdir().expect("cannot create tmp dir — aborting to prevent ~/.gnupg access");
+        std::fs::set_permissions(dir.path(), std::os::unix::fs::PermissionsExt::from_mode(0o700)).expect("cannot set permissions on tmp dir — aborting to prevent ~/.gnupg access");
 
-        let mut scoped = Self {
+        let scoped = Self {
             exe: self.exe.clone(),
-            env: vec![("GNUPGHOME".to_string(), dir.path().to_string_lossy().to_string())],
+            env: vec![
+                ("GNUPGHOME".to_string(), dir.path().to_string_lossy().to_string()),
+                // prevent gpg-agent from connecting to existing agent socket
+                ("GPG_AGENT_INFO".to_string(), "".to_string()),
+            ],
         };
 
-        f(&mut scoped, dir.path().to_path_buf())
+        // if closure panics, propagate immediately — no recovery
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&scoped, dir.path().to_path_buf()))).unwrap_or_else(|e| {
+            eprintln!("panic inside within_tmp_dir — aborting");
+            std::panic::resume_unwind(e)
+        })
     }
 
     fn batch_generate_keys(&self, name: &str, email: &str) -> String {
