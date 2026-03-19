@@ -129,8 +129,8 @@ fn main() {
                 std::fs::write(&priv_path, &keys.priv_key).unwrap_or_else(|e| panic!("cannot write {}: {}", priv_path.display(), e));
                 std::fs::write(&pub_path, &keys.pub_key).unwrap_or_else(|e| panic!("cannot write {}: {}", pub_path.display(), e));
 
-                logger::Logger::new().info(format!("private key written to {}", priv_path.display()));
-                logger::Logger::new().info(format!("public key written to {}", pub_path.display()));
+                logger::Logger::new().info(format!("private key written to {}", logger::colorize(logger::Color::BoldYellow, priv_path.display())));
+                logger::Logger::new().info(format!("public key written to {}", logger::colorize(logger::Color::BoldYellow, pub_path.display())));
             }
         },
     }
