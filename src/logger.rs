@@ -111,12 +111,18 @@ impl Logger {
         self.print(format!("{} {} {}", colorize(Color::Cyan, timestamp()), colorize(Color::Red, "[ERROR]"), msg));
     }
 
-    pub fn cmd(&self, program: &str, args: &str) {
+    pub fn cmd(&self, program: &str, args: &[String], env: &[(String, String)]) {
+        let env_str = if env.is_empty() {
+            String::new()
+        } else {
+            env.iter().map(|(k, v)| format!("{}={}", k, v)).collect::<Vec<_>>().join(" ") + " "
+        };
+
         self.print(format!(
             "{} {} {}",
             colorize(Color::Cyan, timestamp()),
             colorize(Color::Cyan, "$"),
-            colorize(Color::Bold, format!("{} {}", program, args))
+            colorize(Color::Bold, format!("{}{} {}", env_str, program, args.join(" ")))
         ));
     }
 

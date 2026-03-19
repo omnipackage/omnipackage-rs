@@ -119,7 +119,7 @@ impl Command {
     }
 
     pub fn run(self) -> std::result::Result<(), i32> {
-        self.logger.cmd(&self.program, &self.args.join(" "));
+        self.logger.cmd(&self.program, &self.args, &self.env_vars);
 
         let mut log_file = self.log_file.as_ref().map(|path| {
             OpenOptions::new()
@@ -153,7 +153,7 @@ impl Command {
     }
 
     pub fn capture(self) -> std::result::Result<String, i32> {
-        self.logger.cmd(&self.program, &self.args.join(" "));
+        self.logger.cmd(&self.program, &self.args, &self.env_vars);
 
         let mut job = self.build_exec().start().map_err(|e| {
             eprintln!("{}", e);
