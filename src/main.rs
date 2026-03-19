@@ -1,3 +1,4 @@
+use clap::builder::styling::{AnsiColor, Effects, Styles};
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -12,6 +13,17 @@ fn parse_key_val(s: &str) -> Result<(String, String), String> {
     s.split_once('=').map(|(k, v)| (k.to_string(), v.to_string())).ok_or_else(|| format!("invalid KEY=VALUE: '{}'", s))
 }
 
+fn styles() -> Styles {
+    Styles::styled()
+        .header(AnsiColor::Green.on_default() | Effects::BOLD)
+        .usage(AnsiColor::Green.on_default() | Effects::BOLD)
+        .literal(AnsiColor::Cyan.on_default() | Effects::BOLD)
+        .placeholder(AnsiColor::Cyan.on_default())
+        .error(AnsiColor::Red.on_default() | Effects::BOLD)
+        .valid(AnsiColor::Green.on_default() | Effects::BOLD)
+        .invalid(AnsiColor::Yellow.on_default() | Effects::BOLD)
+}
+
 #[derive(Debug, Args)]
 struct GlobalOpts {
     /// Container runtime, autodetect by default
@@ -21,6 +33,7 @@ struct GlobalOpts {
 
 #[derive(Parser)]
 #[command(version, about)]
+#[command(styles = styles())]
 struct Cli {
     #[command(flatten)]
     pub global: GlobalOpts,
