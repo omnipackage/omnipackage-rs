@@ -56,19 +56,18 @@ impl Gpg {
             .expect("gpg --show-keys failed")
     }
 
-    pub fn test_key(&self, key: &Key) {
+    pub fn test_key(&self, key: &Key) -> std::result::Result<(), i32> {
         self.within_tmp_dir(|gpg, _dir| {
-            let import = |gpg: &Gpg, data: String| {
+            let import = |gpg: &Gpg, data: String| -> std::result::Result<(), i32> {
                 gpg.cmd(["--import"])
                     .with_stdin(move |stdin| {
                         stdin.write_all(data.as_bytes()).unwrap();
                     })
                     .run()
-                    .expect("gpg --import failed");
             };
 
-            import(gpg, key.priv_key.clone());
-            import(gpg, key.pub_key.clone());
+            import(gpg, key.priv_key.clone())?;
+            import(gpg, key.pub_key.clone())?;
 
             let data = "random string to encrypt".to_string();
             gpg.cmd(["-o", "/dev/null", "-as", "-"])
@@ -76,8 +75,7 @@ impl Gpg {
                     stdin.write_all(data.as_bytes()).unwrap();
                 })
                 .run()
-                .expect("gpg sign test failed");
-        });
+        })
     }
 
     fn export_key(&self, name: &str, secret: bool) -> String {
