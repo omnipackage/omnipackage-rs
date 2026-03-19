@@ -90,7 +90,7 @@ impl Gpg {
         self.cmd(args).capture().expect("gpg export failed")
     }
 
-    fn cmd(&self, args: impl IntoIterator<Item = impl Into<String>>) -> crate::shell::Command {
+    fn cmd(&self, args: impl IntoIterator<Item = impl Into<String>>) -> Command {
         let mut cmd = Command::new(&self.exe);
         for (k, v) in &self.env {
             cmd = cmd.with_env(k, v);
