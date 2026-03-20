@@ -14,21 +14,6 @@ mod shell;
 use gpg::Gpg;
 use logger::{Color, Logger, colorize};
 
-fn parse_key_val(s: &str) -> Result<(String, String), String> {
-    s.split_once('=').map(|(k, v)| (k.to_string(), v.to_string())).ok_or_else(|| format!("invalid KEY=VALUE: '{}'", s))
-}
-
-fn styles() -> Styles {
-    Styles::styled()
-        .header(AnsiColor::Green.on_default() | Effects::BOLD)
-        .usage(AnsiColor::Green.on_default() | Effects::BOLD)
-        .literal(AnsiColor::Cyan.on_default() | Effects::BOLD)
-        .placeholder(AnsiColor::Cyan.on_default())
-        .error(AnsiColor::Red.on_default() | Effects::BOLD)
-        .valid(AnsiColor::Green.on_default() | Effects::BOLD)
-        .invalid(AnsiColor::Yellow.on_default() | Effects::BOLD)
-}
-
 #[derive(Debug, Args)]
 struct GlobalOpts {
     /// Container runtime, autodetect by default
@@ -82,6 +67,21 @@ pub struct BuildArgs {
     pub disable_container_echo: bool,
 }
 
+#[derive(Args, Clone, Debug)]
+pub struct PublishArgs {
+    /// Distro id, e.g. opensuse_15.6, debian_12, fedora_40
+    #[arg(short, long)]
+    distro: String,
+
+    /// Artefacts, i.e. RPMs or DEBs to publish
+    #[arg(short, long, num_args = 1.., required = true)]
+    artefacts: Vec<String>,
+
+    /// Repository name, if blank the first repository from config will be used
+    #[arg(short, long)]
+    repository: Option<String>,
+}
+
 #[derive(Subcommand)]
 enum GpgCommands {
     /// Generate a new GPG key
@@ -102,22 +102,14 @@ enum Commands {
     /// Build the project with omnipackage
     Build(BuildArgs),
 
+    /// Publish built artefacts to a repository
+    Publish(PublishArgs),
+
     /// GPG key management
     Gpg {
         #[command(subcommand)]
         command: GpgCommands,
     },
-}
-
-impl Default for BuildArgs {
-    fn default() -> Self {
-        #[derive(Parser)]
-        struct Dummy {
-            #[command(flatten)]
-            args: BuildArgs,
-        }
-        Dummy::parse_from(["dummy"]).args
-    }
 }
 
 fn main() {
@@ -131,6 +123,9 @@ fn main() {
         Commands::Build(args) => {
             let outputs = build::run(&args);
             build::output::log_all(&outputs);
+        }
+        Commands::Publish(args) => {
+            println!("TODO: publishing... {:?}", args);
         }
         Commands::Gpg { command } => match command {
             GpgCommands::Generate { output_dir, name, email } => {
@@ -146,5 +141,31 @@ fn main() {
                 Logger::new().info(format!("public key written to {}", colorize(Color::BoldYellow, pub_path.display())));
             }
         },
+    }
+}
+
+fn parse_key_val(s: &str) -> Result<(String, String), String> {
+    s.split_once('=').map(|(k, v)| (k.to_string(), v.to_string())).ok_or_else(|| format!("invalid KEY=VALUE: '{}'", s))
+}
+
+fn styles() -> Styles {
+    Styles::styled()
+        .header(AnsiColor::Green.on_default() | Effects::BOLD)
+        .usage(AnsiColor::Green.on_default() | Effects::BOLD)
+        .literal(AnsiColor::Cyan.on_default() | Effects::BOLD)
+        .placeholder(AnsiColor::Cyan.on_default())
+        .error(AnsiColor::Red.on_default() | Effects::BOLD)
+        .valid(AnsiColor::Green.on_default() | Effects::BOLD)
+        .invalid(AnsiColor::Yellow.on_default() | Effects::BOLD)
+}
+
+impl Default for BuildArgs {
+    fn default() -> Self {
+        #[derive(Parser)]
+        struct Dummy {
+            #[command(flatten)]
+            args: BuildArgs,
+        }
+        Dummy::parse_from(["dummy"]).args
     }
 }
