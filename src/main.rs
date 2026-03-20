@@ -49,15 +49,15 @@ struct Cli {
 pub struct BuildArgs {
     /// Path to the project
     #[arg(default_value = ".")]
-    source_path: PathBuf,
+    source_dir: PathBuf,
 
-    /// Relative path within source_path to the omnipackage config
+    /// Relative path within source_dir to the omnipackage config
     #[arg(long, default_value = ".omnipackage/config.yml")]
     config_path: PathBuf,
 
     /// Full path to .env file containing secrets rendered in config
     #[arg(long, default_value = ".env")]
-    env_path: PathBuf,
+    env_file: PathBuf,
 
     /// Distros to build, e.g. opensuse_15.6, debian_12, fedora_40, by default build for all configured distros
     #[arg(short, long, num_args = 0..)]

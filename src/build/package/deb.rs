@@ -17,10 +17,10 @@ impl BuildContext {
 
         let mut template_vars: HashMap<String, Var> = self.job_variables.to_template_vars();
         template_vars.extend(self.config.to_template_vars());
-        self.render_templates(template_vars, self.source_path.join(&debian_folder_template_path), build_path.join("debian"));
+        self.render_templates(template_vars, self.source_dir.join(&debian_folder_template_path), build_path.join("debian"));
 
         let mut mounts: HashMap<String, String> = HashMap::new();
-        mounts.insert(self.source_path.to_string_lossy().to_string(), "/source".to_string());
+        mounts.insert(self.source_dir.to_string_lossy().to_string(), "/source".to_string());
         mounts.insert(build_path.to_string_lossy().to_string(), "/output/build".to_string());
         mounts.insert(output_path.to_string_lossy().to_string(), "/output/".to_string());
 
@@ -105,11 +105,11 @@ mod tests {
     #[test]
     fn test_setup_deb() {
         let dir = tempfile::tempdir().unwrap();
-        let source_path = dir.path().to_path_buf();
+        let source_dir = dir.path().to_path_buf();
         let build_dir = tempfile::tempdir().unwrap();
 
         // create debian templates
-        let deb_dir = source_path.join(".omnipackage/deb");
+        let deb_dir = source_dir.join(".omnipackage/deb");
         std::fs::create_dir_all(&deb_dir).unwrap();
         std::fs::write(deb_dir.join("control.liquid"), "Package: {{ package_name }}\nVersion: {{ version }}").unwrap();
         std::fs::write(deb_dir.join("rules"), "#!/usr/bin/make -f\n%:\n\tdh $@").unwrap();
@@ -118,7 +118,7 @@ mod tests {
 
         let context = BuildContext {
             distro,
-            source_path: source_path.clone(),
+            source_dir: source_dir.clone(),
             config: make_build_config(),
             job_variables: JobVariables::build("1.2.3".to_string()),
             build_dir: build_dir.path().to_path_buf(),

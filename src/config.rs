@@ -66,9 +66,9 @@ impl Config {
     }
 
     pub fn load_with_env(path: &Path, env_path: &Path) -> Self {
-        let env_map: std::collections::HashMap<String, String> = match dotenvy::from_path_iter(env_path) {
+        let env_map: HashMap<String, String> = match dotenvy::from_path_iter(env_path) {
             Ok(iter) => {
-                let map: std::collections::HashMap<String, String> = iter.filter_map(|e| e.ok()).collect();
+                let map: HashMap<String, String> = iter.filter_map(|e| e.ok()).collect();
                 Logger::new().info(format!(
                     "env loaded from {}: {}",
                     std::env::current_dir().unwrap_or_default().join(env_path).display(),
@@ -76,7 +76,10 @@ impl Config {
                 ));
                 map
             }
-            Err(_) => std::collections::HashMap::new(),
+            Err(_) => {
+                Logger::new().warn(format!("no env in {}", std::env::current_dir().unwrap_or_default().join(env_path).display()));
+                HashMap::new()
+            }
         };
 
         let content = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("cannot read {}: {}", path.display(), e));

@@ -17,11 +17,11 @@ impl BuildContext {
         let mut template_vars: HashMap<String, Var> = self.job_variables.to_template_vars();
         template_vars.extend(self.config.to_template_vars());
         template_vars.insert("source_folder_name".to_string(), source_folder_name.clone().into());
-        let template = Template::new(self.source_path.join(&specfile_path_template_path));
+        let template = Template::new(self.source_dir.join(&specfile_path_template_path));
         template.render_to_file(template_vars, self.build_dir.join(&rpmbuild_folder_name).join(&specfile_name));
 
         let mut mounts: HashMap<String, String> = HashMap::new();
-        mounts.insert(self.source_path.to_string_lossy().to_string(), "/source".to_string());
+        mounts.insert(self.source_dir.to_string_lossy().to_string(), "/source".to_string());
         mounts.insert(rpmbuild_path.to_string_lossy().to_string(), "/root/rpmbuild".to_string());
 
         let mut commands: Vec<String> = self.distro.setup(&self.config.build_dependencies);
@@ -91,11 +91,11 @@ mod tests {
     #[test]
     fn test_setup_rpm() {
         let dir = tempfile::tempdir().unwrap();
-        let source_path = dir.path().to_path_buf();
+        let source_dir = dir.path().to_path_buf();
         let build_dir = tempfile::tempdir().unwrap();
 
         // create spec template
-        let spec_dir = source_path.join(".omnipackage");
+        let spec_dir = source_dir.join(".omnipackage");
         std::fs::create_dir_all(&spec_dir).unwrap();
         std::fs::write(spec_dir.join("specfile.spec.liquid"), "Name: {{ package_name }}\nVersion: {{ version }}").unwrap();
 
@@ -104,7 +104,7 @@ mod tests {
 
         let context = BuildContext {
             distro: distro_ref,
-            source_path: source_path.clone(),
+            source_dir: source_dir.clone(),
             config: make_build_config(),
             job_variables: JobVariables::build("1.2.3".to_string()),
             build_dir: build_dir.path().to_path_buf(),
@@ -114,7 +114,7 @@ mod tests {
         let package = context.setup_rpm();
 
         // verify mounts
-        assert!(package.mounts.contains_key(&source_path.to_string_lossy().to_string()));
+        assert!(package.mounts.contains_key(&source_dir.to_string_lossy().to_string()));
         assert!(package.mounts.values().any(|v| v == "/source"));
         assert!(package.mounts.values().any(|v| v == "/root/rpmbuild"));
 

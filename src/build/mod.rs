@@ -17,9 +17,9 @@ use output::Output;
 use package::Package;
 
 pub fn run(args: &BuildArgs) -> Vec<Output> {
-    let config = Config::load_with_env(&args.source_path.join(&args.config_path), &args.env_path);
+    let config = Config::load_with_env(&args.source_dir.join(&args.config_path), &args.env_file);
 
-    let version = extract_version::extract_version(&args.source_path, &config.extract_version);
+    let version = extract_version::extract_version(&args.source_dir, &config.extract_version);
     let job_variables = JobVariables::build(version).with_secrets(args.secrets.clone().into_iter().collect());
     // TODO: add limits
 
@@ -31,7 +31,7 @@ pub fn run(args: &BuildArgs) -> Vec<Output> {
         .map(|build| {
             BuildContext {
                 distro: Distros::get().by_id(&build.distro),
-                source_path: args.source_path.clone(),
+                source_dir: args.source_dir.clone(),
                 config: build.clone(),
                 job_variables: job_variables.clone(),
                 build_dir: PathBuf::from(&args.build_dir),
@@ -45,7 +45,7 @@ pub fn run(args: &BuildArgs) -> Vec<Output> {
 #[derive(Debug, Clone)]
 pub struct BuildContext {
     pub distro: &'static Distro,
-    pub source_path: PathBuf,
+    pub source_dir: PathBuf,
     pub config: Build,
     pub job_variables: JobVariables,
     pub build_dir: PathBuf,
@@ -54,7 +54,7 @@ pub struct BuildContext {
 
 impl BuildContext {
     pub fn run(&self) -> Output {
-        Logger::new().info(format!("starting build for {} at {}, variables: {}", self.distro.id, self.source_path.display(), self.job_variables));
+        Logger::new().info(format!("starting build for {} at {}, variables: {}", self.distro.id, self.source_dir.display(), self.job_variables));
         let started_at = Instant::now();
         let package = self.setup_package();
         let result = self.execute(&package);
@@ -100,7 +100,7 @@ impl BuildContext {
     fn before_build_script(&self, relative_to: &str) -> Option<String> {
         let bbs = self.config.before_build_script.as_ref()?;
 
-        let path = if self.source_path.join(bbs).exists() {
+        let path = if self.source_dir.join(bbs).exists() {
             PathBuf::from(relative_to).join(bbs).to_string_lossy().to_string()
         } else {
             bbs.clone()
