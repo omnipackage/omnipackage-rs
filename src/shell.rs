@@ -112,9 +112,10 @@ impl Command {
 
     fn feed_stdin(stdin_fn: Option<StdinFn>, job: &mut subprocess::Job) {
         if let Some(f) = stdin_fn
-            && let Some(mut stdin) = job.stdin.take() {
-                f(&mut stdin);
-            }
+            && let Some(mut stdin) = job.stdin.take()
+        {
+            f(&mut stdin);
+        }
     }
 
     pub fn run(self) -> std::result::Result<(), i32> {
