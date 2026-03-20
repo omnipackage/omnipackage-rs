@@ -9,6 +9,7 @@ mod config;
 mod distros;
 mod gpg;
 mod logger;
+mod publish;
 mod shell;
 
 use gpg::Gpg;
@@ -68,14 +69,21 @@ pub struct BuildArgs {
 }
 
 #[derive(Args, Clone, Debug)]
-pub struct PublishArgs {
+pub struct DistroArtefacts {
     /// Distro id, e.g. opensuse_15.6, debian_12, fedora_40
     #[arg(short, long)]
-    distro: String,
+    pub distro: String,
 
     /// Artefacts, i.e. RPMs or DEBs to publish
-    #[arg(short, long, num_args = 1.., required = true)]
-    artefacts: Vec<PathBuf>,
+    #[arg(short, long)]
+    pub artefacts: Vec<PathBuf>,
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct PublishArgs {
+    /// Distro and artefacts in format DISTRO:PATH1,PATH2
+    #[arg(value_parser = parse_distro_artefacts, required = true, num_args = 1..)]
+    pub artefacts: Vec<DistroArtefacts>,
 
     /// Repository name, if blank the first repository from config will be used
     #[arg(short, long)]
@@ -125,7 +133,7 @@ fn main() {
             build::output::log_all(&outputs);
         }
         Commands::Publish(args) => {
-            println!("TODO: publishing... {:?}", args);
+            publish::run(&args);
         }
         Commands::Gpg { command } => match command {
             GpgCommands::Generate { output_dir, name, email } => {
@@ -146,6 +154,17 @@ fn main() {
 
 fn parse_key_val(s: &str) -> Result<(String, String), String> {
     s.split_once('=').map(|(k, v)| (k.to_string(), v.to_string())).ok_or_else(|| format!("invalid KEY=VALUE: '{}'", s))
+}
+
+fn parse_distro_artefacts(s: &str) -> Result<DistroArtefacts, String> {
+    let (distro, paths) = s.split_once(':').ok_or_else(|| format!("invalid format, expected DISTRO:PATH1,PATH2: '{}'", s))?;
+
+    let artefacts = paths.split(',').map(PathBuf::from).collect();
+
+    Ok(DistroArtefacts {
+        distro: distro.to_string(),
+        artefacts,
+    })
 }
 
 fn styles() -> Styles {
