@@ -153,7 +153,7 @@ fn main() {
         }
         Commands::Gpg { command } => match command {
             GpgCommands::Generate { output_dir, name, email } => {
-                let keys = Gpg::new().generate_keys(&name, &email);
+                let keys = exit_on_error(Gpg::new().generate_keys(&name, &email));
 
                 let priv_path = output_dir.join("private.asc");
                 let pub_path = output_dir.join("public.asc");
