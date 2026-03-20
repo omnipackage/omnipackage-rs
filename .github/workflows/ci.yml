@@ -13,4 +13,5 @@ jobs:
         with:
           components: rustfmt
       - run: cargo fmt --check
+      - run: cargo clippy -- -D warnings
       - run: cargo test

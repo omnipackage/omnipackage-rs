@@ -1,8 +1,8 @@
 use crate::config::ExtractVersion;
 use regex::Regex;
-use std::path::PathBuf;
+use std::path::Path;
 
-pub fn extract_version(path: &PathBuf, config: &ExtractVersion) -> String {
+pub fn extract_version(path: &Path, config: &ExtractVersion) -> String {
     match config.provider.as_str() {
         "file" => {
             let file_config = &config.file.clone().unwrap_or_else(|| panic!("cannot read file config"));
@@ -26,6 +26,7 @@ pub fn extract_version(path: &PathBuf, config: &ExtractVersion) -> String {
 mod tests {
     use super::*;
     use crate::config::{ExtractVersion, ExtractVersionFile};
+    use std::path::PathBuf;
 
     fn make_config(file: &str, regex: &str) -> ExtractVersion {
         ExtractVersion {

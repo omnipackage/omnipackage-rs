@@ -32,7 +32,7 @@ impl From<bool> for Var {
 
 impl From<Vec<String>> for Var {
     fn from(v: Vec<String>) -> Self {
-        Var(Value::Array(v.into_iter().map(|s| Value::scalar(s)).collect()))
+        Var(Value::Array(v.into_iter().map(Value::scalar).collect()))
     }
 }
 

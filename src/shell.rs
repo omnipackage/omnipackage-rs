@@ -34,12 +34,14 @@ fn container_runtime() -> &'static str {
     CONTAINER_RUNTIME.get_or_init(detect_container_runtime)
 }
 
+type StdinFn = Box<dyn FnOnce(&mut dyn std::io::Write)>;
+
 pub struct Command {
     program: String,
     args: Vec<String>,
     log_file: Option<std::path::PathBuf>,
     logger: Logger,
-    stdin_fn: Option<Box<dyn FnOnce(&mut dyn std::io::Write)>>,
+    stdin_fn: Option<StdinFn>,
     env_vars: Vec<(String, String)>,
 }
 
@@ -108,12 +110,11 @@ impl Command {
         exec
     }
 
-    fn feed_stdin(stdin_fn: Option<Box<dyn FnOnce(&mut dyn std::io::Write)>>, job: &mut subprocess::Job) {
-        if let Some(f) = stdin_fn {
-            if let Some(mut stdin) = job.stdin.take() {
+    fn feed_stdin(stdin_fn: Option<StdinFn>, job: &mut subprocess::Job) {
+        if let Some(f) = stdin_fn
+            && let Some(mut stdin) = job.stdin.take() {
                 f(&mut stdin);
             }
-        }
     }
 
     pub fn run(self) -> std::result::Result<(), i32> {
@@ -135,7 +136,7 @@ impl Command {
         Self::feed_stdin(self.stdin_fn, &mut job);
 
         if let Some(stdout) = job.stdout.take() {
-            for line in BufReader::new(stdout).lines().flatten() {
+            for line in BufReader::new(stdout).lines().map_while(Result::ok) {
                 let msg = self.logger.print(line);
                 if let Some(ref mut file) = log_file {
                     writeln!(file, "{}", msg).ok();
@@ -162,7 +163,7 @@ impl Command {
 
         let mut output = String::new();
         if let Some(stdout) = job.stdout.take() {
-            for line in BufReader::new(stdout).lines().flatten() {
+            for line in BufReader::new(stdout).lines().map_while(Result::ok) {
                 output.push_str(&line);
                 output.push('\n');
             }

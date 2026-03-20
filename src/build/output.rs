@@ -20,7 +20,7 @@ impl fmt::Display for Output {
     }
 }
 
-pub fn log_all(outputs: &Vec<Output>) {
+pub fn log_all(outputs: &[Output]) {
     let (succeeded, failed): (Vec<_>, Vec<_>) = outputs.iter().partition(|o| o.success);
     let mut summary = String::new();
     if !succeeded.is_empty() {
