@@ -88,20 +88,40 @@ impl Repository {
     }
 }
 
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct Repositories(Vec<Repository>);
+
+impl Repositories {
+    pub fn find_by_name_or_default(&self, name: Option<&str>) -> Result<&Repository, String> {
+        match name {
+            Some(name) => self.0.iter().find(|r| r.name == name).ok_or_else(|| format!("repository '{}' not found in config", name)),
+            None => self.0.first().ok_or_else(|| "no repositories configured".to_string()),
+        }
+    }
+}
+
+impl std::ops::Deref for Repositories {
+    type Target = Vec<Repository>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
     pub extract_version: ExtractVersion,
     pub builds: Vec<Build>,
     #[serde(default)]
-    pub repositories: Vec<Repository>,
+    pub repositories: Repositories,
 }
 
 impl Config {
-    pub fn load(path: &Path) -> Self {
+    pub fn load(path: &Path) -> Result<Self, String> {
         Self::load_with_env(path, Path::new(".env"))
     }
 
-    pub fn load_with_env(path: &Path, env_path: &Path) -> Self {
+    pub fn load_with_env(path: &Path, env_path: &Path) -> Result<Self, String> {
         let env_map: HashMap<String, String> = match dotenvy::from_path_iter(env_path) {
             Ok(iter) => {
                 let map: HashMap<String, String> = iter.filter_map(|e| e.ok()).collect();
@@ -118,11 +138,11 @@ impl Config {
             }
         };
 
-        let content = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("cannot read {}: {}", path.display(), e));
+        let content = std::fs::read_to_string(path).map_err(|e| format!("cannot read {}: {}", path.display(), e))?;
 
         let content = Self::expand_env_vars_with(&content, |var| env_map.get(var).cloned().or_else(|| std::env::var(var).ok()).unwrap_or_default());
 
-        serde_saphyr::from_str(&content).unwrap_or_else(|e| panic!("cannot parse {}: {}", path.display(), e))
+        serde_saphyr::from_str(&content).map_err(|e| format!("cannot parse {}: {}", path.display(), e))
     }
 
     fn expand_env_vars_with<F>(content: &str, resolver: F) -> String
@@ -169,7 +189,7 @@ mod tests {
     #[test]
     fn test_load_config() {
         let path = Path::new("tests/fixtures/config.yml");
-        let config = Config::load(path);
+        let config = Config::load(path).unwrap();
 
         assert_eq!(config.extract_version.provider, "file");
         let file = config.extract_version.file.as_ref().unwrap();
@@ -267,7 +287,7 @@ mod tests {
         )
         .unwrap();
 
-        let config = Config::load_with_env(&config_path, &env_path);
+        let config = Config::load_with_env(&config_path, &env_path).unwrap();
         assert_eq!(config.extract_version.file.unwrap().file, "expanded_value");
     }
 
@@ -303,7 +323,7 @@ mod tests {
         )
         .unwrap();
 
-        let config = Config::load(&config_path);
+        let config = Config::load(&config_path).unwrap();
 
         assert_eq!(config.repositories.len(), 2);
 
@@ -339,7 +359,7 @@ mod tests {
         )
         .unwrap();
 
-        let config = Config::load(&config_path);
+        let config = Config::load(&config_path).unwrap();
         assert!(config.repositories.is_empty());
     }
 }

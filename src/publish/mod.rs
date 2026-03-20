@@ -1,6 +1,7 @@
 use crate::PublishArgs;
 use crate::config::{Config, Repository};
 use crate::distros::{Distro, Distros};
+use crate::logger::{Color, Logger, colorize};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
@@ -8,14 +9,21 @@ pub struct PublishContext {
     pub distro: &'static Distro,
     args: PublishArgs,
     config: Repository,
+    artefacts: Vec<PathBuf>,
 }
 
 pub fn run(args: &PublishArgs) {
-    println!("publishing... {:?}", args);
+    let config = Config::load_with_env(&args.project.source_dir.join(&args.project.config_path), &args.project.env_file).unwrap_or_else(|e| {
+        Logger::new().error(e);
+        std::process::exit(1);
+    });
 
-    let config = Config::load_with_env(&args.project.source_dir.join(&args.project.config_path), &args.project.env_file);
+    let repository_config = config.repositories.find_by_name_or_default(args.repository.as_deref()).unwrap_or_else(|e| {
+        Logger::new().error(e);
+        std::process::exit(1);
+    });
 
-    let _: Vec<_> = config
+    let contexts: Vec<PublishContext> = config
         .builds
         .iter()
         .filter(|build| Distros::get().contains(&build.distro))
@@ -32,15 +40,19 @@ pub fn run(args: &PublishArgs) {
                 return None;
             }
 
-            let result = "TODO";
-            println!("found artefacts for {}", distro.id);
-            Some(result)
+            Some(PublishContext {
+                distro,
+                args: args.clone(),
+                config: repository_config.clone(),
+                artefacts,
+            })
         })
         .collect();
 
-    // find Repositry in config matchin args.repository
-
-    //println!("... {:?}", config.repositories);
+    Logger::new().info(format!(
+        "found artefacts for {}",
+        contexts.iter().map(|c| colorize(Color::BoldCyan, &c.distro.name)).collect::<Vec<_>>().join(", ")
+    ));
 }
 
 fn find_artefacts(distro: &'static Distro, build_dir: &Path) -> Vec<PathBuf> {
