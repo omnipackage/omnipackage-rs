@@ -75,7 +75,7 @@ pub struct PublishArgs {
 
     /// Artefacts, i.e. RPMs or DEBs to publish
     #[arg(short, long, num_args = 1.., required = true)]
-    artefacts: Vec<String>,
+    artefacts: Vec<PathBuf>,
 
     /// Repository name, if blank the first repository from config will be used
     #[arg(short, long)]
