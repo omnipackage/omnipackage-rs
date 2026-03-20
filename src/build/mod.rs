@@ -17,9 +17,9 @@ use output::Output;
 use package::Package;
 
 pub fn run(args: &BuildArgs) -> Vec<Output> {
-    let config = Config::load_with_env(&args.source_dir.join(&args.config_path), &args.env_file);
+    let config = Config::load_with_env(&args.project.source_dir.join(&args.project.config_path), &args.project.env_file);
 
-    let version = extract_version::extract_version(&args.source_dir, &config.extract_version);
+    let version = extract_version::extract_version(&args.project.source_dir, &config.extract_version);
     let job_variables = JobVariables::build(version).with_secrets(args.secrets.clone().into_iter().collect());
     // TODO: add limits
 
@@ -31,7 +31,7 @@ pub fn run(args: &BuildArgs) -> Vec<Output> {
         .map(|build| {
             BuildContext {
                 distro: Distros::get().by_id(&build.distro),
-                source_dir: args.source_dir.clone(),
+                source_dir: args.project.source_dir.clone(),
                 config: build.clone(),
                 job_variables: job_variables.clone(),
                 build_dir: PathBuf::from(&args.build_dir),

@@ -34,18 +34,24 @@ struct Cli {
 }
 
 #[derive(Args, Clone, Debug)]
-pub struct BuildArgs {
+pub struct ProjectArgs {
     /// Path to the project
     #[arg(default_value = ".")]
-    source_dir: PathBuf,
+    pub source_dir: PathBuf,
 
     /// Relative path within source_dir to the omnipackage config
     #[arg(long, default_value = ".omnipackage/config.yml")]
-    config_path: PathBuf,
+    pub config_path: PathBuf,
 
     /// Full path to .env file containing secrets rendered in config
     #[arg(long, default_value = ".env")]
-    env_file: PathBuf,
+    pub env_file: PathBuf,
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct BuildArgs {
+    #[command(flatten)]
+    pub project: ProjectArgs,
 
     /// Distros to build, e.g. opensuse_15.6, debian_12, fedora_40, by default build for all configured distros
     #[arg(short, long, num_args = 0..)]
@@ -81,8 +87,11 @@ pub struct DistroArtefacts {
 
 #[derive(Args, Clone, Debug)]
 pub struct PublishArgs {
+    #[command(flatten)]
+    pub project: ProjectArgs,
+
     /// Distro and artefacts in format DISTRO:PATH1,PATH2
-    #[arg(value_parser = parse_distro_artefacts, required = true, num_args = 1..)]
+    #[arg(short, long, value_parser = parse_distro_artefacts, required = true, num_args = 1..)]
     pub artefacts: Vec<DistroArtefacts>,
 
     /// Repository name, if blank the first repository from config will be used

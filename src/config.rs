@@ -54,9 +54,46 @@ pub struct Build {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct LocalFsConfig {
+    pub path: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct S3Config {
+    pub bucket: String,
+    pub bucket_public_url: Option<String>,
+    pub endpoint: String,
+    pub access_key_id: String,
+    pub secret_access_key: String,
+    pub region: Option<String>,
+    #[serde(default)]
+    pub force_path_style: bool,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Repository {
+    pub name: String,
+    pub provider: String,
+    pub localfs: Option<LocalFsConfig>,
+    pub s3: Option<S3Config>,
+}
+
+impl Repository {
+    pub fn localfs(&self) -> &LocalFsConfig {
+        self.localfs.as_ref().unwrap_or_else(|| panic!("repository '{}' has no localfs config", self.name))
+    }
+
+    pub fn s3(&self) -> &S3Config {
+        self.s3.as_ref().unwrap_or_else(|| panic!("repository '{}' has no s3 config", self.name))
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct Config {
     pub extract_version: ExtractVersion,
     pub builds: Vec<Build>,
+    #[serde(default)]
+    pub repositories: Vec<Repository>,
 }
 
 impl Config {
@@ -228,5 +265,77 @@ mod tests {
 
         let config = Config::load_with_env(&config_path, &env_path);
         assert_eq!(config.extract_version.file.unwrap().file, "expanded_value");
+    }
+
+    #[test]
+    fn test_load_repositories() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("config.yml");
+
+        std::fs::write(
+            &config_path,
+            r#"
+    extract_version:
+      provider: file
+      file:
+        file: version.rb
+        regex: VERSION
+    builds: []
+    repositories:
+      - name: Local test
+        provider: localfs
+        localfs:
+          path: /tmp/omnipackage-repos
+      - name: CloudFlare R2
+        provider: s3
+        s3:
+          bucket: repositories-test
+          bucket_public_url: 'https://repositories-test.omnipackage.org'
+          endpoint: 'https://example.r2.cloudflarestorage.com'
+          access_key_id: 'key123'
+          secret_access_key: 'secret123'
+          region: auto
+    "#,
+        )
+        .unwrap();
+
+        let config = Config::load(&config_path);
+
+        assert_eq!(config.repositories.len(), 2);
+
+        let localfs = &config.repositories[0];
+        assert_eq!(localfs.name, "Local test");
+        assert_eq!(localfs.provider, "localfs");
+        assert_eq!(localfs.localfs().path, "/tmp/omnipackage-repos");
+        assert!(localfs.s3.is_none());
+
+        let s3 = &config.repositories[1];
+        assert_eq!(s3.name, "CloudFlare R2");
+        assert_eq!(s3.provider, "s3");
+        assert_eq!(s3.s3().bucket, "repositories-test");
+        assert_eq!(<std::option::Option<std::string::String> as Clone>::clone(&s3.s3().region).unwrap(), "auto");
+        assert!(s3.localfs.is_none());
+    }
+
+    #[test]
+    fn test_load_no_repositories() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("config.yml");
+
+        std::fs::write(
+            &config_path,
+            r#"
+    extract_version:
+      provider: file
+      file:
+        file: version.rb
+        regex: VERSION
+    builds: []
+    "#,
+        )
+        .unwrap();
+
+        let config = Config::load(&config_path);
+        assert!(config.repositories.is_empty());
     }
 }
