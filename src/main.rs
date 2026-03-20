@@ -145,11 +145,11 @@ fn main() {
 
     match cli.command {
         Commands::Build(args) => {
-            let outputs = build::run(&args);
+            let outputs = exit_on_error(build::run(&args));
             build::output::log_all(&outputs);
         }
         Commands::Publish(args) => {
-            publish::run(&args);
+            exit_on_error(publish::run(&args));
         }
         Commands::Gpg { command } => match command {
             GpgCommands::Generate { output_dir, name, email } => {
@@ -158,14 +158,21 @@ fn main() {
                 let priv_path = output_dir.join("private.asc");
                 let pub_path = output_dir.join("public.asc");
                 // std::fs::create_dir_all(&output_dir).unwrap_or_else(|e| panic!("cannot create directory {}: {}", output_dir.display(), e));
-                std::fs::write(&priv_path, &keys.priv_key).unwrap_or_else(|e| panic!("cannot write {}: {}", priv_path.display(), e));
-                std::fs::write(&pub_path, &keys.pub_key).unwrap_or_else(|e| panic!("cannot write {}: {}", pub_path.display(), e));
+                exit_on_error(std::fs::write(&priv_path, &keys.priv_key).map_err(|e| format!("cannot write {}: {}", priv_path.display(), e)));
+                exit_on_error(std::fs::write(&pub_path, &keys.pub_key).map_err(|e| format!("cannot write {}: {}", pub_path.display(), e)));
 
                 Logger::new().info(format!("private key written to {}", colorize(Color::BoldYellow, priv_path.display())));
                 Logger::new().info(format!("public key written to {}", colorize(Color::BoldYellow, pub_path.display())));
             }
         },
     }
+}
+
+fn exit_on_error<T>(result: Result<T, String>) -> T {
+    result.unwrap_or_else(|e| {
+        Logger::new().error(e);
+        std::process::exit(1);
+    })
 }
 
 fn parse_key_val(s: &str) -> Result<(String, String), String> {

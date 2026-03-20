@@ -12,16 +12,10 @@ pub struct PublishContext {
     artefacts: Vec<PathBuf>,
 }
 
-pub fn run(args: &PublishArgs) {
-    let config = Config::load_with_env(&args.project.source_dir.join(&args.project.config_path), &args.project.env_file).unwrap_or_else(|e| {
-        Logger::new().error(e);
-        std::process::exit(1);
-    });
+pub fn run(args: &PublishArgs) -> Result<(), String> {
+    let config = Config::load_with_env(&args.project.source_dir.join(&args.project.config_path), &args.project.env_file)?;
 
-    let repository_config = config.repositories.find_by_name_or_default(args.repository.as_deref()).unwrap_or_else(|e| {
-        Logger::new().error(e);
-        std::process::exit(1);
-    });
+    let repository_config = config.repositories.find_by_name_or_default(args.repository.as_deref())?;
 
     let contexts: Vec<PublishContext> = config
         .builds
@@ -53,6 +47,8 @@ pub fn run(args: &PublishArgs) {
         "found artefacts for {}",
         contexts.iter().map(|c| colorize(Color::BoldCyan, &c.distro.name)).collect::<Vec<_>>().join(", ")
     ));
+
+    Ok(())
 }
 
 fn find_artefacts(distro: &'static Distro, build_dir: &Path) -> Vec<PathBuf> {

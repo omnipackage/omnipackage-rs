@@ -16,17 +16,13 @@ use job_variables::JobVariables;
 use output::Output;
 use package::Package;
 
-pub fn run(args: &BuildArgs) -> Vec<Output> {
-    let config = Config::load_with_env(&args.project.source_dir.join(&args.project.config_path), &args.project.env_file).unwrap_or_else(|e| {
-        Logger::new().error(e);
-        std::process::exit(1);
-    });
+pub fn run(args: &BuildArgs) -> Result<Vec<Output>, String> {
+    let config = Config::load_with_env(&args.project.source_dir.join(&args.project.config_path), &args.project.env_file)?;
 
     let version = extract_version::extract_version(&args.project.source_dir, &config.extract_version);
     let job_variables = JobVariables::build(version).with_secrets(args.secrets.clone().into_iter().collect());
-    // TODO: add limits
 
-    config
+    let outputs = config
         .builds
         .iter()
         .filter(|build| Distros::get().contains(&build.distro))
@@ -42,7 +38,8 @@ pub fn run(args: &BuildArgs) -> Vec<Output> {
             }
             .run()
         })
-        .collect()
+        .collect();
+    Ok(outputs)
 }
 
 #[derive(Debug, Clone)]
