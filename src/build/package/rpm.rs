@@ -7,7 +7,7 @@ impl BuildContext {
     pub fn setup_rpm(&self) -> Package {
         let specfile_path_template_path = self.config.rpm.clone().unwrap().spec_template;
 
-        let rpmbuild_folder_name = format!("{}-{}", self.config.package_name, self.distro.id);
+        let rpmbuild_folder_name = self.config.build_folder_name();
         let rpmbuild_path = self.build_dir.join(&rpmbuild_folder_name);
         std::fs::create_dir_all(&rpmbuild_path).unwrap_or_else(|e| panic!("cannot create directory {}: {}", rpmbuild_path.display(), e));
 

@@ -8,7 +8,7 @@ impl BuildContext {
     pub fn setup_deb(&self) -> Package {
         let debian_folder_template_path = self.config.deb.clone().unwrap().debian_templates;
 
-        let build_folder_name = format!("{}-{}", self.config.package_name, self.distro.id);
+        let build_folder_name = self.config.build_folder_name();
 
         let build_path = self.build_dir.join(&build_folder_name).join("build");
         let output_path = self.build_dir.join(&build_folder_name).join("output");

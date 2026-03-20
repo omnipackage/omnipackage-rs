@@ -58,7 +58,7 @@ pub struct BuildArgs {
     distros: Vec<String>,
 
     /// Root directory for temporary build files
-    #[arg(long, default_value_t = std::env::temp_dir().join("omnipackage").to_string_lossy().into_owned())]
+    #[arg(long, default_value_t = default_build_dir())]
     build_dir: String,
 
     /// Secrets passed as 'secrets' hashmap to templates and as environment variables to the container (KEY=VALUE)
@@ -74,7 +74,7 @@ pub struct BuildArgs {
     pub disable_container_echo: bool,
 }
 
-#[derive(Args, Clone, Debug)]
+/*#[derive(Args, Clone, Debug)]
 pub struct DistroArtefacts {
     /// Distro id, e.g. opensuse_15.6, debian_12, fedora_40
     #[arg(short, long)]
@@ -83,17 +83,24 @@ pub struct DistroArtefacts {
     /// Artefacts, i.e. RPMs or DEBs to publish
     #[arg(short, long)]
     pub artefacts: Vec<PathBuf>,
-}
+}*/
 
 #[derive(Args, Clone, Debug)]
 pub struct PublishArgs {
     #[command(flatten)]
     pub project: ProjectArgs,
 
-    /// Distro and artefacts in format DISTRO:PATH1,PATH2
-    #[arg(short, long, value_parser = parse_distro_artefacts, required = true, num_args = 1..)]
-    pub artefacts: Vec<DistroArtefacts>,
+    /// Distros to publish, by default pubblish all packages for all configured distros found in build_dir
+    #[arg(short, long, num_args = 0..)]
+    distros: Vec<String>,
 
+    /// Root directory where previous build was executed
+    #[arg(long, default_value_t = default_build_dir())]
+    build_dir: String,
+
+    /*/// Distro and artefacts in format DISTRO:PATH1,PATH2
+    #[arg(short, long, value_parser = parse_distro_artefacts, required = true, num_args = 1..)]
+    pub artefacts: Vec<DistroArtefacts>,*/
     /// Repository name, if blank the first repository from config will be used
     #[arg(short, long)]
     repository: Option<String>,
@@ -165,7 +172,7 @@ fn parse_key_val(s: &str) -> Result<(String, String), String> {
     s.split_once('=').map(|(k, v)| (k.to_string(), v.to_string())).ok_or_else(|| format!("invalid KEY=VALUE: '{}'", s))
 }
 
-fn parse_distro_artefacts(s: &str) -> Result<DistroArtefacts, String> {
+/*fn parse_distro_artefacts(s: &str) -> Result<DistroArtefacts, String> {
     let (distro, paths) = s.split_once(':').ok_or_else(|| format!("invalid format, expected DISTRO:PATH1,PATH2: '{}'", s))?;
 
     let artefacts = paths.split(',').map(PathBuf::from).collect();
@@ -174,6 +181,10 @@ fn parse_distro_artefacts(s: &str) -> Result<DistroArtefacts, String> {
         distro: distro.to_string(),
         artefacts,
     })
+}*/
+
+fn default_build_dir() -> String {
+    std::env::temp_dir().join("omnipackage").to_string_lossy().into()
 }
 
 fn styles() -> Styles {
