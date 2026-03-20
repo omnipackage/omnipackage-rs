@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::shell::Command;
 use std::path::PathBuf;
 

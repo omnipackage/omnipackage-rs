@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use clap::builder::styling::{AnsiColor, Effects, Styles};
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;

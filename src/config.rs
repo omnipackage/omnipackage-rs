@@ -60,7 +60,6 @@ pub struct Config {
 }
 
 impl Config {
-    #[allow(dead_code)]
     pub fn load(path: &Path) -> Self {
         Self::load_with_env(path, Path::new(".env"))
     }

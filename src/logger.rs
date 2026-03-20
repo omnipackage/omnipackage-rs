@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
