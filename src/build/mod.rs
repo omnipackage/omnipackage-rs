@@ -141,7 +141,7 @@ impl BuildContext {
         args.push("-c".to_string());
         args.push(commands.join(" && "));
 
-        let log_path = package.output_path.join("build.log");
+        let log_path = self.build_dir.join(self.config.build_folder_name()).join("build.log");
         let _ = std::fs::remove_file(&log_path);
 
         Command::container(args)

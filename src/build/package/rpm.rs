@@ -18,7 +18,7 @@ impl BuildContext {
         template_vars.extend(self.config.to_template_vars());
         template_vars.insert("source_folder_name".to_string(), source_folder_name.clone().into());
         let template = Template::new(self.source_dir.join(&specfile_path_template_path));
-        template.render_to_file(template_vars, self.build_dir.join(&rpmbuild_folder_name).join(&specfile_name));
+        template.render_to_file(template_vars, rpmbuild_path.join(&specfile_name));
 
         let mut mounts: HashMap<String, String> = HashMap::new();
         mounts.insert(self.source_dir.to_string_lossy().to_string(), "/source".to_string());

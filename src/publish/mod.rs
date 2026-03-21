@@ -2,7 +2,7 @@ use crate::PublishArgs;
 use crate::config::{Config, Repository};
 use crate::distros::{Distro, Distros};
 use crate::gpg::{Gpg, Key};
-use crate::logger::{Color, Logger, colorize};
+use crate::logger::{Color, LogOutput, Logger, colorize};
 use crate::shell::Command;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -183,10 +183,32 @@ impl PublishContext {
         let mut commands_with_setup = self.distro.setup_repo.clone();
         commands_with_setup.extend(commands);
 
+        if !self.args.disable_container_echo {
+            commands_with_setup.insert(0, "set -x".to_string());
+        }
+        // commands_with_setup.push("tree . ".to_string());
+
         args.push(self.distro.image.clone());
         args.push("-c".to_string());
         args.push(commands_with_setup.join(" && "));
 
-        Command::container(args).run().map_err(|code| format!("command failed with exit code {}", code))
+        let log_path = self.build_dir.join("publish.log");
+        let _ = std::fs::remove_file(&log_path);
+
+        Command::container(args)
+            .stream_output_to(self.container_logger())
+            .log_to(&log_path)
+            .run()
+            .map_err(|code| format!("command failed with exit code {}", code))
+    }
+
+    fn container_logger(&self) -> Logger {
+        let output = match self.args.container_output.as_str() {
+            "stderr" => LogOutput::Stderr,
+            "stdout" => LogOutput::Stdout,
+            "null" => LogOutput::Silent,
+            _ => LogOutput::Silent,
+        };
+        Logger::new().with_output(output)
     }
 }
