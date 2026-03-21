@@ -3,6 +3,8 @@ use crate::config::{Config, Repository};
 use crate::distros::{Distro, Distros};
 use crate::gpg::{Gpg, Key};
 use crate::logger::{Color, Logger, colorize};
+use crate::shell::Command;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 mod deb;
@@ -80,7 +82,13 @@ impl PublishContext {
             match self.config.provider.as_str() {
                 "s3" => {
                     let s3_config = self.config.s3();
-                    let s3 = s3::S3::new(s3_config, format!("/{}", self.distro.id));
+                    let in_bucket_path = PathBuf::from("/")
+                        .join(s3_config.path_in_bucket.as_deref().unwrap_or(""))
+                        .join(&self.distro.id)
+                        .to_string_lossy()
+                        .to_string();
+                    let s3 = s3::S3::new(s3_config, &in_bucket_path);
+
                     if !s3.bucket_exists()? {
                         return Err(format!("bucket '{}' does not exist", s3_config.bucket));
                     }
@@ -119,11 +127,13 @@ impl PublishContext {
             std::fs::copy(artefact, &dest).map_err(|e| format!("cannot copy {} to {}: {}", artefact.display(), dest.display(), e))?;
         }
 
+        let home_dir_tempfile = tempfile::tempdir().expect("cannot create container home dir");
+        let home_dir = home_dir_tempfile.path();
         match self.config.gpg_private_key() {
             Ok(key) => {
                 let gpg = Gpg::new();
                 let gpgkey = gpg.test_private_key(&key).map_err(|e| format!("GPG key test failed: {}", e)).and_then(|_| gpg.key_from_private(&key))?;
-                self.write_gpg_keys(&gpgkey)?;
+                self.write_gpg_keys(&gpgkey, home_dir, dir)?;
             }
             Err(msg) => {
                 Logger::new().warn(format!("no GPG key configured, packages will not be signed: {}", msg));
@@ -131,13 +141,52 @@ impl PublishContext {
         }
 
         match self.distro.package_type.as_str() {
-            "rpm" => self.setup_rpm_repo(dir),
-            "deb" => self.setup_deb_repo(dir),
+            "rpm" => self.setup_rpm_repo(home_dir, dir),
+            "deb" => self.setup_deb_repo(home_dir, dir),
             _ => Err(format!("unknown package type {}", self.distro.package_type)),
         }
     }
 
-    fn write_gpg_keys(&self, key: &Key) -> Result<(), String> {
+    fn write_gpg_keys(&self, key: &Key, home_dir: &Path, work_dir: &Path) -> Result<(), String> {
+        std::fs::write(work_dir.join("public.key"), &key.pub_key).map_err(|e| format!("cannot write public key: {}", e))?;
+        std::fs::write(home_dir.join("key.priv"), &key.priv_key).map_err(|e| format!("cannot write private key: {}", e))?;
         Ok(())
+    }
+
+    fn import_gpg_keys_commands(&self) -> Vec<String> {
+        vec!["gpg --no-tty --batch --import /root/key.priv".to_string(), "gpg --no-tty --batch --import public.key".to_string()]
+    }
+
+    fn execute(&self, commands: Vec<String>, home_dir: &Path, work_dir: &Path) -> Result<(), String> {
+        let mut args = vec![
+            "run".to_string(),
+            "--rm".to_string(),
+            "--entrypoint".to_string(),
+            "/bin/sh".to_string(),
+            "--workdir".to_string(),
+            "/workdir".to_string(),
+        ];
+
+        let mounts: HashMap<String, String> = [
+            (work_dir.to_string_lossy().to_string(), "/workdir".to_string()),
+            (home_dir.to_string_lossy().to_string(), "/root".to_string()),
+        ]
+        .into_iter()
+        .collect();
+        let mount_args: Vec<String> = mounts.iter().flat_map(|(from, to)| ["--mount".to_string(), format!("type=bind,source={from},target={to}")]).collect();
+        args.extend(mount_args);
+
+        let env_vars: HashMap<String, String> = [("GPG_TTY".to_string(), "".to_string())].into_iter().collect();
+        let env_args: Vec<String> = env_vars.iter().flat_map(|(k, v)| ["-e".to_string(), format!("{k}={v}")]).collect();
+        args.extend(env_args);
+
+        let mut commands_with_setup = self.distro.setup_repo.clone();
+        commands_with_setup.extend(commands);
+
+        args.push(self.distro.image.clone());
+        args.push("-c".to_string());
+        args.push(commands_with_setup.join(" && "));
+
+        Command::container(args).run().map_err(|code| format!("command failed with exit code {}", code))
     }
 }

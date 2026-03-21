@@ -62,6 +62,7 @@ pub struct LocalFsConfig {
 #[derive(Debug, Deserialize, Clone)]
 pub struct S3Config {
     pub bucket: String,
+    pub path_in_bucket: Option<String>,
     pub bucket_public_url: Option<String>,
     pub endpoint: String,
     pub access_key_id: String,
