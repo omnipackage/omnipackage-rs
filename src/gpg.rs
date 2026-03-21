@@ -2,6 +2,7 @@ use crate::logger::{LogOutput, Logger};
 use crate::shell::Command;
 use std::path::PathBuf;
 
+#[derive(Debug, Clone)]
 pub struct Key {
     pub priv_key: String,
     pub pub_key: String,
@@ -79,6 +80,25 @@ impl Gpg {
                 })
                 .run()
                 .map_err(|code| format!("gpg sign test failed with exit code {}", code))
+        })
+    }
+
+    pub fn key_from_private(&self, priv_key: &str) -> Result<Key, String> {
+        self.within_tmp_dir(|gpg, _dir| {
+            let key = priv_key.to_string();
+            gpg.cmd(["--import"])
+                .with_stdin(move |stdin| {
+                    stdin.write_all(key.as_bytes()).unwrap();
+                })
+                .run()
+                .map_err(|code| format!("gpg --import failed with exit code {}", code))?;
+
+            let pub_key = gpg.cmd(["--armor", "--export"]).capture().map_err(|code| format!("gpg --export failed with exit code {}", code))?;
+
+            Ok(Key {
+                priv_key: priv_key.to_string(),
+                pub_key,
+            })
         })
     }
 
@@ -200,5 +220,24 @@ mod tests {
             return;
         }
         assert!(Gpg::new().test_private_key("invalid key").is_err());
+    }
+
+    #[test]
+    fn test_key_from_private() {
+        if !gpg_available() {
+            return;
+        }
+        let gpg = Gpg::new();
+
+        // generate a key first to have a valid private key
+        let generated = gpg.generate_keys("Test User", "test@example.com").unwrap();
+
+        // derive public key from private
+        let derived = gpg.key_from_private(&generated.priv_key).unwrap();
+
+        assert_eq!(derived.priv_key, generated.priv_key);
+        assert!(derived.pub_key.contains("-----BEGIN PGP PUBLIC KEY BLOCK-----"));
+        assert!(derived.pub_key.contains("-----END PGP PUBLIC KEY BLOCK-----"));
+        assert!(!derived.pub_key.is_empty());
     }
 }

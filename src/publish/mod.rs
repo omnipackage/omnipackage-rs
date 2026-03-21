@@ -1,7 +1,7 @@
 use crate::PublishArgs;
 use crate::config::{Config, Repository};
 use crate::distros::{Distro, Distros};
-use crate::gpg::Gpg;
+use crate::gpg::{Gpg, Key};
 use crate::logger::{Color, Logger, colorize};
 use std::path::{Path, PathBuf};
 
@@ -121,10 +121,9 @@ impl PublishContext {
 
         match self.config.gpg_private_key() {
             Ok(key) => {
-                match Gpg::new().test_private_key(&key) {
-                    Ok(_) => (),
-                    Err(e) => return Err(format!("GPG key test failed: {}", e)),
-                };
+                let gpg = Gpg::new();
+                let gpgkey = gpg.test_private_key(&key).map_err(|e| format!("GPG key test failed: {}", e)).and_then(|_| gpg.key_from_private(&key))?;
+                self.write_gpg_keys(&gpgkey)?;
             }
             Err(msg) => {
                 Logger::new().warn(format!("no GPG key configured, packages will not be signed: {}", msg));
@@ -136,5 +135,9 @@ impl PublishContext {
             "deb" => self.setup_deb_repo(dir),
             _ => Err(format!("unknown package type {}", self.distro.package_type)),
         }
+    }
+
+    fn write_gpg_keys(&self, key: &Key) -> Result<(), String> {
+        Ok(())
     }
 }
