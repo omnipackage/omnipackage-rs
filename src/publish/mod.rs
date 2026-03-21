@@ -129,20 +129,15 @@ impl PublishContext {
 
         let home_dir_tempfile = tempfile::tempdir().expect("cannot create container home dir");
         let home_dir = home_dir_tempfile.path();
-        match self.config.gpg_private_key() {
-            Ok(key) => {
-                let gpg = Gpg::new();
-                let gpgkey = gpg.test_private_key(&key).map_err(|e| format!("GPG key test failed: {}", e)).and_then(|_| gpg.key_from_private(&key))?;
-                self.write_gpg_keys(&gpgkey, home_dir, dir)?;
-            }
-            Err(msg) => {
-                Logger::new().warn(format!("no GPG key configured, packages will not be signed: {}", msg));
-            }
-        }
+
+        let key = self.config.gpg_private_key()?;
+        let gpg = Gpg::new();
+        let gpgkey = gpg.test_private_key(&key).map_err(|e| format!("GPG key test failed: {}", e)).and_then(|_| gpg.key_from_private(&key))?;
+        self.write_gpg_keys(&gpgkey, home_dir, dir)?;
 
         match self.distro.package_type.as_str() {
-            "rpm" => self.setup_rpm_repo(home_dir, dir),
-            "deb" => self.setup_deb_repo(home_dir, dir),
+            "rpm" => self.setup_rpm_repo(&gpgkey, home_dir, dir),
+            "deb" => self.setup_deb_repo(&gpgkey, home_dir, dir),
             _ => Err(format!("unknown package type {}", self.distro.package_type)),
         }
     }

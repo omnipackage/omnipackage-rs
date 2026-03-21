@@ -40,7 +40,7 @@ impl Gpg {
         self.within_tmp_dir(|gpg, _dir| {
             let key = key_string.to_string();
             let output = gpg
-                .cmd(["--show-keys"])
+                .cmd(["--quiet", "--no-tty", "--show-keys"])
                 .with_stdin(move |stdin| {
                     stdin.write_all(key.as_bytes()).unwrap();
                 })
@@ -54,7 +54,7 @@ impl Gpg {
     pub fn key_info(&self, key_string: &str) -> Result<String, String> {
         self.within_tmp_dir(|gpg, _dir| {
             let key = key_string.to_string();
-            gpg.cmd(["--show-keys", "--with-fingerprint"])
+            gpg.cmd(["--quiet", "--no-tty", "--show-keys", "--with-fingerprint"])
                 .with_stdin(move |stdin| {
                     stdin.write_all(key.as_bytes()).unwrap();
                 })
@@ -66,7 +66,7 @@ impl Gpg {
     pub fn test_private_key(&self, key_string: &str) -> Result<(), String> {
         self.within_tmp_dir(|gpg, _dir| {
             let key = key_string.to_string();
-            gpg.cmd(["--import"])
+            gpg.cmd(["--quiet", "--no-tty", "--import"])
                 .with_stdin(move |stdin| {
                     stdin.write_all(key.as_bytes()).unwrap();
                 })
@@ -86,7 +86,7 @@ impl Gpg {
     pub fn key_from_private(&self, priv_key: &str) -> Result<Key, String> {
         self.within_tmp_dir(|gpg, _dir| {
             let key = priv_key.to_string();
-            gpg.cmd(["--import"])
+            gpg.cmd(["--quiet", "--no-tty", "--import"])
                 .with_stdin(move |stdin| {
                     stdin.write_all(key.as_bytes()).unwrap();
                 })
