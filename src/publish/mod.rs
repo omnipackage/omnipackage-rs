@@ -82,7 +82,7 @@ impl PublishContext {
             match self.config.provider.as_str() {
                 "s3" => {
                     let s3_config = self.config.s3();
-                    let in_bucket_path = PathBuf::from("/")
+                    let in_bucket_path = PathBuf::new()
                         .join(s3_config.path_in_bucket.as_deref().unwrap_or(""))
                         .join(&self.distro.id)
                         .to_string_lossy()
