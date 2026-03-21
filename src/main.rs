@@ -50,9 +50,23 @@ pub struct ProjectArgs {
 }
 
 #[derive(Args, Clone, Debug)]
+pub struct LoggingArgs {
+    /// Where to print output from the containers (i.e. actual terminal output)
+    #[arg(long, default_value = "stderr", value_parser = ["null", "stdout", "stderr"])]
+    pub container_output: String,
+
+    /// Disable echo (set -x) of commands inside the container
+    #[arg(long)]
+    pub disable_container_echo: bool,
+}
+
+#[derive(Args, Clone, Debug)]
 pub struct BuildArgs {
     #[command(flatten)]
     pub project: ProjectArgs,
+
+    #[command(flatten)]
+    pub logging: LoggingArgs,
 
     /// Distros to build, e.g. opensuse_15.6, debian_12, fedora_40, by default build for all configured distros
     #[arg(short, long, num_args = 0..)]
@@ -65,20 +79,15 @@ pub struct BuildArgs {
     /// Secrets passed as 'secrets' hashmap to templates and as environment variables to the container (KEY=VALUE)
     #[arg(long, short = 's', value_parser = parse_key_val, value_name = "KEY=VALUE")]
     pub secrets: Vec<(String, String)>,
-
-    /// Where to print output from the containers (i.e. actual terminal output)
-    #[arg(long, default_value = "stderr", value_parser = ["null", "stdout", "stderr"])]
-    pub container_output: String,
-
-    /// Disable echo (set -x) of commands inside the container
-    #[arg(long)]
-    pub disable_container_echo: bool,
 }
 
 #[derive(Args, Clone, Debug)]
 pub struct PublishArgs {
     #[command(flatten)]
     pub project: ProjectArgs,
+
+    #[command(flatten)]
+    pub logging: LoggingArgs,
 
     /// Distros to publish, by default pubblish all packages for all configured distros found in build_dir
     #[arg(short, long, num_args = 0..)]
@@ -91,14 +100,6 @@ pub struct PublishArgs {
     /// Repository name, if blank the first repository from config will be used
     #[arg(short, long)]
     repository: Option<String>,
-
-    /// Where to print output from the containers (i.e. actual publish terminal output)
-    #[arg(long, default_value = "stderr", value_parser = ["null", "stdout", "stderr"])]
-    pub container_output: String,
-
-    /// Disable echo (set -x) of commands inside the container
-    #[arg(long)]
-    pub disable_container_echo: bool,
 }
 
 #[derive(Subcommand)]

@@ -110,7 +110,7 @@ impl BuildContext {
     }
 
     fn container_logger(&self) -> Logger {
-        let output = match self.args.container_output.as_str() {
+        let output = match self.args.logging.container_output.as_str() {
             "stderr" => LogOutput::Stderr,
             "stdout" => LogOutput::Stdout,
             "null" => LogOutput::Silent,
@@ -123,7 +123,7 @@ impl BuildContext {
         let mut args = vec!["run".to_string(), "--rm".to_string(), "--entrypoint".to_string(), "/bin/sh".to_string()];
 
         let mut commands = package.commands.clone();
-        if !self.args.disable_container_echo {
+        if !self.args.logging.disable_container_echo {
             commands.insert(0, "set -x".to_string());
         }
 

@@ -178,7 +178,7 @@ impl PublishContext {
         let mut commands_with_setup = self.distro.setup_repo.clone();
         commands_with_setup.extend(commands);
 
-        if !self.args.disable_container_echo {
+        if !self.args.logging.disable_container_echo {
             commands_with_setup.insert(0, "set -x".to_string());
         }
         // commands_with_setup.push("tree . ".to_string());
@@ -198,7 +198,7 @@ impl PublishContext {
     }
 
     fn container_logger(&self) -> Logger {
-        let output = match self.args.container_output.as_str() {
+        let output = match self.args.logging.container_output.as_str() {
             "stderr" => LogOutput::Stderr,
             "stdout" => LogOutput::Stdout,
             "null" => LogOutput::Silent,
