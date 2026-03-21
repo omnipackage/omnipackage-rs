@@ -77,14 +77,14 @@ impl PublishContext {
             match self.config.provider.as_str() {
                 "s3" => {
                     let s3_config = self.config.s3();
-                    let s3 = s3::S3::new(s3_config, &format!("/{}", self.distro.id));
+                    let s3 = s3::S3::new(s3_config, format!("/{}", self.distro.id));
 
-                    if !s3.bucket_exists().map_err(|e| e)? {
+                    if !s3.bucket_exists()? {
                         return Err(format!("bucket '{}' does not exist", s3_config.bucket));
                     }
 
                     // download existing repo state
-                    s3.download_all(&dir)?;
+                    s3.download_all(dir)?;
 
                     // add new artefacts to local repo
                     for artefact in &self.artefacts {
@@ -94,8 +94,8 @@ impl PublishContext {
                     // TODO repo manage here
 
                     // sync back to S3
-                    s3.upload_all(&dir)?;
-                    s3.delete_deleted_files(&dir)?;
+                    s3.upload_all(dir)?;
+                    s3.delete_deleted_files(dir)?;
                 }
                 &_ => todo!(),
             }
