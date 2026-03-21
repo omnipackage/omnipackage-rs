@@ -4,6 +4,8 @@ use crate::distros::{Distro, Distros};
 use crate::logger::{Color, Logger, colorize};
 use std::path::{Path, PathBuf};
 
+mod deb;
+mod rpm;
 mod s3;
 
 #[derive(Debug, Clone)]
@@ -78,22 +80,11 @@ impl PublishContext {
                 "s3" => {
                     let s3_config = self.config.s3();
                     let s3 = s3::S3::new(s3_config, format!("/{}", self.distro.id));
-
                     if !s3.bucket_exists()? {
                         return Err(format!("bucket '{}' does not exist", s3_config.bucket));
                     }
-
-                    // download existing repo state
                     s3.download_all(dir)?;
-
-                    // add new artefacts to local repo
-                    for artefact in &self.artefacts {
-                        let dest = dir.join(artefact.file_name().unwrap_or_else(|| artefact.as_os_str()));
-                        std::fs::copy(artefact, &dest).map_err(|e| format!("cannot copy {} to {}: {}", artefact.display(), dest.display(), e))?;
-                    }
-                    // TODO repo manage here
-
-                    // sync back to S3
+                    self.setup_repo(dir)?;
                     s3.upload_all(dir)?;
                     s3.delete_deleted_files(dir)?;
                 }
@@ -119,5 +110,18 @@ impl PublishContext {
         }
         std::fs::create_dir_all(&dir).map_err(|e| format!("cannot create repository dir {}: {}", dir.display(), e))?;
         f(&dir)
+    }
+
+    fn setup_repo(&self, dir: &Path) -> Result<(), String> {
+        for artefact in &self.artefacts {
+            let dest = dir.join(artefact.file_name().unwrap_or_else(|| artefact.as_os_str()));
+            std::fs::copy(artefact, &dest).map_err(|e| format!("cannot copy {} to {}: {}", artefact.display(), dest.display(), e))?;
+        }
+
+        match self.distro.package_type.as_str() {
+            "rpm" => self.setup_rpm_repo(dir),
+            "deb" => self.setup_deb_repo(dir),
+            _ => Err(format!("unknown package type {}", self.distro.package_type)),
+        }
     }
 }
