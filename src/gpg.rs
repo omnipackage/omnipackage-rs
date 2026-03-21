@@ -1,3 +1,4 @@
+use crate::logger::{LogOutput, Logger};
 use crate::shell::Command;
 use std::path::PathBuf;
 
@@ -61,19 +62,15 @@ impl Gpg {
         })
     }
 
-    pub fn test_key(&self, key: &Key) -> Result<(), String> {
+    pub fn test_private_key(&self, key_string: &str) -> Result<(), String> {
         self.within_tmp_dir(|gpg, _dir| {
-            let import = |gpg: &Gpg, data: String| -> Result<(), String> {
-                gpg.cmd(["--import"])
-                    .with_stdin(move |stdin| {
-                        stdin.write_all(data.as_bytes()).unwrap();
-                    })
-                    .run()
-                    .map_err(|code| format!("gpg --import failed with exit code {}", code))
-            };
-
-            import(gpg, key.priv_key.clone())?;
-            import(gpg, key.pub_key.clone())?;
+            let key = key_string.to_string();
+            gpg.cmd(["--import"])
+                .with_stdin(move |stdin| {
+                    stdin.write_all(key.as_bytes()).unwrap();
+                })
+                .run()
+                .map_err(|code| format!("gpg --import failed with exit code {}", code))?;
 
             let data = "random string to encrypt".to_string();
             gpg.cmd(["-o", "/dev/null", "-as", "-"])
@@ -98,7 +95,7 @@ impl Gpg {
     }
 
     fn cmd(&self, args: impl IntoIterator<Item = impl Into<String>>) -> Command {
-        let mut cmd = Command::new(&self.exe);
+        let mut cmd = Command::new(&self.exe).stream_output_to(Logger::new().with_output(LogOutput::Silent));
         for (k, v) in &self.env {
             cmd = cmd.with_env(k, v);
         }
@@ -188,24 +185,20 @@ mod tests {
     }
 
     #[test]
-    fn test_test_key_valid() {
+    fn test_test_private_key_valid() {
         if !gpg_available() {
             return;
         }
         let gpg = Gpg::new();
-        let key = gpg.generate_keys("Test User", "test@example.com").unwrap();
-        assert!(gpg.test_key(&key).is_ok());
+        let key = gpg.generate_keys("Test User", "test@example.com").unwrap().priv_key;
+        assert!(gpg.test_private_key(&key).is_ok());
     }
 
     #[test]
-    fn test_test_key_invalid() {
+    fn test_test_private_key_invalid() {
         if !gpg_available() {
             return;
         }
-        let key = Key {
-            priv_key: "invalid key".to_string(),
-            pub_key: "invalid key".to_string(),
-        };
-        assert!(Gpg::new().test_key(&key).is_err());
+        assert!(Gpg::new().test_private_key("invalid key").is_err());
     }
 }

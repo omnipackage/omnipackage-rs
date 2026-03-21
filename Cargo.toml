@@ -24,6 +24,7 @@ aws-sdk-s3 = { version = "*", features = ["behavior-version-latest"] }
 aws-config = { version = "*", features = ["behavior-version-latest"] }
 aws-credential-types = "*"
 tokio = { version = "*", features = ["rt", "rt-multi-thread"] }
+base64 = "*"
 
 [dev-dependencies]
 assert_cmd = "*"

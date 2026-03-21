@@ -1,6 +1,7 @@
 use crate::PublishArgs;
 use crate::config::{Config, Repository};
 use crate::distros::{Distro, Distros};
+use crate::gpg::Gpg;
 use crate::logger::{Color, Logger, colorize};
 use std::path::{Path, PathBuf};
 
@@ -116,6 +117,18 @@ impl PublishContext {
         for artefact in &self.artefacts {
             let dest = dir.join(artefact.file_name().unwrap_or_else(|| artefact.as_os_str()));
             std::fs::copy(artefact, &dest).map_err(|e| format!("cannot copy {} to {}: {}", artefact.display(), dest.display(), e))?;
+        }
+
+        match self.config.gpg_private_key() {
+            Ok(key) => {
+                match Gpg::new().test_private_key(&key) {
+                    Ok(_) => (),
+                    Err(e) => return Err(format!("GPG key test failed: {}", e)),
+                };
+            }
+            Err(msg) => {
+                Logger::new().warn(format!("no GPG key configured, packages will not be signed: {}", msg));
+            }
         }
 
         match self.distro.package_type.as_str() {

@@ -1,5 +1,6 @@
 use crate::build::package::template::Var;
 use crate::logger::Logger;
+use base64::{Engine, engine::general_purpose};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -76,6 +77,7 @@ pub struct Repository {
     pub provider: String,
     pub localfs: Option<LocalFsConfig>,
     pub s3: Option<S3Config>,
+    pub gpg_private_key_base64: Option<String>,
 }
 
 impl Repository {
@@ -85,6 +87,12 @@ impl Repository {
 
     pub fn s3(&self) -> &S3Config {
         self.s3.as_ref().unwrap_or_else(|| panic!("repository '{}' has no s3 config", self.name))
+    }
+
+    pub fn gpg_private_key(&self) -> Result<String, String> {
+        let key = self.gpg_private_key_base64.as_ref().ok_or_else(|| "gpg_private_key_base64 is not set".to_string())?;
+        let decoded = general_purpose::STANDARD.decode(key).map_err(|e| format!("cannot decode GPG key: {}", e))?;
+        String::from_utf8(decoded).map_err(|e| format!("invalid UTF-8 in GPG key: {}", e))
     }
 }
 
