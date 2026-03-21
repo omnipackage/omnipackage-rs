@@ -110,13 +110,7 @@ impl BuildContext {
     }
 
     fn container_logger(&self) -> Logger {
-        let output = match self.args.logging.container_output.as_str() {
-            "stderr" => LogOutput::Stderr,
-            "stdout" => LogOutput::Stdout,
-            "null" => LogOutput::Silent,
-            _ => LogOutput::Silent,
-        };
-        Logger::new().with_output(output).with_secrets(self.job_variables.secrets.values().cloned().collect::<Vec<String>>())
+        self.args.logging.container_logger().with_secrets(self.job_variables.secrets.values().cloned().collect::<Vec<String>>())
     }
 
     fn execute(&self, package: &Package) -> Result<(Vec<PathBuf>, PathBuf), (i32, PathBuf)> {

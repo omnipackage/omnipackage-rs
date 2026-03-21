@@ -14,7 +14,7 @@ mod publish;
 mod shell;
 
 use gpg::Gpg;
-use logger::{Color, Logger, colorize};
+use logger::{Color, LogOutput, Logger, colorize};
 
 #[derive(Debug, Args)]
 struct GlobalOpts {
@@ -248,5 +248,16 @@ impl Default for BuildArgs {
             args: BuildArgs,
         }
         Dummy::parse_from(["dummy"]).args
+    }
+}
+
+impl LoggingArgs {
+    pub fn container_logger(&self) -> Logger {
+        let output = match self.container_output.as_str() {
+            "stderr" => LogOutput::Stderr,
+            "stdout" => LogOutput::Stdout,
+            _ => LogOutput::Silent,
+        };
+        Logger::new().with_output(output)
     }
 }

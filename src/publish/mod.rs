@@ -1,5 +1,5 @@
 use crate::PublishArgs;
-use crate::config::{Config, Repository};
+use crate::config::{Config, Repository, S3Config};
 use crate::distros::{Distro, Distros};
 use crate::gpg::{Gpg, Key};
 use crate::logger::{Color, LogOutput, Logger, colorize};
@@ -82,17 +82,12 @@ impl PublishContext {
             match self.config.provider.as_str() {
                 "s3" => {
                     let s3_config = self.config.s3();
-                    let in_bucket_path = PathBuf::new()
-                        .join(s3_config.path_in_bucket.as_deref().unwrap_or(""))
-                        .join(&self.distro.id)
-                        .to_string_lossy()
-                        .to_string();
-                    let s3 = s3::S3::new(s3_config, &in_bucket_path);
+                    let s3 = s3::S3::new(s3_config, self.s3_in_bucket_distro_path(s3_config));
 
                     if !s3.bucket_exists()? {
                         return Err(format!("bucket '{}' does not exist", s3_config.bucket));
                     }
-                    s3.download_all(dir)?;
+                    //s3.download_all(dir)?; // TODO: why this was disabled in Ruby's version? find out, also research how to keep N packages and publish multiple projects to one repo
                     self.setup_repo(dir)?;
                     s3.upload_all(dir)?;
                     s3.delete_deleted_files(dir)?;
@@ -181,7 +176,6 @@ impl PublishContext {
         if !self.args.logging.disable_container_echo {
             commands_with_setup.insert(0, "set -x".to_string());
         }
-        // commands_with_setup.push("tree . ".to_string());
 
         args.push(self.distro.image.clone());
         args.push("-c".to_string());
@@ -191,33 +185,25 @@ impl PublishContext {
         let _ = std::fs::remove_file(&log_path);
 
         Command::container(args)
-            .stream_output_to(self.container_logger())
+            .stream_output_to(self.args.logging.container_logger())
             .log_to(&log_path)
             .run()
             .map_err(|code| format!("command failed with exit code {}", code))
     }
 
-    fn container_logger(&self) -> Logger {
-        let output = match self.args.logging.container_output.as_str() {
-            "stderr" => LogOutput::Stderr,
-            "stdout" => LogOutput::Stdout,
-            "null" => LogOutput::Silent,
-            _ => LogOutput::Silent,
-        };
-        Logger::new().with_output(output)
+    fn s3_in_bucket_distro_path(&self, s3_config: &S3Config) -> String {
+        PathBuf::new()
+            .join(s3_config.path_in_bucket.as_deref().unwrap_or(""))
+            .join(&self.distro.id)
+            .to_string_lossy()
+            .to_string()
     }
 
     fn distro_url(&self) -> String {
         match self.config.provider.as_str() {
             "s3" => {
                 let s3_config = self.config.s3();
-                let in_bucket_path = PathBuf::new()
-                    .join(s3_config.path_in_bucket.as_deref().unwrap_or(""))
-                    .join(&self.distro.id)
-                    .to_string_lossy()
-                    .to_string();
-                let base = s3_config.bucket_public_url.as_deref().unwrap_or(&s3_config.endpoint).trim_end_matches('/');
-                format!("{}/{}", base, in_bucket_path)
+                format!("{}/{}", s3_config.base_url(), self.s3_in_bucket_distro_path(s3_config))
             }
             &_ => todo!(),
         }

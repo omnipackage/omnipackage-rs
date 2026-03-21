@@ -99,6 +99,14 @@ impl Repository {
     }
 }
 
+impl S3Config {
+    pub fn base_url(&self) -> &str {
+        let url = self.bucket_public_url.as_deref().unwrap_or(&self.endpoint);
+        // TODO: handle different providers' shenanigans and/or force_path_style
+        url.trim_end_matches('/')
+    }
+}
+
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct Repositories(Vec<Repository>);
 
