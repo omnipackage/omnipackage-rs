@@ -53,9 +53,7 @@ pub fn run(args: &PublishArgs) -> Result<(), String> {
     ));
 
     contexts.iter().for_each(|c| {
-        c.run().unwrap_or_else(|e| {
-            Logger::new().error(e);
-        })
+        c.run();
     });
 
     Ok(())
@@ -72,8 +70,10 @@ fn find_artefacts(distro: &'static Distro, build_dir: &Path) -> Vec<PathBuf> {
 }
 
 impl PublishContext {
-    pub fn run(&self) -> Result<(), String> {
-        self.within_repository_dir(|dir| {
+    pub fn run(&self) {
+        Logger::new().info(format!("starting repository publish for {}", self.distro.id));
+
+        let result = self.within_repository_dir(|dir| {
             match self.config.provider.as_str() {
                 "s3" => {
                     let s3_config = self.config.s3();
@@ -101,7 +101,12 @@ impl PublishContext {
             }
 
             Ok(())
-        })
+        });
+
+        match result {
+            Ok(_) => Logger::new().info(format!("done repository publish for {}", self.distro.id)),
+            Err(msg) => Logger::new().error(format!("error repository publish for {}: {}", self.distro.id, msg)),
+        };
     }
 
     fn within_repository_dir<F, R>(&self, f: F) -> Result<R, String>
@@ -109,6 +114,9 @@ impl PublishContext {
         F: FnOnce(&Path) -> Result<R, String>,
     {
         let dir = self.build_dir.join("repository");
+        if dir.exists() {
+            std::fs::remove_dir_all(&dir).map_err(|e| format!("cannot clear repository dir {}: {}", dir.display(), e))?;
+        }
         std::fs::create_dir_all(&dir).map_err(|e| format!("cannot create repository dir {}: {}", dir.display(), e))?;
         f(&dir)
     }
