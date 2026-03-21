@@ -4,12 +4,15 @@ use crate::distros::{Distro, Distros};
 use crate::logger::{Color, Logger, colorize};
 use std::path::{Path, PathBuf};
 
+mod s3;
+
 #[derive(Debug, Clone)]
 pub struct PublishContext {
     pub distro: &'static Distro,
     args: PublishArgs,
     config: Repository,
     artefacts: Vec<PathBuf>,
+    build_dir: PathBuf,
 }
 
 pub fn run(args: &PublishArgs) -> Result<(), String> {
@@ -39,6 +42,7 @@ pub fn run(args: &PublishArgs) -> Result<(), String> {
                 args: args.clone(),
                 config: repository_config.clone(),
                 artefacts,
+                build_dir,
             })
         })
         .collect();
@@ -47,6 +51,12 @@ pub fn run(args: &PublishArgs) -> Result<(), String> {
         "found artefacts for {}",
         contexts.iter().map(|c| colorize(Color::BoldCyan, &c.distro.name)).collect::<Vec<_>>().join(", ")
     ));
+
+    contexts.iter().for_each(|c| {
+        c.run().unwrap_or_else(|e| {
+            Logger::new().error(e);
+        })
+    });
 
     Ok(())
 }
@@ -62,5 +72,44 @@ fn find_artefacts(distro: &'static Distro, build_dir: &Path) -> Vec<PathBuf> {
 }
 
 impl PublishContext {
-    pub fn run(&self) {}
+    pub fn run(&self) -> Result<(), String> {
+        self.within_repository_dir(|dir| {
+            match self.config.provider.as_str() {
+                "s3" => {
+                    let s3_config = self.config.s3();
+                    let s3 = s3::S3::new(s3_config, &format!("/{}", self.distro.id));
+
+                    if !s3.bucket_exists().map_err(|e| e)? {
+                        return Err(format!("bucket '{}' does not exist", s3_config.bucket));
+                    }
+
+                    // download existing repo state
+                    s3.download_all(&dir)?;
+
+                    // add new artefacts to local repo
+                    for artefact in &self.artefacts {
+                        let dest = dir.join(artefact.file_name().unwrap_or_else(|| artefact.as_os_str()));
+                        std::fs::copy(artefact, &dest).map_err(|e| format!("cannot copy {} to {}: {}", artefact.display(), dest.display(), e))?;
+                    }
+                    // TODO repo manage here
+
+                    // sync back to S3
+                    s3.upload_all(&dir)?;
+                    s3.delete_deleted_files(&dir)?;
+                }
+                &_ => todo!(),
+            }
+
+            Ok(())
+        })
+    }
+
+    fn within_repository_dir<F, R>(&self, f: F) -> Result<R, String>
+    where
+        F: FnOnce(&Path) -> Result<R, String>,
+    {
+        let dir = self.build_dir.join("repository");
+        std::fs::create_dir_all(&dir).map_err(|e| format!("cannot create repository dir {}: {}", dir.display(), e))?;
+        f(&dir)
+    }
 }

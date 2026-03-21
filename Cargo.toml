@@ -20,6 +20,10 @@ subprocess = "*"
 chrono = "*"
 glob = "*"
 dotenvy = "*"
+aws-sdk-s3 = { version = "*", features = ["behavior-version-latest"] }
+aws-config = { version = "*", features = ["behavior-version-latest"] }
+aws-credential-types = "*"
+tokio = { version = "*", features = ["rt", "rt-multi-thread"] }
 
 [dev-dependencies]
 assert_cmd = "*"
