@@ -20,7 +20,7 @@ use logger::{Color, Logger, colorize};
 struct GlobalOpts {
     /// Container runtime, autodetect by default
     #[arg(long, global = true, value_parser = ["docker", "podman"])]
-    pub container_runtime: Option<String>,
+    container_runtime: Option<String>,
 }
 
 #[derive(Parser)]
@@ -28,45 +28,45 @@ struct GlobalOpts {
 #[command(styles = styles())]
 struct Cli {
     #[command(flatten)]
-    pub global: GlobalOpts,
+    global: GlobalOpts,
 
     #[command(subcommand)]
-    pub command: Commands,
+    command: Commands,
 }
 
 #[derive(Args, Clone, Debug)]
 pub struct ProjectArgs {
     /// Path to the project
     #[arg(default_value = ".")]
-    pub source_dir: PathBuf,
+    source_dir: PathBuf,
 
     /// Relative path within source_dir to the omnipackage config
     #[arg(long, default_value = ".omnipackage/config.yml")]
-    pub config_path: PathBuf,
+    config_path: PathBuf,
 
     /// Full path to .env file containing secrets rendered in config
     #[arg(long, default_value = ".env")]
-    pub env_file: PathBuf,
+    env_file: PathBuf,
 }
 
 #[derive(Args, Clone, Debug)]
 pub struct LoggingArgs {
     /// Where to print output from the containers (i.e. actual terminal output)
     #[arg(long, default_value = "stderr", value_parser = ["null", "stdout", "stderr"])]
-    pub container_output: String,
+    container_output: String,
 
     /// Disable echo (set -x) of commands inside the container
     #[arg(long)]
-    pub disable_container_echo: bool,
+    disable_container_echo: bool,
 }
 
 #[derive(Args, Clone, Debug)]
 pub struct BuildArgs {
     #[command(flatten)]
-    pub project: ProjectArgs,
+    project: ProjectArgs,
 
     #[command(flatten)]
-    pub logging: LoggingArgs,
+    logging: LoggingArgs,
 
     /// Distros to build, e.g. opensuse_15.6, debian_12, fedora_40, by default build for all configured distros
     #[arg(short, long, num_args = 0..)]
@@ -78,16 +78,16 @@ pub struct BuildArgs {
 
     /// Secrets passed as 'secrets' hashmap to templates and as environment variables to the container (KEY=VALUE)
     #[arg(long, short = 's', value_parser = parse_key_val, value_name = "KEY=VALUE")]
-    pub secrets: Vec<(String, String)>,
+    secrets: Vec<(String, String)>,
 }
 
 #[derive(Args, Clone, Debug)]
 pub struct PublishArgs {
     #[command(flatten)]
-    pub project: ProjectArgs,
+    project: ProjectArgs,
 
     #[command(flatten)]
-    pub logging: LoggingArgs,
+    logging: LoggingArgs,
 
     /// Distros to publish, by default pubblish all packages for all configured distros found in build_dir
     #[arg(short, long, num_args = 0..)]
@@ -100,6 +100,31 @@ pub struct PublishArgs {
     /// Repository name, if blank the first repository from config will be used
     #[arg(short, long)]
     repository: Option<String>,
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct ReleaseArgs {
+    #[command(flatten)]
+    project: ProjectArgs,
+
+    #[command(flatten)]
+    logging: LoggingArgs,
+
+    /// Distros to publish, by default pubblish all packages for all configured distros found in build_dir
+    #[arg(short, long, num_args = 0..)]
+    distros: Vec<String>,
+
+    /// Root directory where previous build was executed
+    #[arg(long, default_value_t = default_build_dir())]
+    build_dir: String,
+
+    /// Repository name to publish to, if blank the first repository from config will be used
+    #[arg(short, long)]
+    repository: Option<String>,
+
+    /// Secrets passed as 'secrets' hashmap to templates and as environment variables to the container (KEY=VALUE)
+    #[arg(long, short = 's', value_parser = parse_key_val, value_name = "KEY=VALUE")]
+    secrets: Vec<(String, String)>,
 }
 
 #[derive(Subcommand)]
@@ -131,6 +156,9 @@ enum Commands {
     /// Publish built artefacts to a repository
     Publish(PublishArgs),
 
+    /// Build and publish in one go
+    Release(ReleaseArgs),
+
     /// GPG key management
     Gpg {
         #[command(subcommand)]
@@ -153,6 +181,7 @@ fn main() {
         Commands::Publish(args) => {
             exit_on_error(publish::run(&args));
         }
+        Commands::Release(args) => {}
         Commands::Gpg { command } => match command {
             GpgCommands::Generate { output_dir, name, email, format } => {
                 let keys = exit_on_error(Gpg::new().generate_keys(&name, &email));
