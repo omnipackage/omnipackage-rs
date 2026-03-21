@@ -206,4 +206,20 @@ impl PublishContext {
         };
         Logger::new().with_output(output)
     }
+
+    fn distro_url(&self) -> String {
+        match self.config.provider.as_str() {
+            "s3" => {
+                let s3_config = self.config.s3();
+                let in_bucket_path = PathBuf::new()
+                    .join(s3_config.path_in_bucket.as_deref().unwrap_or(""))
+                    .join(&self.distro.id)
+                    .to_string_lossy()
+                    .to_string();
+                let base = s3_config.bucket_public_url.as_deref().unwrap_or(&s3_config.endpoint).trim_end_matches('/');
+                format!("{}/{}", base, in_bucket_path)
+            }
+            &_ => todo!(),
+        }
+    }
 }
