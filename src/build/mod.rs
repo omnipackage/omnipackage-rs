@@ -2,7 +2,7 @@ use crate::config::{Build, Config};
 use crate::distros::{Distro, Distros};
 use crate::logger::{LogOutput, Logger};
 use crate::shell::Command;
-use crate::{BuildArgs, LoggingArgs};
+use crate::{BuildArgs, JobArgs, LoggingArgs, ProjectArgs};
 use std::path::PathBuf;
 use std::result::Result;
 use std::time::Instant;
@@ -16,25 +16,25 @@ use job_variables::JobVariables;
 use output::Output;
 use package::Package;
 
-pub fn run(args: &BuildArgs) -> Result<Vec<Output>, String> {
-    let config = args.project.load_config()?;
+pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs) -> Result<Vec<Output>, String> {
+    let config = project.load_config()?;
 
-    let version = extract_version::extract_version(&args.project.source_dir, &config.extract_version);
+    let version = extract_version::extract_version(&project.source_dir, &config.extract_version);
     let job_variables = JobVariables::build(version.clone()).with_secrets(config.secrets.clone().into_iter().collect());
 
     let outputs = config
         .builds
         .iter()
         .filter(|build| Distros::get().contains(&build.distro))
-        .filter(|build| args.distros.is_empty() || args.distros.contains(&build.distro))
+        .filter(|build| job.distros.is_empty() || job.distros.contains(&build.distro))
         .map(|build| {
             BuildContext {
                 distro: Distros::get().by_id(&build.distro),
-                source_dir: args.project.source_dir.clone(),
+                source_dir: project.source_dir.clone(),
                 config: build.clone(),
                 job_variables: job_variables.clone(),
-                build_dir: PathBuf::from(&args.build_dir),
-                logging_args: args.logging.clone(),
+                build_dir: PathBuf::from(&job.build_dir),
+                logging_args: logging.clone(),
             }
             .run()
         })

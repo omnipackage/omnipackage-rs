@@ -3,7 +3,7 @@ use crate::distros::{Distro, Distros};
 use crate::gpg::{Gpg, Key};
 use crate::logger::{Color, LogOutput, Logger, colorize};
 use crate::shell::Command;
-use crate::{LoggingArgs, PublishArgs};
+use crate::{JobArgs, LoggingArgs, ProjectArgs, PublishArgs};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -20,18 +20,18 @@ pub struct PublishContext {
     pub build_dir: PathBuf,
 }
 
-pub fn run(args: &PublishArgs) -> Result<(), String> {
-    let config = args.project.load_config()?;
+pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs, repository: &Option<String>) -> Result<(), String> {
+    let config = project.load_config()?;
 
-    let repository_config = config.repositories.find_by_name_or_default(args.repository.as_deref())?;
+    let repository_config = config.repositories.find_by_name_or_default(repository.as_deref())?;
 
     let contexts: Vec<PublishContext> = config
         .builds
         .iter()
         .filter(|build| Distros::get().contains(&build.distro))
-        .filter(|build| args.distros.is_empty() || args.distros.contains(&build.distro))
+        .filter(|build| job.distros.is_empty() || job.distros.contains(&build.distro))
         .filter_map(|build| {
-            let build_dir = PathBuf::from(&args.build_dir).join(build.build_folder_name());
+            let build_dir = PathBuf::from(&job.build_dir).join(build.build_folder_name());
             if !build_dir.exists() {
                 return None;
             }
@@ -44,7 +44,7 @@ pub fn run(args: &PublishArgs) -> Result<(), String> {
 
             Some(PublishContext {
                 distro,
-                logging_args: args.logging.clone(),
+                logging_args: logging.clone(),
                 config: repository_config.clone(),
                 artefacts,
                 build_dir,

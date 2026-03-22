@@ -52,6 +52,17 @@ pub struct ProjectArgs {
 }
 
 #[derive(Args, Clone, Debug)]
+pub struct JobArgs {
+    /// Distros to build/publish, e.g. opensuse_15.6, debian_12, fedora_40, by default build for all configured distros
+    #[arg(short, long, num_args = 0..)]
+    distros: Vec<String>,
+
+    /// Root directory for temporary build/publish files
+    #[arg(long, default_value_t = default_build_dir())]
+    build_dir: String,
+}
+
+#[derive(Args, Clone, Debug)]
 pub struct LoggingArgs {
     /// Where to print output from the containers (i.e. actual terminal output)
     #[arg(long, default_value = "stderr", value_parser = ["null", "stdout", "stderr"])]
@@ -70,13 +81,8 @@ pub struct BuildArgs {
     #[command(flatten)]
     logging: LoggingArgs,
 
-    /// Distros to build, e.g. opensuse_15.6, debian_12, fedora_40, by default build for all configured distros
-    #[arg(short, long, num_args = 0..)]
-    distros: Vec<String>,
-
-    /// Root directory for temporary build files
-    #[arg(long, default_value_t = default_build_dir())]
-    build_dir: String,
+    #[command(flatten)]
+    job: JobArgs,
 }
 
 #[derive(Args, Clone, Debug)]
@@ -87,13 +93,8 @@ pub struct PublishArgs {
     #[command(flatten)]
     logging: LoggingArgs,
 
-    /// Distros to publish, by default pubblish all packages for all configured distros found in build_dir
-    #[arg(short, long, num_args = 0..)]
-    distros: Vec<String>,
-
-    /// Root directory where previous build was executed
-    #[arg(long, default_value_t = default_build_dir())]
-    build_dir: String,
+    #[command(flatten)]
+    job: JobArgs,
 
     /// Repository name, if blank the first repository from config will be used
     #[arg(short, long)]
@@ -108,13 +109,8 @@ pub struct ReleaseArgs {
     #[command(flatten)]
     logging: LoggingArgs,
 
-    /// Distros to publish, by default pubblish all packages for all configured distros found in build_dir
-    #[arg(short, long, num_args = 0..)]
-    distros: Vec<String>,
-
-    /// Root directory for temporary build files
-    #[arg(long, default_value_t = default_build_dir())]
-    build_dir: String,
+    #[command(flatten)]
+    job: JobArgs,
 
     /// Repository name to publish to, if blank the first repository from config will be used
     #[arg(short, long)]
@@ -169,20 +165,14 @@ fn main() {
 
     match cli.command {
         Commands::Build(args) => {
-            let outputs = exit_on_error(build::run(&args));
+            let outputs = exit_on_error(build::run(&args.project, &args.job, &args.logging));
             build::output::log_all(&outputs);
         }
         Commands::Publish(args) => {
-            exit_on_error(publish::run(&args));
+            exit_on_error(publish::run(&args.project, &args.job, &args.logging, &args.repository));
         }
         Commands::Release(args) => {
-            let build_args = BuildArgs {
-                project: args.project.clone(),
-                logging: args.logging.clone(),
-                distros: args.distros.clone(),
-                build_dir: args.build_dir.clone(),
-            };
-            let outputs = exit_on_error(build::run(&build_args));
+            let outputs = exit_on_error(build::run(&args.project, &args.job, &args.logging));
             let config = exit_on_error(args.project.load_config());
             let repository_config = exit_on_error(config.repositories.find_by_name_or_default(args.repository.as_deref()));
             outputs.iter().filter(|output| output.success).for_each(|output| {
