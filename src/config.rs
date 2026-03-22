@@ -97,6 +97,10 @@ impl Repository {
             .map_err(|e| format!("cannot decode GPG key: {}", e))?;
         String::from_utf8(decoded).map_err(|e| format!("invalid UTF-8 in GPG key: {}", e))
     }
+
+    pub fn project_slug(&self) -> String {
+        self.package_name.clone() // TODO: make sure it's safe to use in S3 path
+    }
 }
 
 impl S3Config {

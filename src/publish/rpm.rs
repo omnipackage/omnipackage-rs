@@ -17,7 +17,7 @@ impl PublishContext {
         ]);
 
         self.execute(commands, home_dir, work_dir)?;
-        self.write_repo_file(work_dir, &self.config.package_name, &self.distro.name, &self.distro_url())
+        self.write_repo_file(work_dir, &self.config.project_slug(), &self.distro.name, &self.distro_url())
     }
 
     fn write_repo_file(&self, work_dir: &Path, project_slug: &str, distro_name: &str, distro_url: &str) -> Result<(), String> {
