@@ -1,8 +1,8 @@
-use crate::BuildArgs;
 use crate::config::{Build, Config};
 use crate::distros::{Distro, Distros};
 use crate::logger::{LogOutput, Logger};
 use crate::shell::Command;
+use crate::{BuildArgs, LoggingArgs};
 use std::path::PathBuf;
 use std::result::Result;
 use std::time::Instant;
@@ -34,7 +34,7 @@ pub fn run(args: &BuildArgs) -> Result<Vec<Output>, String> {
                 config: build.clone(),
                 job_variables: job_variables.clone(),
                 build_dir: PathBuf::from(&args.build_dir),
-                args: args.clone(),
+                logging_args: args.logging.clone(),
             }
             .run()
         })
@@ -49,7 +49,7 @@ pub struct BuildContext {
     pub config: Build,
     pub job_variables: JobVariables,
     pub build_dir: PathBuf,
-    pub args: BuildArgs,
+    pub logging_args: LoggingArgs,
 }
 
 impl BuildContext {
@@ -116,14 +116,14 @@ impl BuildContext {
     }
 
     fn container_logger(&self) -> Logger {
-        self.args.logging.container_logger().with_secrets(self.job_variables.secrets.values().cloned().collect::<Vec<String>>())
+        self.logging_args.container_logger().with_secrets(self.job_variables.secrets.values().cloned().collect::<Vec<String>>())
     }
 
     fn execute(&self, package: &Package) -> Result<(Vec<PathBuf>, PathBuf), (i32, PathBuf)> {
         let mut args = vec!["run".to_string(), "--rm".to_string(), "--entrypoint".to_string(), "/bin/sh".to_string()];
 
         let mut commands = package.commands.clone();
-        if !self.args.logging.disable_container_echo {
+        if !self.logging_args.disable_container_echo {
             commands.insert(0, "set -x".to_string());
         }
 

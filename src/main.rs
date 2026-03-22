@@ -186,16 +186,9 @@ fn main() {
             let config = exit_on_error(args.project.load_config());
             let repository_config = exit_on_error(config.repositories.find_by_name_or_default(args.repository.as_deref()));
             outputs.iter().filter(|output| output.success).for_each(|output| {
-                let publish_args = PublishArgs {
-                    project: args.project.clone(),
-                    logging: args.logging.clone(),
-                    distros: args.distros.clone(),
-                    build_dir: args.build_dir.clone(),
-                    repository: args.repository.clone(),
-                };
                 PublishContext {
                     distro: output.distro,
-                    args: publish_args,
+                    logging_args: args.logging.clone(),
                     config: repository_config.clone(),
                     artefacts: output.artefacts.clone(),
                     build_dir: output.distro_build_dir.clone(),
@@ -255,17 +248,6 @@ fn styles() -> Styles {
         .error(AnsiColor::Red.on_default() | Effects::BOLD)
         .valid(AnsiColor::Green.on_default() | Effects::BOLD)
         .invalid(AnsiColor::Yellow.on_default() | Effects::BOLD)
-}
-
-impl Default for BuildArgs {
-    fn default() -> Self {
-        #[derive(Parser)]
-        struct Dummy {
-            #[command(flatten)]
-            args: BuildArgs,
-        }
-        Dummy::parse_from(["dummy"]).args
-    }
 }
 
 impl LoggingArgs {
