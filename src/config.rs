@@ -133,6 +133,8 @@ pub struct Config {
     pub builds: Vec<Build>,
     #[serde(default)]
     pub repositories: Repositories,
+    #[serde(default)]
+    pub secrets: HashMap<String, String>,
 }
 
 impl Config {

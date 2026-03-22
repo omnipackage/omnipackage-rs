@@ -76,10 +76,6 @@ pub struct BuildArgs {
     /// Root directory for temporary build files
     #[arg(long, default_value_t = default_build_dir())]
     build_dir: String,
-
-    /// Secrets passed as 'secrets' hashmap to templates and as environment variables to the container (KEY=VALUE)
-    #[arg(long, short = 's', value_parser = parse_key_val, value_name = "KEY=VALUE")]
-    secrets: Vec<(String, String)>,
 }
 
 #[derive(Args, Clone, Debug)]
@@ -122,10 +118,6 @@ pub struct ReleaseArgs {
     /// Repository name to publish to, if blank the first repository from config will be used
     #[arg(short, long)]
     repository: Option<String>,
-
-    /// Secrets passed as 'secrets' hashmap to templates and as environment variables to the container (KEY=VALUE)
-    #[arg(long, short = 's', value_parser = parse_key_val, value_name = "KEY=VALUE")]
-    secrets: Vec<(String, String)>,
 }
 
 #[derive(Subcommand)]
@@ -220,10 +212,6 @@ fn exit_on_error<T>(result: Result<T, String>) -> T {
         Logger::new().error(e);
         std::process::exit(1);
     })
-}
-
-fn parse_key_val(s: &str) -> Result<(String, String), String> {
-    s.split_once('=').map(|(k, v)| (k.to_string(), v.to_string())).ok_or_else(|| format!("invalid KEY=VALUE: '{}'", s))
 }
 
 fn default_build_dir() -> String {

@@ -20,7 +20,7 @@ pub fn run(args: &BuildArgs) -> Result<Vec<Output>, String> {
     let config = args.project.load_config()?;
 
     let version = extract_version::extract_version(&args.project.source_dir, &config.extract_version);
-    let job_variables = JobVariables::build(version).with_secrets(args.secrets.clone().into_iter().collect());
+    let job_variables = JobVariables::build(version.clone()).with_secrets(config.secrets.clone().into_iter().collect());
 
     let outputs = config
         .builds
