@@ -21,7 +21,7 @@ pub struct PublishContext {
 }
 
 pub fn run(args: &PublishArgs) -> Result<(), String> {
-    let config = Config::load_with_env(&args.project.source_dir.join(&args.project.config_path), &args.project.env_file)?;
+    let config = args.project.load_config()?;
 
     let repository_config = config.repositories.find_by_name_or_default(args.repository.as_deref())?;
 

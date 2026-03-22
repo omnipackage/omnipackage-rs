@@ -13,6 +13,7 @@ mod logger;
 mod publish;
 mod shell;
 
+use config::Config;
 use gpg::Gpg;
 use logger::{Color, LogOutput, Logger, colorize};
 
@@ -114,7 +115,7 @@ pub struct ReleaseArgs {
     #[arg(short, long, num_args = 0..)]
     distros: Vec<String>,
 
-    /// Root directory where previous build was executed
+    /// Root directory for temporary build files
     #[arg(long, default_value_t = default_build_dir())]
     build_dir: String,
 
@@ -259,5 +260,11 @@ impl LoggingArgs {
             _ => LogOutput::Silent,
         };
         Logger::new().with_output(output)
+    }
+}
+
+impl ProjectArgs {
+    pub fn load_config(&self) -> Result<Config, String> {
+        Config::load_with_env(&self.source_dir.join(&self.config_path), &self.env_file)
     }
 }
