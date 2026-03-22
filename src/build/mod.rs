@@ -49,7 +49,7 @@ pub struct BuildContext {
     pub config: Build,
     pub job_variables: JobVariables,
     pub build_dir: PathBuf,
-    args: BuildArgs,
+    pub args: BuildArgs,
 }
 
 impl BuildContext {
@@ -74,6 +74,7 @@ impl BuildContext {
                     artefacts,
                     build_log,
                     distro: self.distro,
+                    distro_build_dir: self.distro_build_dir(),
                 }
             }
             Err((_code, build_log)) => {
@@ -84,9 +85,14 @@ impl BuildContext {
                     artefacts: Vec::new(),
                     build_log,
                     distro: self.distro,
+                    distro_build_dir: self.distro_build_dir(),
                 }
             }
         }
+    }
+
+    fn distro_build_dir(&self) -> PathBuf {
+        self.build_dir.join(self.config.build_folder_name())
     }
 
     fn setup_package(&self) -> Package {

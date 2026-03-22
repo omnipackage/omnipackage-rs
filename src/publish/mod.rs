@@ -14,10 +14,10 @@ mod s3;
 #[derive(Debug, Clone)]
 pub struct PublishContext {
     pub distro: &'static Distro,
-    args: PublishArgs,
-    config: Repository,
-    artefacts: Vec<PathBuf>,
-    build_dir: PathBuf,
+    pub args: PublishArgs,
+    pub config: Repository,
+    pub artefacts: Vec<PathBuf>,
+    pub build_dir: PathBuf,
 }
 
 pub fn run(args: &PublishArgs) -> Result<(), String> {

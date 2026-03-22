@@ -8,10 +8,8 @@ impl BuildContext {
     pub fn setup_deb(&self) -> Package {
         let debian_folder_template_path = self.config.deb.clone().unwrap().debian_templates;
 
-        let build_folder_name = self.config.build_folder_name();
-
-        let build_path = self.build_dir.join(&build_folder_name).join("build");
-        let output_path = self.build_dir.join(&build_folder_name).join("output");
+        let build_path = self.distro_build_dir().join("build");
+        let output_path = self.distro_build_dir().join("output");
         std::fs::create_dir_all(&build_path).unwrap_or_else(|e| panic!("cannot create directory {}: {}", build_path.display(), e));
         std::fs::create_dir_all(&output_path).unwrap_or_else(|e| panic!("cannot create directory {}: {}", output_path.display(), e));
 

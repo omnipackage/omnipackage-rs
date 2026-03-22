@@ -3,11 +3,13 @@ use crate::logger::{Color, Logger, colorize};
 use std::fmt;
 use std::path::PathBuf;
 
+#[derive(Debug, Clone)]
 pub struct Output {
     pub distro: &'static Distro,
     pub success: bool,
     pub build_log: PathBuf,
     pub artefacts: Vec<PathBuf>,
+    pub distro_build_dir: PathBuf,
 }
 
 impl fmt::Display for Output {
