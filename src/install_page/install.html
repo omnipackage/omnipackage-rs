@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Install mpz</title>
+<title>Install {{ package_name }}</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -20,7 +20,6 @@
     --footer:    #adb5bd;
     --toggle-bg: #e9ecef;
   }
-
   [data-theme="dark"] {
     --bg:        #0f1117;
     --surface:   #1a1d27;
@@ -43,152 +42,104 @@
     padding: 2rem 1rem;
     transition: background .2s, color .2s;
   }
-
   .container { max-width: 900px; margin: 0 auto; }
 
+  /* ── Header ── */
   header { text-align: center; margin-bottom: 2.5rem; position: relative; }
   header h1 { font-size: 2rem; margin: .5rem 0 .25rem; }
   header blockquote {
-    color: var(--muted);
-    font-style: italic;
+    color: var(--muted); font-style: italic;
     border-left: 3px solid var(--border);
-    padding-left: .75rem;
-    margin: .5rem auto;
-    max-width: 400px;
-    text-align: left;
+    padding-left: .75rem; margin: .5rem auto;
+    max-width: 400px; text-align: left;
   }
   header blockquote a { color: var(--link); }
 
+  /* ── Theme toggle ── */
   .theme-toggle {
-    position: absolute;
-    top: 0; right: 0;
-    display: flex;
-    background: var(--toggle-bg);
-    border-radius: 20px;
-    padding: 3px;
-    gap: 2px;
+    position: absolute; top: 0; right: 0;
+    display: flex; background: var(--toggle-bg);
+    border-radius: 20px; padding: 3px; gap: 2px;
     border: 1px solid var(--border);
     transition: background .2s, border-color .2s;
   }
   .theme-toggle button {
-    background: none;
-    border: none;
-    border-radius: 16px;
-    padding: 4px 8px;
-    font-size: .75rem;
-    cursor: pointer;
-    color: var(--muted);
-    transition: background .15s, color .15s;
-    line-height: 1;
+    background: none; border: none; border-radius: 16px;
+    padding: 4px 8px; font-size: .75rem; cursor: pointer;
+    color: var(--muted); transition: background .15s, color .15s; line-height: 1;
   }
   .theme-toggle button.active {
-    background: var(--surface);
-    color: var(--text);
+    background: var(--surface); color: var(--text);
     box-shadow: 0 1px 3px rgba(0,0,0,.15);
   }
 
-  /* ── Distro family section label ── */
-  .distro-label {
+  /* ── Family group: icon left, accordions right ── */
+  .family-group {
     display: flex;
-    align-items: center;
-    gap: .6rem;
-    font-size: .7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    color: var(--muted);
-    margin: 1.5rem 0 .5rem;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-top: 1.75rem;
   }
-  .distro-label svg { width: 18px; height: 18px; flex-shrink: 0; }
-  .distro-label::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
+  .family-icon {
+    flex-shrink: 0;
+    width: 52px; height: 52px;
+    margin-top: .25rem; /* optically align with first accordion */
   }
+  .family-icon svg { width: 52px; height: 52px; display: block; }
+  .family-accordions { flex: 1; min-width: 0; }
 
   /* ── Accordion ── */
   .accordion {
     border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
-    margin-bottom: .5rem;
-    background: var(--surface);
+    border-radius: 8px; overflow: hidden;
+    margin-bottom: .5rem; background: var(--surface);
     transition: background .2s, border-color .2s;
   }
   .accordion-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: .85rem 1.1rem;
-    cursor: pointer;
-    user-select: none;
-    font-weight: 600;
-    font-size: .95rem;
-    transition: background .15s;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: .85rem 1.1rem; cursor: pointer; user-select: none;
+    font-weight: 600; font-size: .95rem; transition: background .15s;
   }
   .accordion-header:hover { background: var(--hover-bg); }
   .accordion-header .chevron {
-    width: 16px; height: 16px;
-    flex-shrink: 0;
-    transition: transform .3s ease;
-    color: var(--muted);
+    width: 16px; height: 16px; flex-shrink: 0;
+    transition: transform .3s ease; color: var(--muted);
   }
   .accordion.open > .accordion-header .chevron { transform: rotate(180deg); }
 
   .accordion-body {
-    display: grid;
-    grid-template-rows: 0fr;
+    display: grid; grid-template-rows: 0fr;
     transition: grid-template-rows .3s ease;
   }
   .accordion.open > .accordion-body { grid-template-rows: 1fr; }
-
   .accordion-inner {
-    overflow: hidden;
-    padding: 0 1.1rem;
+    overflow: hidden; padding: 0 1.1rem;
     transition: padding .3s ease;
   }
   .accordion.open > .accordion-body > .accordion-inner { padding: 0 1.1rem 1.1rem; }
 
-  /* ── Step labels ── */
+  /* ── Step label ── */
   .step-label {
-    font-size: .7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: var(--muted);
-    margin-bottom: .35rem;
-    margin-top: .9rem;
+    font-size: .7rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--muted);
+    margin-bottom: .35rem; margin-top: .9rem;
   }
 
   /* ── Code block ── */
   .code-block {
-    display: flex;
-    align-items: flex-start;
-    background: #1e1e2e;
-    color: #cdd6f4;
-    border-radius: 6px;
+    display: flex; align-items: flex-start;
+    background: #1e1e2e; color: #cdd6f4; border-radius: 6px;
     font-family: ui-monospace, 'Fira Code', monospace;
-    font-size: .8rem;
-    line-height: 1.6;
+    font-size: .8rem; line-height: 1.6;
   }
   .code-block .code-scroll {
-    flex: 1;
-    overflow-x: auto;
-    padding: .85rem 1rem;
-    white-space: pre;
+    flex: 1; overflow-x: auto; padding: .85rem 1rem; white-space: pre;
   }
   .copy-btn {
-    flex-shrink: 0;
-    align-self: flex-start;
-    margin: .5rem .5rem 0 0;
-    background: #313244;
-    border: none;
-    color: #cdd6f4;
-    border-radius: 4px;
-    padding: .25rem .6rem;
-    font-size: .7rem;
-    cursor: pointer;
+    flex-shrink: 0; align-self: flex-start;
+    margin: .5rem .5rem 0 0; background: #313244;
+    border: none; color: #cdd6f4; border-radius: 4px;
+    padding: .25rem .6rem; font-size: .7rem; cursor: pointer;
     transition: background .15s;
   }
   .copy-btn:hover { background: #45475a; }
@@ -196,62 +147,31 @@
 
   /* ── GPG collapsible ── */
   .gpg-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: .35rem;
-    margin-top: .9rem;
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: .2rem .6rem;
-    font-size: .7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: var(--muted);
-    cursor: pointer;
+    display: inline-flex; align-items: center; gap: .35rem;
+    margin-top: .9rem; background: none;
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: .2rem .6rem; font-size: .7rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); cursor: pointer;
     transition: background .15s, border-color .15s;
   }
   .gpg-toggle:hover { background: var(--hover-bg); }
-  .gpg-toggle .gpg-chevron {
-    width: 12px; height: 12px;
-    transition: transform .25s ease;
-  }
+  .gpg-toggle .gpg-chevron { width: 12px; height: 12px; transition: transform .25s ease; }
   .gpg-toggle.open .gpg-chevron { transform: rotate(180deg); }
 
-  .gpg-body {
-    display: grid;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows .25s ease;
-  }
+  .gpg-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s ease; }
   .gpg-body.open { grid-template-rows: 1fr; }
   .gpg-inner { overflow: hidden; }
-
   .gpg-block {
-    background: var(--gpg-bg);
-    border-radius: 6px;
-    padding: .75rem 1rem;
-    font-family: ui-monospace, monospace;
-    font-size: .75rem;
-    color: var(--gpg-text);
-    white-space: pre;
-    overflow-x: auto;
-    margin-top: .35rem;
-    transition: background .2s, color .2s;
+    background: var(--gpg-bg); border-radius: 6px; padding: .75rem 1rem;
+    font-family: ui-monospace, monospace; font-size: .75rem;
+    color: var(--gpg-text); white-space: pre; overflow-x: auto;
+    margin-top: .35rem; transition: background .2s, color .2s;
   }
 
-  /* ── Download link ── */
-  .download-label {
-    font-size: .8rem;
-    color: var(--muted);
-    margin-top: .85rem;
-    display: block;
-  }
-  .download-link {
-    font-size: .85rem;
-    display: inline-block;
-    color: var(--link);
-  }
+  /* ── Download ── */
+  .download-label { font-size: .8rem; color: var(--muted); margin-top: .85rem; display: block; }
+  .download-link  { font-size: .85rem; display: inline-block; color: var(--link); }
 
   footer { text-align: center; margin-top: 2.5rem; color: var(--footer); font-size: .8rem; }
   footer a { color: var(--footer); }
@@ -275,7 +195,6 @@
   <footer>Powered by <a href="https://omnipackage.org">OmniPackage</a></footer>
 </div>
 
-<!-- Accordion item template -->
 <template id="tpl-accordion">
   <div class="accordion">
     <div class="accordion-header">
@@ -291,7 +210,6 @@
           <span class="code-scroll acc-steps"></span>
           <button class="copy-btn">Copy</button>
         </div>
-
         <button class="gpg-toggle">
           GPG key
           <svg class="gpg-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -303,7 +221,6 @@
             <div class="gpg-block acc-gpg"></div>
           </div>
         </div>
-
         <span class="download-label">Or download package directly:</span>
         <a class="download-link acc-download" href="#"></a>
       </div>
@@ -313,257 +230,64 @@
 
 <script type="application/json" id="data">
 [
-  {
-    "distro_id":      "opensuse_15.5",
-    "distro_family":  "opensuse",
-    "install_steps":  "zypper addrepo --refresh https://repositories.omnipackage.org/oleg/mpz/opensuse-15-5/mpz.repo\nzypper refresh\nzypper install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/opensuse-15-5/mpz-2.0.3-1.x86_64.rpm"
-  },
-  {
-    "distro_id":      "opensuse_15.6",
-    "distro_family":  "opensuse",
-    "install_steps":  "zypper addrepo --refresh https://repositories.omnipackage.org/oleg/mpz/opensuse-15-6/mpz.repo\nzypper refresh\nzypper install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/opensuse-15-6/mpz-2.0.3-1.x86_64.rpm"
-  },
-  {
-    "distro_id":      "opensuse_16.0",
-    "distro_family":  "opensuse",
-    "install_steps":  "zypper addrepo --refresh https://repositories.omnipackage.org/oleg/mpz/opensuse-16-0/mpz.repo\nzypper refresh\nzypper install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/opensuse-16-0/mpz-2.0.3-1.x86_64.rpm"
-  },
-  {
-    "distro_id":      "opensuse_tumbleweed",
-    "distro_family":  "opensuse",
-    "install_steps":  "zypper addrepo --refresh https://repositories.omnipackage.org/oleg/mpz/opensuse-tumbleweed/mpz.repo\nzypper refresh\nzypper install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/opensuse-tumbleweed/mpz-2.0.3-1.x86_64.rpm"
-  },
-  {
-    "distro_id":      "fedora_40",
-    "distro_family":  "fedora",
-    "install_steps":  "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/fedora-40/mpz.repo\ndnf install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/fedora-40/mpz-2.0.3-1.fc40.x86_64.rpm"
-  },
-  {
-    "distro_id":      "fedora_41",
-    "distro_family":  "fedora",
-    "install_steps":  "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/fedora-41/mpz.repo\ndnf install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/fedora-41/mpz-2.0.3-1.fc41.x86_64.rpm"
-  },
-  {
-    "distro_id":      "fedora_42",
-    "distro_family":  "fedora",
-    "install_steps":  "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/fedora-42/mpz.repo\ndnf install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/fedora-42/mpz-2.0.3-1.fc42.x86_64.rpm"
-  },
-  {
-    "distro_id":      "fedora_rawhide",
-    "distro_family":  "fedora",
-    "install_steps":  "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/fedora-rawhide/mpz.repo\ndnf install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/fedora-rawhide/mpz-2.0.3-1.fc44.x86_64.rpm"
-  },
-  {
-    "distro_id":      "debian_11",
-    "distro_family":  "debian",
-    "install_steps":  "echo 'deb https://repositories.omnipackage.org/oleg/mpz/debian-11 stable/' | sudo tee /etc/apt/sources.list.d/omnipackage_mpz.list\ncurl -fsSL https://repositories.omnipackage.org/oleg/mpz/debian-11/stable/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/omnipackage_mpz.gpg > /dev/null\nsudo apt update\nsudo apt install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/debian-11/stable/mpz_2.0.3-0_amd64.deb"
-  },
-  {
-    "distro_id":      "debian_12",
-    "distro_family":  "debian",
-    "install_steps":  "echo 'deb https://repositories.omnipackage.org/oleg/mpz/debian-12 stable/' | sudo tee /etc/apt/sources.list.d/omnipackage_mpz.list\ncurl -fsSL https://repositories.omnipackage.org/oleg/mpz/debian-12/stable/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/omnipackage_mpz.gpg > /dev/null\nsudo apt update\nsudo apt install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/debian-12/stable/mpz_2.0.3-0_amd64.deb"
-  },
-  {
-    "distro_id":      "debian_13",
-    "distro_family":  "debian",
-    "install_steps":  "echo 'deb https://repositories.omnipackage.org/oleg/mpz/debian-13 stable/' | sudo tee /etc/apt/sources.list.d/omnipackage_mpz.list\ncurl -fsSL https://repositories.omnipackage.org/oleg/mpz/debian-13/stable/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/omnipackage_mpz.gpg > /dev/null\nsudo apt update\nsudo apt install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/debian-13/stable/mpz_2.0.3-0_amd64.deb"
-  },
-  {
-    "distro_id":      "debian_testing",
-    "distro_family":  "debian",
-    "install_steps":  "echo 'deb https://repositories.omnipackage.org/oleg/mpz/debian-testing stable/' | sudo tee /etc/apt/sources.list.d/omnipackage_mpz.list\ncurl -fsSL https://repositories.omnipackage.org/oleg/mpz/debian-testing/stable/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/omnipackage_mpz.gpg > /dev/null\nsudo apt update\nsudo apt install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/debian-testing/stable/mpz_2.0.3-0_amd64.deb"
-  },
-  {
-    "distro_id":      "ubuntu_22.04",
-    "distro_family":  "ubuntu",
-    "install_steps":  "echo 'deb https://repositories.omnipackage.org/oleg/mpz/ubuntu-22-04 stable/' | sudo tee /etc/apt/sources.list.d/omnipackage_mpz.list\ncurl -fsSL https://repositories.omnipackage.org/oleg/mpz/ubuntu-22-04/stable/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/omnipackage_mpz.gpg > /dev/null\nsudo apt update\nsudo apt install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/ubuntu-22-04/stable/mpz_2.0.3-0_amd64.deb"
-  },
-  {
-    "distro_id":      "ubuntu_24.04",
-    "distro_family":  "ubuntu",
-    "install_steps":  "echo 'deb https://repositories.omnipackage.org/oleg/mpz/ubuntu-24-04 stable/' | sudo tee /etc/apt/sources.list.d/omnipackage_mpz.list\ncurl -fsSL https://repositories.omnipackage.org/oleg/mpz/ubuntu-24-04/stable/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/omnipackage_mpz.gpg > /dev/null\nsudo apt update\nsudo apt install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/ubuntu-24-04/stable/mpz_2.0.3-0_amd64.deb"
-  },
-  {
-    "distro_id":      "ubuntu_25.04",
-    "distro_family":  "ubuntu",
-    "install_steps":  "echo 'deb https://repositories.omnipackage.org/oleg/mpz/ubuntu-25-04 stable/' | sudo tee /etc/apt/sources.list.d/omnipackage_mpz.list\ncurl -fsSL https://repositories.omnipackage.org/oleg/mpz/ubuntu-25-04/stable/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/omnipackage_mpz.gpg > /dev/null\nsudo apt update\nsudo apt install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/ubuntu-25-04/stable/mpz_2.0.3-0_amd64.deb"
-  },
-  {
-    "distro_id":      "almalinux_8",
-    "distro_family":  "almalinux",
-    "install_steps":  "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/almalinux-8/mpz.repo\ndnf install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/almalinux-8/mpz-2.0.3-1.el8.x86_64.rpm"
-  },
-  {
-    "distro_id":      "almalinux_9",
-    "distro_family":  "almalinux",
-    "install_steps":  "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/almalinux-9/mpz.repo\ndnf install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/almalinux-9/mpz-2.0.3-1.el9.x86_64.rpm"
-  },
-  {
-    "distro_id":      "almalinux_10",
-    "distro_family":  "almalinux",
-    "install_steps":  "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/almalinux-10/mpz.repo\ndnf install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/almalinux-10/mpz-2.0.3-1.el10.x86_64.rpm"
-  },
-  {
-    "distro_id":      "rockylinux_8",
-    "distro_family":  "rockylinux",
-    "install_steps":  "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/rockylinux-8/mpz.repo\ndnf install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/rockylinux-8/mpz-2.0.3-1.el8.x86_64.rpm"
-  },
-  {
-    "distro_id":      "rockylinux_9",
-    "distro_family":  "rockylinux",
-    "install_steps":  "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/rockylinux-9/mpz.repo\ndnf install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/rockylinux-9/mpz-2.0.3-1.el9.x86_64.rpm"
-  },
-  {
-    "distro_id":      "mageia_9",
-    "distro_family":  "mageia",
-    "install_steps":  "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/mageia-9/mpz.repo\ndnf install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/mageia-9/mpz-2.0.3-1.mga9.x86_64.rpm"
-  },
-  {
-    "distro_id":      "mageia_cauldron",
-    "distro_family":  "mageia",
-    "install_steps":  "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/mageia-cauldron/mpz.repo\ndnf install mpz",
-    "gpg_key":        "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org",
-    "download_url":   "https://repositories.omnipackage.org/oleg/mpz/mageia-cauldron/mpz-2.0.3-1.mga10.x86_64.rpm"
-  }
+  { "distro_id": "opensuse_15.5",      "distro_family": "opensuse",   "install_steps": "zypper addrepo --refresh https://repositories.omnipackage.org/oleg/mpz/opensuse-15-5/mpz.repo\nzypper refresh\nzypper install mpz",                                                                                                                                                                                                                                                 "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/opensuse-15-5/mpz-2.0.3-1.x86_64.rpm" },
+  { "distro_id": "opensuse_15.6",      "distro_family": "opensuse",   "install_steps": "zypper addrepo --refresh https://repositories.omnipackage.org/oleg/mpz/opensuse-15-6/mpz.repo\nzypper refresh\nzypper install mpz",                                                                                                                                                                                                                                                 "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/opensuse-15-6/mpz-2.0.3-1.x86_64.rpm" },
+  { "distro_id": "opensuse_16.0",      "distro_family": "opensuse",   "install_steps": "zypper addrepo --refresh https://repositories.omnipackage.org/oleg/mpz/opensuse-16-0/mpz.repo\nzypper refresh\nzypper install mpz",                                                                                                                                                                                                                                                 "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/opensuse-16-0/mpz-2.0.3-1.x86_64.rpm" },
+  { "distro_id": "opensuse_tumbleweed","distro_family": "opensuse",   "install_steps": "zypper addrepo --refresh https://repositories.omnipackage.org/oleg/mpz/opensuse-tumbleweed/mpz.repo\nzypper refresh\nzypper install mpz",                                                                                                                                                                                                                                            "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/opensuse-tumbleweed/mpz-2.0.3-1.x86_64.rpm" },
+  { "distro_id": "fedora_40",          "distro_family": "fedora",     "install_steps": "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/fedora-40/mpz.repo\ndnf install mpz",                                                                                                                                                                                                                                                              "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/fedora-40/mpz-2.0.3-1.fc40.x86_64.rpm" },
+  { "distro_id": "fedora_41",          "distro_family": "fedora",     "install_steps": "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/fedora-41/mpz.repo\ndnf install mpz",                                                                                                                                                                                                                                                              "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/fedora-41/mpz-2.0.3-1.fc41.x86_64.rpm" },
+  { "distro_id": "fedora_42",          "distro_family": "fedora",     "install_steps": "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/fedora-42/mpz.repo\ndnf install mpz",                                                                                                                                                                                                                                                              "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/fedora-42/mpz-2.0.3-1.fc42.x86_64.rpm" },
+  { "distro_id": "fedora_rawhide",     "distro_family": "fedora",     "install_steps": "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/fedora-rawhide/mpz.repo\ndnf install mpz",                                                                                                                                                                                                                                                         "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/fedora-rawhide/mpz-2.0.3-1.fc44.x86_64.rpm" },
+  { "distro_id": "debian_11",          "distro_family": "debian",     "install_steps": "echo 'deb https://repositories.omnipackage.org/oleg/mpz/debian-11 stable/' | sudo tee /etc/apt/sources.list.d/omnipackage_mpz.list\ncurl -fsSL https://repositories.omnipackage.org/oleg/mpz/debian-11/stable/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/omnipackage_mpz.gpg > /dev/null\nsudo apt update\nsudo apt install mpz",                                "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/debian-11/stable/mpz_2.0.3-0_amd64.deb" },
+  { "distro_id": "debian_12",          "distro_family": "debian",     "install_steps": "echo 'deb https://repositories.omnipackage.org/oleg/mpz/debian-12 stable/' | sudo tee /etc/apt/sources.list.d/omnipackage_mpz.list\ncurl -fsSL https://repositories.omnipackage.org/oleg/mpz/debian-12/stable/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/omnipackage_mpz.gpg > /dev/null\nsudo apt update\nsudo apt install mpz",                                "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/debian-12/stable/mpz_2.0.3-0_amd64.deb" },
+  { "distro_id": "debian_13",          "distro_family": "debian",     "install_steps": "echo 'deb https://repositories.omnipackage.org/oleg/mpz/debian-13 stable/' | sudo tee /etc/apt/sources.list.d/omnipackage_mpz.list\ncurl -fsSL https://repositories.omnipackage.org/oleg/mpz/debian-13/stable/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/omnipackage_mpz.gpg > /dev/null\nsudo apt update\nsudo apt install mpz",                                "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/debian-13/stable/mpz_2.0.3-0_amd64.deb" },
+  { "distro_id": "debian_testing",     "distro_family": "debian",     "install_steps": "echo 'deb https://repositories.omnipackage.org/oleg/mpz/debian-testing stable/' | sudo tee /etc/apt/sources.list.d/omnipackage_mpz.list\ncurl -fsSL https://repositories.omnipackage.org/oleg/mpz/debian-testing/stable/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/omnipackage_mpz.gpg > /dev/null\nsudo apt update\nsudo apt install mpz",                          "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/debian-testing/stable/mpz_2.0.3-0_amd64.deb" },
+  { "distro_id": "ubuntu_22.04",       "distro_family": "ubuntu",     "install_steps": "echo 'deb https://repositories.omnipackage.org/oleg/mpz/ubuntu-22-04 stable/' | sudo tee /etc/apt/sources.list.d/omnipackage_mpz.list\ncurl -fsSL https://repositories.omnipackage.org/oleg/mpz/ubuntu-22-04/stable/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/omnipackage_mpz.gpg > /dev/null\nsudo apt update\nsudo apt install mpz",                             "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/ubuntu-22-04/stable/mpz_2.0.3-0_amd64.deb" },
+  { "distro_id": "ubuntu_24.04",       "distro_family": "ubuntu",     "install_steps": "echo 'deb https://repositories.omnipackage.org/oleg/mpz/ubuntu-24-04 stable/' | sudo tee /etc/apt/sources.list.d/omnipackage_mpz.list\ncurl -fsSL https://repositories.omnipackage.org/oleg/mpz/ubuntu-24-04/stable/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/omnipackage_mpz.gpg > /dev/null\nsudo apt update\nsudo apt install mpz",                             "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/ubuntu-24-04/stable/mpz_2.0.3-0_amd64.deb" },
+  { "distro_id": "ubuntu_25.04",       "distro_family": "ubuntu",     "install_steps": "echo 'deb https://repositories.omnipackage.org/oleg/mpz/ubuntu-25-04 stable/' | sudo tee /etc/apt/sources.list.d/omnipackage_mpz.list\ncurl -fsSL https://repositories.omnipackage.org/oleg/mpz/ubuntu-25-04/stable/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/omnipackage_mpz.gpg > /dev/null\nsudo apt update\nsudo apt install mpz",                             "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/ubuntu-25-04/stable/mpz_2.0.3-0_amd64.deb" },
+  { "distro_id": "almalinux_8",        "distro_family": "almalinux",  "install_steps": "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/almalinux-8/mpz.repo\ndnf install mpz",                                                                                                                                                                                                                                                           "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/almalinux-8/mpz-2.0.3-1.el8.x86_64.rpm" },
+  { "distro_id": "almalinux_9",        "distro_family": "almalinux",  "install_steps": "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/almalinux-9/mpz.repo\ndnf install mpz",                                                                                                                                                                                                                                                           "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/almalinux-9/mpz-2.0.3-1.el9.x86_64.rpm" },
+  { "distro_id": "almalinux_10",       "distro_family": "almalinux",  "install_steps": "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/almalinux-10/mpz.repo\ndnf install mpz",                                                                                                                                                                                                                                                          "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/almalinux-10/mpz-2.0.3-1.el10.x86_64.rpm" },
+  { "distro_id": "rockylinux_8",       "distro_family": "rockylinux", "install_steps": "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/rockylinux-8/mpz.repo\ndnf install mpz",                                                                                                                                                                                                                                                          "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/rockylinux-8/mpz-2.0.3-1.el8.x86_64.rpm" },
+  { "distro_id": "rockylinux_9",       "distro_family": "rockylinux", "install_steps": "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/rockylinux-9/mpz.repo\ndnf install mpz",                                                                                                                                                                                                                                                          "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/rockylinux-9/mpz-2.0.3-1.el9.x86_64.rpm" },
+  { "distro_id": "mageia_9",           "distro_family": "mageia",     "install_steps": "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/mageia-9/mpz.repo\ndnf install mpz",                                                                                                                                                                                                                                                               "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/mageia-9/mpz-2.0.3-1.mga9.x86_64.rpm" },
+  { "distro_id": "mageia_cauldron",    "distro_family": "mageia",     "install_steps": "curl -o /etc/yum.repos.d/mpz.repo https://repositories.omnipackage.org/oleg/mpz/mageia-cauldron/mpz.repo\ndnf install mpz",                                                                                                                                                                                                                                                        "gpg_key": "pub   rsa4096 2024-05-10 [SCEA]\n      D6ED 0ECE 2DAC 71DA 61B4  3C50 DA01 38FD 21D3 9D31\nuid                      packages@omnipackage.org", "download_url": "https://repositories.omnipackage.org/oleg/mpz/mageia-cauldron/mpz-2.0.3-1.mga10.x86_64.rpm" }
 ]
 </script>
 
 <script>
-/* ── Theme ─────────────────────────────────────────────────────── */
+/* ── Theme ── */
 const mq = window.matchMedia('(prefers-color-scheme: dark)');
-
 function applyTheme(mode) {
   const dark = mode === 'dark' || (mode === 'auto' && mq.matches);
   document.documentElement.dataset.theme = dark ? 'dark' : '';
-  document.querySelectorAll('#themeToggle button').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.mode === mode);
-  });
+  document.querySelectorAll('#themeToggle button').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === mode));
 }
-
 let currentMode = localStorage.getItem('theme') || 'auto';
 applyTheme(currentMode);
-
 document.getElementById('themeToggle').addEventListener('click', e => {
-  const btn = e.target.closest('button[data-mode]');
-  if (!btn) return;
-  currentMode = btn.dataset.mode;
+  const b = e.target.closest('button[data-mode]');
+  if (!b) return;
+  currentMode = b.dataset.mode;
   localStorage.setItem('theme', currentMode);
   applyTheme(currentMode);
 });
-
 mq.addEventListener('change', () => { if (currentMode === 'auto') applyTheme('auto'); });
 
-/* ── Family metadata ────────────────────────────────────────────── */
-const families = {
-  opensuse: {
-    label: 'openSUSE',
-    icon: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="48" fill="#73ba25"/>
-      <path d="M50 18a32 32 0 1 0 32 32A32 32 0 0 0 50 18zm0 52a20 20 0 1 1 20-20 20 20 0 0 1-20 20z" fill="#fff"/>
-    </svg>`,
-  },
-  fedora: {
-    label: 'Fedora',
-    icon: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="48" fill="#3c6eb4"/>
-      <path d="M50 22c-15.46 0-28 12.54-28 28s12.54 28 28 28 28-12.54 28-28S65.46 22 50 22zm0 10a18 18 0 0 1 18 18H52V34.1A18 18 0 0 1 50 32zm-2 2.1V50H32a18 18 0 0 1 16-15.9zM32 52h16v15.9A18 18 0 0 1 32 52zm18 15.9V52h16a18 18 0 0 1-16 15.9z" fill="#fff"/>
-    </svg>`,
-  },
-  debian: {
-    label: 'Debian',
-    icon: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="48" fill="#d70a53"/>
-      <path d="M56 26c-11 0-22 7-25 18 3-4 8-7 14-7 9 0 15 7 15 16s-7 17-17 17c-12 0-19-9-19-20 0-16 13-30 32-30a34 34 0 0 1 0 68c-12 0-22-5-28-14 4 4 10 7 17 7 13 0 22-10 22-23s-9-22-21-22c-5 0-9 2-12 5 2-7 9-12 17-12a16 16 0 0 1 0 32 16 16 0 0 1-11-4c2 3 5 4 9 4 8 0 14-7 14-15s-6-16-14-16z" fill="#fff"/>
-    </svg>`,
-  },
-  ubuntu: {
-    label: 'Ubuntu',
-    icon: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="48" fill="#e95420"/>
-      <circle cx="50" cy="50" r="16" fill="none" stroke="#fff" stroke-width="9"/>
-      <circle cx="50" cy="22" r="7" fill="#fff"/>
-      <circle cx="25.3" cy="64" r="7" fill="#fff"/>
-      <circle cx="74.7" cy="64" r="7" fill="#fff"/>
-    </svg>`,
-  },
-  almalinux: {
-    label: 'AlmaLinux',
-    icon: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="48" fill="#1a1a2e"/>
-      <path d="M50 20 L62 44 L88 44 L67 59 L75 83 L50 68 L25 83 L33 59 L12 44 L38 44 Z" fill="#47a3f3"/>
-    </svg>`,
-  },
-  rockylinux: {
-    label: 'Rocky Linux',
-    icon: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="48" fill="#10b981"/>
-      <path d="M50 22 L72 35 L72 65 L50 78 L28 65 L28 35 Z" fill="none" stroke="#fff" stroke-width="6"/>
-      <circle cx="50" cy="50" r="10" fill="#fff"/>
-    </svg>`,
-  },
-  mageia: {
-    label: 'Mageia',
-    icon: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="48" fill="#2d4a8a"/>
-      <path d="M50 25 Q65 38 65 50 Q65 68 50 75 Q35 68 35 50 Q35 38 50 25Z" fill="#00adef"/>
-      <circle cx="50" cy="33" r="7" fill="#fff"/>
-    </svg>`,
-  },
+const distroLabels = {
+  opensuse: 'openSUSE', fedora: 'Fedora', debian: 'Debian',
+  ubuntu: 'Ubuntu', almalinux: 'AlmaLinux', rockylinux: 'Rocky Linux', mageia: 'Mageia',
 };
 
-/* ── Render ────────────────────────────────────────────────────── */
+/* ── Render ── */
 const distros  = JSON.parse(document.getElementById('data').textContent);
 const template = document.getElementById('tpl-accordion');
 const root     = document.getElementById('root');
 
 function distroName(distro_id, family) {
-  const prefix = families[family]?.label ?? family;
-  const suffix = distro_id
-    .slice(family.length)
-    .replace(/_/g, ' ')
-    .trim();
+  const prefix = distroLabels[family] ?? family;
+  const suffix = distro_id.slice(family.length).replace(/_/g, ' ').trim();
   return suffix ? `${prefix} ${suffix}` : prefix;
 }
 
@@ -578,12 +302,9 @@ function renderAccordion(distro) {
   acc.querySelector('.acc-download').href        = distro.download_url;
   acc.querySelector('.acc-download').textContent = pkg;
 
-  // Main accordion toggle
-  acc.querySelector('.accordion-header').addEventListener('click', () => {
-    acc.classList.toggle('open');
-  });
+  acc.querySelector('.accordion-header').addEventListener('click', () =>
+    acc.classList.toggle('open'));
 
-  // Copy button
   acc.querySelector('.copy-btn').addEventListener('click', e => {
     e.stopPropagation();
     const btn = e.currentTarget;
@@ -594,7 +315,6 @@ function renderAccordion(distro) {
     });
   });
 
-  // GPG toggle
   const gpgBtn  = acc.querySelector('.gpg-toggle');
   const gpgBody = acc.querySelector('.gpg-body');
   gpgBtn.addEventListener('click', () => {
@@ -605,26 +325,31 @@ function renderAccordion(distro) {
   return acc;
 }
 
-// Group distros by family, preserving first-seen order
+// Group by family preserving order
 const familyOrder = [];
 const byFamily = {};
 distros.forEach(d => {
-  if (!byFamily[d.distro_family]) {
-    familyOrder.push(d.distro_family);
-    byFamily[d.distro_family] = [];
-  }
+  if (!byFamily[d.distro_family]) { familyOrder.push(d.distro_family); byFamily[d.distro_family] = []; }
   byFamily[d.distro_family].push(d);
 });
 
 familyOrder.forEach(family => {
-  const meta = families[family] ?? { label: family, icon: '' };
+  const group = document.createElement('div');
+  group.className = 'family-group';
 
-  const labelEl = document.createElement('div');
-  labelEl.className = 'distro-label';
-  labelEl.innerHTML = meta.icon + meta.label;
-  root.appendChild(labelEl);
+  // Icon column
+  //const iconEl = document.createElement('div');
+  //iconEl.className = 'family-icon';
+  //iconEl.innerHTML = renderIcon(family);
+  //group.appendChild(renderIcon(family, 64));
 
-  byFamily[family].forEach(d => root.appendChild(renderAccordion(d)));
+  // Accordions column
+  const col = document.createElement('div');
+  col.className = 'family-accordions';
+  byFamily[family].forEach(d => col.appendChild(renderAccordion(d)));
+  group.appendChild(col);
+
+  root.appendChild(group);
 });
 </script>
 </body>
