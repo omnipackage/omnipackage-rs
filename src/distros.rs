@@ -29,7 +29,7 @@ pub struct Distros {
     distros: Vec<Distro>,
 }
 
-const DISTROS_YAML: &str = include_str!("../distros.yml");
+const DISTROS_YAML: &str = include_str!("distros.yml");
 static DISTROS: std::sync::OnceLock<Distros> = std::sync::OnceLock::new();
 
 impl Distros {
