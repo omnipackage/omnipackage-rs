@@ -73,19 +73,11 @@
     box-shadow: 0 1px 3px rgba(0,0,0,.15);
   }
 
-  /* ── Family group: icon left, accordions right ── */
+  /* ── Family group: accordions ── */
   .family-group {
-    display: flex;
-    align-items: flex-start;
     gap: 1rem;
     margin-top: 1.75rem;
   }
-  .family-icon {
-    flex-shrink: 0;
-    width: 52px; height: 52px;
-    margin-top: .25rem; /* optically align with first accordion */
-  }
-  .family-icon svg { width: 52px; height: 52px; display: block; }
   .family-accordions { flex: 1; min-width: 0; }
 
   /* ── Accordion ── */
@@ -337,13 +329,6 @@ familyOrder.forEach(family => {
   const group = document.createElement('div');
   group.className = 'family-group';
 
-  // Icon column
-  //const iconEl = document.createElement('div');
-  //iconEl.className = 'family-icon';
-  //iconEl.innerHTML = renderIcon(family);
-  //group.appendChild(renderIcon(family, 64));
-
-  // Accordions column
   const col = document.createElement('div');
   col.className = 'family-accordions';
   byFamily[family].forEach(d => col.appendChild(renderAccordion(d)));
