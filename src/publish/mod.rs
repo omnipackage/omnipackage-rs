@@ -22,6 +22,11 @@ pub struct PublishContext {
     pub build_dir: PathBuf,
 }
 
+#[derive(Debug, Clone)]
+struct SetupRepoOutput {
+    pub gpgkey: Key,
+}
+
 pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs, repository: &Option<String>) -> Result<(), String> {
     let config = project.load_config()?;
 
@@ -88,20 +93,19 @@ impl PublishContext {
                         return Err(format!("bucket '{}' does not exist", s3_config.bucket));
                     }
                     //s3.download_all(dir)?; // TODO: why this was disabled in Ruby's version? find out, also research how to keep N packages and publish multiple projects to one repo
-                    self.setup_repo(dir)?;
+                    let output = self.setup_repo(dir)?;
                     s3.upload_all(dir)?;
                     s3.delete_deleted_files(dir)?;
+                    Ok(output)
                 }
                 &_ => todo!(),
             }
-
-            Ok(())
         });
 
         match result {
-            Ok(_) => {
+            Ok(output) => {
                 Logger::new().info(format!("done repository publish for {}", self.distro.id));
-                self.update_install_page();
+                self.update_install_page(output);
             }
             Err(msg) => Logger::new().error(format!("error repository publish for {}: {}", self.distro.id, msg)),
         }
@@ -119,7 +123,7 @@ impl PublishContext {
         f(&dir)
     }
 
-    fn setup_repo(&self, dir: &Path) -> Result<(), String> {
+    fn setup_repo(&self, dir: &Path) -> Result<SetupRepoOutput, String> {
         for artefact in &self.artefacts {
             let dest = dir.join(artefact.file_name().unwrap_or_else(|| artefact.as_os_str()));
             std::fs::copy(artefact, &dest).map_err(|e| format!("cannot copy {} to {}: {}", artefact.display(), dest.display(), e))?;
@@ -134,8 +138,14 @@ impl PublishContext {
         self.write_gpg_keys(&gpgkey, home_dir, dir)?;
 
         match self.distro.package_type.as_str() {
-            "rpm" => self.setup_rpm_repo(&gpgkey, home_dir, dir),
-            "deb" => self.setup_deb_repo(&gpgkey, home_dir, dir),
+            "rpm" => {
+                self.setup_rpm_repo(&gpgkey, home_dir, dir);
+                Ok(SetupRepoOutput { gpgkey })
+            }
+            "deb" => {
+                self.setup_deb_repo(&gpgkey, home_dir, dir);
+                Ok(SetupRepoOutput { gpgkey })
+            }
             _ => Err(format!("unknown package type {}", self.distro.package_type)),
         }
     }
@@ -222,7 +232,7 @@ impl PublishContext {
             .collect()
     }
 
-    fn update_install_page(&self) {
+    fn update_install_page(&self, setup_repo_output: SetupRepoOutput) {
         match self.config.provider.as_str() {
             "s3" => {
                 let s3_config = self.config.s3();
@@ -236,7 +246,7 @@ impl PublishContext {
                     ("distro_id".to_string(), self.distro.id.clone()),
                     ("distro_name".to_string(), self.distro.name.clone()),
                     ("install_steps".to_string(), self.install_steps().join("\n")),
-                    ("gpg_key".to_string(), Gpg::new().key_from_private(&self.config.gpg_private_key().unwrap()).unwrap().pub_key),
+                    ("gpg_key".to_string(), setup_repo_output.gpgkey.pub_key),
                     ("download_url".to_string(), (self.distro_url() + "TODO").to_string()),
                 ]);
                 let repositories: install_page::Repositories = vec![repo];
