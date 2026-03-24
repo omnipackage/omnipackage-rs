@@ -233,27 +233,32 @@ impl PublishContext {
     }
 
     fn update_install_page(&self, setup_repo_output: SetupRepoOutput) {
+        const INSTALL_PAGE_NAME: &str = "install.html";
+
+        let vars = self.config.to_template_vars();
+        let repo = install_page::Repository::from([
+            ("distro_id".to_string(), self.distro.id.clone()),
+            ("distro_name".to_string(), self.distro.name.clone()),
+            ("install_steps".to_string(), self.install_steps().join("\n")),
+            ("gpg_key".to_string(), setup_repo_output.gpgkey.pub_key),
+            ("download_url".to_string(), (self.distro_url() + "TODO").to_string()),
+        ]);
+        let repositories: install_page::Repositories = vec![repo];
+
         match self.config.provider.as_str() {
             "s3" => {
                 let s3_config = self.config.s3();
                 let path = PathBuf::new().join(s3_config.path_in_bucket.as_deref().unwrap_or(""));
                 let s3 = s3::S3::new(s3_config, path.to_string_lossy().to_string());
 
-                let existing_page_bytes = s3.download_file("install.html").unwrap_or(vec![]);
+                let existing_page_bytes = s3.download_file(INSTALL_PAGE_NAME).unwrap_or(vec![]);
                 let existing_install_page = String::from_utf8_lossy(&existing_page_bytes).into_owned();
-                let vars = self.config.to_template_vars();
-                let repo = install_page::Repository::from([
-                    ("distro_id".to_string(), self.distro.id.clone()),
-                    ("distro_name".to_string(), self.distro.name.clone()),
-                    ("install_steps".to_string(), self.install_steps().join("\n")),
-                    ("gpg_key".to_string(), setup_repo_output.gpgkey.pub_key),
-                    ("download_url".to_string(), (self.distro_url() + "TODO").to_string()),
-                ]);
-                let repositories: install_page::Repositories = vec![repo];
                 let result_html = install_page::upsert(&existing_install_page, &repositories).unwrap();
                 let final_html = Template::from_content(&result_html).render(vars);
 
-                s3.upload_file("install.html", final_html.as_bytes().to_vec(), Some("text/html"));
+                if let Err(e) = s3.upload_file(INSTALL_PAGE_NAME, final_html.as_bytes().to_vec(), Some("text/html")) {
+                    Logger::new().error(format!("error uploading install page: {}", e));
+                }
             }
             &_ => todo!(),
         };
