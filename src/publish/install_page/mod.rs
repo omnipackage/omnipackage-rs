@@ -6,7 +6,7 @@ pub type Repository = HashMap<String, String>;
 pub type Repositories = Vec<Repository>;
 
 pub fn upsert(html: &str, repositories: &Repositories) -> Result<String, String> {
-    let mut repos = parse(html)?;
+    let mut repos = parse(html).unwrap_or_else(|_| vec![]);
 
     repositories.iter().for_each(|repo| {
         upsert_one(&mut repos, repo.clone());

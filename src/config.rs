@@ -80,6 +80,8 @@ pub struct Repository {
     pub s3: Option<S3Config>,
     pub gpg_private_key_base64: String,
     pub package_name: String,
+    #[serde(flatten, default)]
+    pub rest: HashMap<String, AnyValue>,
 }
 
 impl Repository {
@@ -100,6 +102,23 @@ impl Repository {
 
     pub fn project_slug(&self) -> String {
         self.package_name.clone() // TODO: make sure it's safe to use in S3 path
+    }
+
+    pub fn to_template_vars(&self) -> HashMap<String, Var> {
+        let mut vars = HashMap::new();
+        vars.insert("package_name".to_string(), self.package_name.clone().into());
+
+        for (k, v) in &self.rest {
+            let var = match v {
+                AnyValue::String(s) => s.clone().into(),
+                AnyValue::Bool(b) => (*b).into(),
+                AnyValue::Int(i) => (*i).into(),
+                AnyValue::Float(f) => f.to_string().into(),
+            };
+            vars.insert(k.clone(), var);
+        }
+
+        vars
     }
 }
 
