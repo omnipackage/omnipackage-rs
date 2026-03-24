@@ -184,18 +184,12 @@ fn main() {
                     artefacts: output.artefacts.clone(),
                     build_dir: output.distro_build_dir.clone(),
                 }
-                .run()
+                .run();
             });
         }
         Commands::Gpg { command } => match command {
             GpgCommands::Generate { output_dir, name, email, format } => {
                 let keys = exit_on_error(Gpg::new().generate_keys(&name, &email));
-
-                /*let priv_path = output_dir.join("private.asc");
-                let pub_path = output_dir.join("public.asc");
-                // std::fs::create_dir_all(&output_dir).unwrap_or_else(|e| panic!("cannot create directory {}: {}", output_dir.display(), e));
-                exit_on_error(std::fs::write(&priv_path, &keys.priv_key).map_err(|e| format!("cannot write {}: {}", priv_path.display(), e)));
-                exit_on_error(std::fs::write(&pub_path, &keys.pub_key).map_err(|e| format!("cannot write {}: {}", pub_path.display(), e)));*/
 
                 let (priv_content, pub_content) = match format.as_str() {
                     "base64" => {

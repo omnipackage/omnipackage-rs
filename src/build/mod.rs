@@ -10,7 +10,7 @@ use std::time::Instant;
 mod extract_version;
 mod job_variables;
 pub mod output;
-pub mod package;
+mod package;
 
 use job_variables::JobVariables;
 use output::Output;

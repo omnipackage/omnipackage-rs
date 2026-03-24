@@ -13,6 +13,15 @@ mod rpm;
 mod s3;
 
 #[derive(Debug, Clone)]
+pub struct Output {
+    pub distro: &'static Distro,
+    pub success: bool,
+    pub install_steps: String,
+    pub gpg_key_info: String,
+    pub download_url: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct PublishContext {
     pub distro: &'static Distro,
     pub logging_args: LoggingArgs,
@@ -58,9 +67,7 @@ pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs, reposito
         contexts.iter().map(|c| colorize(Color::BoldCyan, &c.distro.name)).collect::<Vec<_>>().join(", ")
     ));
 
-    contexts.iter().for_each(|c| {
-        c.run();
-    });
+    contexts.iter().for_each(|c| c.run());
 
     Ok(())
 }
@@ -100,9 +107,12 @@ impl PublishContext {
         });
 
         match result {
-            Ok(_) => Logger::new().info(format!("done repository publish for {}", self.distro.id)),
+            Ok(_) => {
+                Logger::new().info(format!("done repository publish for {}", self.distro.id));
+                self.update_install_page();
+            }
             Err(msg) => Logger::new().error(format!("error repository publish for {}: {}", self.distro.id, msg)),
-        };
+        }
     }
 
     fn within_repository_dir<F, R>(&self, f: F) -> Result<R, String>
@@ -209,4 +219,16 @@ impl PublishContext {
             &_ => todo!(),
         }
     }
+
+    fn install_steps(&self) -> Vec<String> {
+        self.distro
+            .install_steps
+            .iter()
+            .map(|command| command.replace("%{package_name}", &self.config.package_name))
+            .map(|command| command.replace("%{project_slug}", &self.config.project_slug()))
+            .map(|command| command.replace("%{url}", &self.distro_url()))
+            .collect()
+    }
+
+    fn update_install_page(&self) {}
 }
