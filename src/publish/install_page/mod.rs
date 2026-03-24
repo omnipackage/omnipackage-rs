@@ -5,7 +5,17 @@ const PAGE_TEMPLATE_HTML: &str = include_str!("install.html.liquid");
 pub type Repository = HashMap<String, String>;
 pub type Repositories = Vec<Repository>;
 
-pub fn parse(html: &str) -> Result<Repositories, String> {
+pub fn upsert(html: &str, repositories: &Repositories) -> Result<String, String> {
+    let mut repos = parse(html)?;
+
+    repositories.iter().for_each(|repo| {
+        upsert_one(&mut repos, repo.clone());
+    });
+
+    render(&repos)
+}
+
+fn parse(html: &str) -> Result<Repositories, String> {
     let start_tag = r#"<script type="application/json" id="data">"#;
 
     let start = html.find(start_tag).ok_or("cannot find data script tag")? + start_tag.len();
@@ -15,22 +25,26 @@ pub fn parse(html: &str) -> Result<Repositories, String> {
     serde_json::from_str(json).map_err(|e| format!("cannot parse data json: {}", e))
 }
 
-pub fn render(repositories: &Repositories) -> Result<String, String> {
+fn render(repositories: &Repositories) -> Result<String, String> {
     let html = PAGE_TEMPLATE_HTML;
     let start_tag = r#"<script type="application/json" id="data">"#;
 
-    let start = html.find(start_tag).ok_or("cannot find data script tag")? + start_tag.len();
-    let end = html[start..].find("</script>").ok_or("cannot find closing script tag")? + start;
+    let start_pos = html.find(start_tag).ok_or("cannot find data script tag")? + start_tag.len();
+    let end_pos = html[start_pos..].find("</script>").ok_or("cannot find closing script tag")? + start_pos;
+    let json = serde_json::to_string_pretty(repositories).map_err(|e| format!("cannot serialize data json: {}", e))?;
 
-    let json = serde_json::to_string_pretty(&repositories).map_err(|e| format!("cannot serialize data json: {}", e))?;
+    let mut rendered = String::with_capacity(html.len() + json.len());
+    rendered.push_str(&html[..start_pos]);
+    rendered.push_str(&json);
+    rendered.push_str(&html[end_pos..]);
 
-    Ok(format!("{}{}\n{}", &html[..start], json, &html[end..]))
+    Ok(rendered)
 }
 
-pub fn upsert_by_distro_id(repositories: &mut Repositories, distro_id: impl Into<String>, data: Repository) {
-    let distro_id = distro_id.into();
+fn upsert_one(repositories: &mut Repositories, data: Repository) {
+    let distro_id = data.get("distro_id").unwrap();
 
-    if let Some(repo) = repositories.iter_mut().find(|repo| repo.get("distro_id").is_some_and(|value| value == &distro_id)) {
+    if let Some(repo) = repositories.iter_mut().find(|repo| repo.get("distro_id").is_some_and(|value| value == distro_id)) {
         repo.extend(data);
     } else {
         repositories.push(data);
@@ -126,42 +140,6 @@ mod tests {
         assert_eq!(repos, repos2);
     }
 
-    /*#[test]
-    fn test_render_preserves_html_structure() {
-        let html = fixture();
-        let repos = parse(&html).expect("cannot parse");
-        let injected = render(&repos).expect("cannot render");
-
-        // html outside the script tag is unchanged
-        let start_tag = r#"<script type="application/json" id="data">"#;
-        let before_original = &html[..html.find(start_tag).unwrap()];
-        let before_injected = &injected[..injected.find(start_tag).unwrap()];
-        assert_eq!(before_original, before_injected);
-
-        let end_tag = "</script>";
-        let after_original = &html[html.find(end_tag).unwrap()..];
-        let after_injected = &injected[injected.find(end_tag).unwrap()..];
-        assert_eq!(after_original, after_injected);
-    }*/
-
-    /*#[test]
-    fn test_mutate_existing_entry() {
-        let html = fixture();
-        let mut repos = parse(&html).expect("cannot parse");
-
-        repos.get_mut("debian_12").unwrap().distro_name = "Debian 12 LTS".to_string();
-
-        upsert_by_distro_id(&repos, "debian_14", new_repo)
-
-        let injected = render(&repos).expect("cannot render");
-        let repos2 = parse(&injected).expect("cannot parse after render");
-
-        assert_eq!(repos2["debian_12"].distro_name, "Debian 12 LTS");
-        // other entries are untouched
-        assert_eq!(repos2["debian_11"].distro_name, "Debian 11");
-        assert_eq!(repos2.len(), 22);
-    }*/
-
     #[test]
     fn test_mutate_add_entry() {
         let html = fixture();
@@ -177,7 +155,7 @@ mod tests {
                 "https://repositories.omnipackage.org/oleg/mpz/debian-14/stable/mpz_2.0.3-0_amd64.deb".to_string(),
             ),
         ]);
-        upsert_by_distro_id(&mut repos, "debian_14", new_repo);
+        upsert_one(&mut repos, new_repo);
 
         let injected = render(&repos).expect("cannot render");
         let repos2 = parse(&injected).expect("cannot parse after render");
@@ -189,20 +167,39 @@ mod tests {
         );
     }
 
-    /*#[test]
-    fn test_mutate_remove_entry() {
+    #[test]
+    fn test_mutate_upsert_all() {
         let html = fixture();
         let mut repos = parse(&html).expect("cannot parse");
 
-        repos.remove("debian_12");
+        let new_repo1 = Repository::from([
+            ("distro_id".to_string(), "debian_14".to_string()),
+            ("distro_name".to_string(), "Debian 14".to_string()),
+            ("install_steps".to_string(), "apt install mpz".to_string()),
+            ("gpg_key".to_string(), "pub rsa4096 2024-05-10 [SCEA]".to_string()),
+            (
+                "download_url".to_string(),
+                "https://repositories.omnipackage.org/oleg/mpz/debian-14/stable/mpz_2.0.3-0_amd64.deb".to_string(),
+            ),
+        ]);
+        let new_repo2 = Repository::from([
+            ("distro_id".to_string(), "debian_15".to_string()),
+            ("distro_name".to_string(), "Debian 15 LTS".to_string()),
+            ("install_steps".to_string(), "apt install mpz".to_string()),
+            ("gpg_key".to_string(), "pub rsa4096 2024-05-10 [SCEA]".to_string()),
+            (
+                "download_url".to_string(),
+                "https://repositories.omnipackage.org/oleg/mpz/debian-15/stable/mpz_2.0.3-0_amd64.deb".to_string(),
+            ),
+        ]);
 
-        let injected = render(&repos).expect("cannot render");
-        let repos2 = parse(&injected).expect("cannot parse after render");
+        let new_repos: Repositories = vec![new_repo1, new_repo2];
+        let result = upsert(&html, &new_repos).unwrap();
 
-        assert_eq!(repos2.len(), 21);
-        assert!(!repos2.contains_key("debian_12"));
-        // others still present
-        assert!(repos2.contains_key("debian_11"));
-        assert!(repos2.contains_key("debian_13"));
-    }*/
+        assert!(result.contains("Debian 14"));
+        assert!(result.contains("Debian 15 LTS"));
+
+        let repos2 = parse(&result).unwrap();
+        assert_eq!(repos2.len(), 24);
+    }
 }
