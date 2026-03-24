@@ -13,6 +13,7 @@ documentation = "https://docs.omnipackage.org/"
 clap = { version = "*", features = ["derive"] }
 serde = { version = "*", features = ["derive"] }
 serde-saphyr = "*"
+serde_json = "*"
 liquid = "*"
 regex = "*"
 tempfile = "*"

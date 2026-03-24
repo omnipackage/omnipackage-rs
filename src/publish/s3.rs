@@ -134,6 +134,38 @@ impl S3 {
         })
     }
 
+    pub fn download_file(&self, key: &str) -> Result<Vec<u8>, String> {
+        block(async {
+            let full_key = format!("{}/{}", self.path.trim_end_matches('/'), key.trim_start_matches('/'));
+
+            let response = self
+                .client
+                .get_object()
+                .bucket(&self.bucket)
+                .key(&full_key)
+                .send()
+                .await
+                .map_err(|e| format!("cannot download {}: {}", full_key, e))?;
+
+            let bytes = response.body.collect().await.map_err(|e| format!("cannot read body of {}: {}", full_key, e))?.into_bytes().to_vec();
+            Ok(bytes)
+        })
+    }
+
+    pub fn upload_file(&self, key: &str, data: Vec<u8>, content_type: Option<&str>) -> Result<(), String> {
+        block(async {
+            let full_key = format!("{}/{}", self.path.trim_end_matches('/'), key.trim_start_matches('/'));
+
+            let body = aws_sdk_s3::primitives::ByteStream::from(data);
+            let mut req = self.client.put_object().bucket(&self.bucket).key(&full_key).body(body);
+            if let Some(ct) = content_type {
+                req = req.content_type(ct);
+            }
+            req.send().await.map_err(|e| format!("cannot upload {}: {}", full_key, e))?;
+            Ok(())
+        })
+    }
+
     async fn list_objects(&self) -> Result<Vec<String>, String> {
         let mut keys = vec![];
         let mut continuation_token: Option<String> = None;
