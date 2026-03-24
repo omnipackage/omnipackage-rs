@@ -272,13 +272,13 @@ function inferFamily(distro) {
   const id = distro.distro_id.toLowerCase();
   const name = distro.distro_name.toLowerCase();
 
-  if (id.startsWith('opensuse_') || name.startsWith('opensuse')) return 'openSUSE';
-  if (id.startsWith('fedora_') || name.startsWith('fedora')) return 'Fedora';
-  if (id.startsWith('debian_') || name.startsWith('debian')) return 'Debian';
-  if (id.startsWith('ubuntu_') || name.startsWith('ubuntu')) return 'Ubuntu';
-  if (id.startsWith('almalinux_') || name.startsWith('almalinux')) return 'AlmaLinux';
-  if (id.startsWith('rockylinux_') || name.startsWith('rocky linux')) return 'Rocky Linux';
-  if (id.startsWith('mageia_') || name.startsWith('mageia')) return 'Mageia';
+  if (id.includes('opensuse') || name.includes('opensuse')) return 'openSUSE';
+  if (id.includes('fedora') || name.includes('fedora')) return 'Fedora';
+  if (id.includes('debian') || name.includes('debian')) return 'Debian';
+  if (id.includes('ubuntu') || name.includes('ubuntu')) return 'Ubuntu';
+  if (id.includes('alma') || name.includes('alma')) return 'AlmaLinux';
+  if (id.includes('rocky') || name.includes('rocky')) return 'Rocky Linux';
+  if (id.includes('mageia') || name.includes('mageia')) return 'Mageia';
 
   return 'Other';
 }
