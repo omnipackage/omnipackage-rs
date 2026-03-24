@@ -1,4 +1,4 @@
-use crate::build::package::template::Var;
+use crate::template::Var;
 use chrono::Utc;
 use std::collections::HashMap;
 
@@ -90,7 +90,7 @@ mod tests {
         let path = dir.path().join("template.liquid");
         std::fs::write(&path, "{{ version }} {{ secrets.api_key }}").unwrap();
 
-        let template = crate::build::package::template::Template::new(path);
+        let template = crate::template::Template::from_file(path);
         let output = template.render(vars.to_template_vars());
         assert_eq!(output, "1.2.3 abc123");
     }

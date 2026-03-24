@@ -1,6 +1,6 @@
 use crate::build::BuildContext;
 use crate::build::package::Package;
-use crate::build::package::template::{Template, Var};
+use crate::template::{Template, Var};
 use std::collections::HashMap;
 
 impl BuildContext {
@@ -16,7 +16,7 @@ impl BuildContext {
         let mut template_vars: HashMap<String, Var> = self.job_variables.to_template_vars();
         template_vars.extend(self.config.to_template_vars());
         template_vars.insert("source_folder_name".to_string(), source_folder_name.clone().into());
-        let template = Template::new(self.source_dir.join(&specfile_path_template_path));
+        let template = Template::from_file(self.source_dir.join(&specfile_path_template_path));
         template.render_to_file(template_vars, rpmbuild_path.join(&specfile_name));
 
         let mut mounts: HashMap<String, String> = HashMap::new();

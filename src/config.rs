@@ -1,5 +1,5 @@
-use crate::build::package::template::Var;
 use crate::logger::Logger;
+use crate::template::Var;
 use base64::{Engine, engine::general_purpose};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -276,7 +276,7 @@ mod tests {
         let path = dir.path().join("template.liquid");
         std::fs::write(&path, "{{ description }} {{ custom_string }} {{ custom_bool }}").unwrap();
 
-        let template = crate::build::package::template::Template::new(path);
+        let template = crate::template::Template::from_file(path);
         let output = template.render(vars);
         assert_eq!(output, "Test hello true");
     }

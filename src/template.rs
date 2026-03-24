@@ -1,7 +1,7 @@
 use liquid::ParserBuilder;
 use liquid::model::Value;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone)]
 pub struct Var(Value);
@@ -48,16 +48,18 @@ pub struct Template {
 }
 
 impl Template {
-    pub fn new(path: PathBuf) -> Self {
-        let content = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("cannot read template {}: {}", path.display(), e));
-
+    pub fn from_content(content: impl Into<String>) -> Self {
         let template = ParserBuilder::with_stdlib()
             .build()
             .unwrap()
-            .parse(&content)
-            .unwrap_or_else(|e| panic!("cannot parse template {}: {}", path.display(), e));
-
+            .parse(&content.into())
+            .unwrap_or_else(|e| panic!("cannot parse template: {}", e));
         Self { template }
+    }
+
+    pub fn from_file(path: impl AsRef<Path>) -> Self {
+        let content = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("cannot read template {}: {}", path.as_ref().display(), e));
+        Self::from_content(content)
     }
 
     pub fn render(&self, vars: impl IntoIterator<Item = (String, Var)>) -> String {
@@ -84,7 +86,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("template.liquid");
         std::fs::write(&path, content).unwrap();
-        (Template::new(path), dir)
+        (Template::from_file(path), dir)
     }
 
     #[test]

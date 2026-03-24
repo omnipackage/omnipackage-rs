@@ -4,7 +4,6 @@ use std::path::PathBuf;
 
 mod deb;
 mod rpm;
-pub mod template;
 
 pub struct Package {
     pub distro: &'static Distro,

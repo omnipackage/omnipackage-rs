@@ -1,6 +1,6 @@
 use crate::build::BuildContext;
 use crate::build::package::Package;
-use crate::build::package::template::{Template, Var};
+use crate::template::{Template, Var};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -51,7 +51,7 @@ impl BuildContext {
 
                 if path.extension().and_then(|e| e.to_str()) == Some("liquid") {
                     let dest_without_ext = to.join(path.file_stem().unwrap().to_string_lossy().as_ref());
-                    Template::new(path).render_to_file(vars.clone(), dest_without_ext);
+                    Template::from_file(path).render_to_file(vars.clone(), dest_without_ext);
                 } else {
                     std::fs::copy(&path, &dest).unwrap_or_else(|e| panic!("cannot copy {} to {}: {}", path.display(), dest.display(), e));
                 }

@@ -12,6 +12,7 @@ mod gpg;
 mod logger;
 mod publish;
 mod shell;
+mod template;
 
 use config::Config;
 use gpg::Gpg;
