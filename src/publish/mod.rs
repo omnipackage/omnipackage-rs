@@ -8,6 +8,7 @@ use crate::{JobArgs, LoggingArgs, ProjectArgs, PublishArgs};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+mod artefacts;
 mod deb;
 mod install_page;
 mod rpm;
@@ -25,6 +26,7 @@ pub struct PublishContext {
 #[derive(Debug, Clone)]
 struct SetupRepoOutput {
     pub gpgkey: Key,
+    pub dir: PathBuf,
 }
 
 pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs, repository: &Option<String>) -> Result<(), String> {
@@ -140,11 +142,11 @@ impl PublishContext {
         match self.distro.package_type.as_str() {
             "rpm" => {
                 self.setup_rpm_repo(&gpgkey, home_dir, dir);
-                Ok(SetupRepoOutput { gpgkey })
+                Ok(SetupRepoOutput { gpgkey, dir: dir.to_path_buf() })
             }
             "deb" => {
                 self.setup_deb_repo(&gpgkey, home_dir, dir);
-                Ok(SetupRepoOutput { gpgkey })
+                Ok(SetupRepoOutput { gpgkey, dir: dir.to_path_buf() })
             }
             _ => Err(format!("unknown package type {}", self.distro.package_type)),
         }
@@ -235,13 +237,21 @@ impl PublishContext {
     fn update_install_page(&self, setup_repo_output: SetupRepoOutput) {
         const INSTALL_PAGE_NAME: &str = "install.html";
 
+        let download_url = match self.package_download_url(&setup_repo_output) {
+            Ok(url) => url,
+            Err(e) => {
+                Logger::new().error(e);
+                return;
+            }
+        };
+
         let vars = self.config.to_template_vars();
         let repo = install_page::Repository::from([
             ("distro_id".to_string(), self.distro.id.clone()),
             ("distro_name".to_string(), self.distro.name.clone()),
             ("install_steps".to_string(), self.install_steps().join("\n")),
             ("gpg_key".to_string(), setup_repo_output.gpgkey.pub_key),
-            ("download_url".to_string(), (self.distro_url() + "TODO").to_string()),
+            ("download_url".to_string(), download_url),
         ]);
         let repositories: install_page::Repositories = vec![repo];
 
@@ -253,14 +263,27 @@ impl PublishContext {
 
                 let existing_page_bytes = s3.download_file(INSTALL_PAGE_NAME).unwrap_or(vec![]);
                 let existing_install_page = String::from_utf8_lossy(&existing_page_bytes).into_owned();
-                let result_html = install_page::upsert(&existing_install_page, &repositories).unwrap();
-                let final_html = Template::from_content(&result_html).render(vars);
+                let template_html = install_page::upsert(&existing_install_page, &repositories).unwrap();
+                let result_html = Template::from_content(&template_html).render(vars);
 
-                if let Err(e) = s3.upload_file(INSTALL_PAGE_NAME, final_html.as_bytes().to_vec(), Some("text/html")) {
-                    Logger::new().error(format!("error uploading install page: {}", e));
+                match s3.upload_file(INSTALL_PAGE_NAME, result_html.as_bytes().to_vec(), Some("text/html")) {
+                    Ok(_) => {
+                        let url = format!("{}/{}", s3_config.base_bucket_url(), INSTALL_PAGE_NAME);
+                        Logger::new().info(format!("package install page deployed: {}", url));
+                    }
+                    Err(e) => {
+                        Logger::new().error(format!("error uploading install page: {}", e));
+                    }
                 }
             }
             &_ => todo!(),
         };
+    }
+
+    fn package_download_url(&self, setup_repo_output: &SetupRepoOutput) -> Result<String, String> {
+        let package_files = artefacts::find_artefacts_in_repository(&self.artefacts, &setup_repo_output.dir).map_err(|e| format!("cannot find packages in repository dir: {e}"))?;
+        let package_file = package_files.first().ok_or_else(|| "no packages found in repository dir".to_string())?;
+
+        Ok(format!("{}/{}", self.distro_url().trim_end_matches('/'), package_file.relative_path.display()))
     }
 }

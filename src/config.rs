@@ -3,7 +3,7 @@ use crate::template::Var;
 use base64::{Engine, engine::general_purpose};
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ExtractVersionFile {
@@ -123,10 +123,15 @@ impl Repository {
 }
 
 impl S3Config {
-    pub fn base_url(&self) -> &str {
+    pub fn base_url(&self) -> String {
         let url = self.bucket_public_url.as_deref().unwrap_or(&self.endpoint);
         // TODO: handle different providers' shenanigans and/or force_path_style
-        url.trim_end_matches('/')
+        url.trim_end_matches('/').to_string()
+    }
+
+    pub fn base_bucket_url(&self) -> String {
+        let path_in_b = PathBuf::new().join(self.path_in_bucket.as_deref().unwrap_or(""));
+        format!("{}/{}", self.base_url().trim_end_matches('/'), path_in_b.display())
     }
 }
 
