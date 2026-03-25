@@ -1,3 +1,4 @@
+use crate::distros::Distros;
 use std::collections::HashMap;
 
 const PAGE_TEMPLATE_HTML: &str = include_str!("install.html.liquid");
@@ -31,7 +32,11 @@ fn render(repositories: &Repositories) -> Result<String, String> {
 
     let start_pos = html.find(start_tag).ok_or("cannot find data script tag")? + start_tag.len();
     let end_pos = html[start_pos..].find("</script>").ok_or("cannot find closing script tag")? + start_pos;
-    let json = serde_json::to_string_pretty(repositories).map_err(|e| format!("cannot serialize data json: {}", e))?;
+
+    let ids = Distros::get().ids();
+    let mut sorted = repositories.clone();
+    sorted.sort_by_key(|repo| repo.get("distro_id").and_then(|id| ids.iter().position(|d| d == id)).unwrap_or(usize::MAX));
+    let json = serde_json::to_string_pretty(&sorted).map_err(|e| format!("cannot serialize data json: {}", e))?;
 
     let mut rendered = String::with_capacity(html.len() + json.len());
     rendered.push_str(&html[..start_pos]);
@@ -134,9 +139,11 @@ mod tests {
     #[test]
     fn test_render_round_trip() {
         let html = fixture();
-        let repos = parse(&html).expect("cannot parse");
+        let mut repos = parse(&html).expect("cannot parse");
+        repos.sort_by_key(|r| r.get("distro_id").cloned().unwrap_or_default());
         let injected = render(&repos).expect("cannot render");
-        let repos2 = parse(&injected).expect("cannot parse after render");
+        let mut repos2 = parse(&injected).expect("cannot parse after render");
+        repos2.sort_by_key(|r| r.get("distro_id").cloned().unwrap_or_default());
         assert_eq!(repos, repos2);
     }
 
