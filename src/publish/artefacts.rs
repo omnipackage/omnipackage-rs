@@ -17,7 +17,6 @@ pub fn find_artefacts_in_repository(artefacts: &[PathBuf], work_dir: &Path) -> R
         for entry in glob::glob(&pattern)? {
             let full_path = entry?;
 
-            // Strip work_dir prefix to get the relative path
             let relative_path = full_path.strip_prefix(work_dir).map(PathBuf::from).unwrap_or_else(|_| full_path.clone());
 
             results.push(ArtifactMatch {
