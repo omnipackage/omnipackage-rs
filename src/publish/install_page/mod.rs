@@ -17,21 +17,14 @@ pub fn upsert(html: &str, repositories: &Repositories) -> Result<String, String>
 }
 
 fn parse(html: &str) -> Result<Repositories, String> {
-    let start_tag = r#"<script type="application/json" id="data">"#;
-
-    let start = html.find(start_tag).ok_or("cannot find data script tag")? + start_tag.len();
-    let end = html[start..].find("</script>").ok_or("cannot find closing script tag")? + start;
+    let (start, end) = extract_json_bounds(html)?;
     let json = html[start..end].trim();
-
     serde_json::from_str(json).map_err(|e| format!("cannot parse data json: {}", e))
 }
 
 fn render(repositories: &Repositories) -> Result<String, String> {
     let html = PAGE_TEMPLATE_HTML;
-    let start_tag = r#"<script type="application/json" id="data">"#;
-
-    let start_pos = html.find(start_tag).ok_or("cannot find data script tag")? + start_tag.len();
-    let end_pos = html[start_pos..].find("</script>").ok_or("cannot find closing script tag")? + start_pos;
+    let (start_pos, end_pos) = extract_json_bounds(html)?;
 
     let ids = Distros::get().ids();
     let mut sorted = repositories.clone();
@@ -44,6 +37,13 @@ fn render(repositories: &Repositories) -> Result<String, String> {
     rendered.push_str(&html[end_pos..]);
 
     Ok(rendered)
+}
+
+fn extract_json_bounds(html: &str) -> Result<(usize, usize), String> {
+    let start_tag = r#"<script type="application/json" id="data">"#;
+    let start = html.find(start_tag).ok_or("cannot find data script tag")? + start_tag.len();
+    let end = html[start..].find("</script>").ok_or("cannot find closing script tag")? + start;
+    Ok((start, end))
 }
 
 fn upsert_one(repositories: &mut Repositories, data: Repository) {
