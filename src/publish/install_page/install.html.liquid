@@ -165,10 +165,25 @@
 
   footer { text-align: center; margin-top: 2.5rem; color: var(--footer); font-size: .8rem; }
   footer a { color: var(--footer); }
+
+  .no-js-warning {
+      background: #ffdddd;
+      color: #900;
+      padding: 1rem;
+      border: 1px solid #900;
+      margin: 1rem 0;
+      font-family: sans-serif;
+    }
 </style>
 </head>
 <body>
 <div class="container">
+  <noscript>
+    <div class="no-js-warning">
+      This page requires JavaScript to work properly
+    </div>
+  </noscript>
+
   <header>
     <div class="theme-toggle" id="themeToggle">
       <button data-mode="light" title="Light">☀ Light</button>
