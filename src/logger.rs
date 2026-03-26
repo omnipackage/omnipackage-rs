@@ -101,15 +101,15 @@ impl Logger {
     }
 
     pub fn info(&self, msg: impl std::fmt::Display) {
-        self.print(format!("{} {} {}", colorize(Color::Cyan, timestamp()), colorize(Color::Green, "[INFO]"), msg));
+        self.print(format!("{} {} {}", colorize(Color::Cyan, timestamp()), colorize(Color::Green, "[I]"), msg));
     }
 
     pub fn warn(&self, msg: impl std::fmt::Display) {
-        self.print(format!("{} {} {}", colorize(Color::Cyan, timestamp()), colorize(Color::Yellow, "[WARN]"), msg));
+        self.print(format!("{} {} {}", colorize(Color::Cyan, timestamp()), colorize(Color::Yellow, "[W]"), msg));
     }
 
     pub fn error(&self, msg: impl std::fmt::Display) {
-        self.print(format!("{} {} {}", colorize(Color::Cyan, timestamp()), colorize(Color::Red, "[ERROR]"), msg));
+        self.print(format!("{} {} {}", colorize(Color::Cyan, timestamp()), colorize(Color::Red, "[E]"), msg));
     }
 
     pub fn cmd(&self, program: &str, args: &[String], env: &[(String, String)]) {
