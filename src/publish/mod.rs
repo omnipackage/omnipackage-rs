@@ -46,7 +46,7 @@ pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs, reposito
             }
 
             let distro = Distros::get().by_id(&build.distro);
-            let artefacts = find_artefacts(distro, &build_dir);
+            let artefacts = artefacts::find_artefacts_in_build_dir(distro, &build_dir);
             if artefacts.is_empty() {
                 return None;
             }
@@ -69,16 +69,6 @@ pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs, reposito
     contexts.iter().for_each(|c| c.run());
 
     Ok(())
-}
-
-fn find_artefacts(distro: &'static Distro, build_dir: &Path) -> Vec<PathBuf> {
-    let pattern = match distro.package_type.as_str() {
-        "rpm" => build_dir.join("RPMS/**/*.rpm"),
-        "deb" => build_dir.join("output").join("*.deb"), // NOTE: copy-paste, same logic happens in Package build
-        _ => panic!("unknown package type {}", distro.package_type),
-    };
-
-    glob::glob(pattern.to_str().unwrap()).unwrap().filter_map(|e| e.ok()).collect()
 }
 
 impl PublishContext {

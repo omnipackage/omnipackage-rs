@@ -1,3 +1,4 @@
+use crate::distros::Distro;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
@@ -27,6 +28,16 @@ pub fn find_artefacts_in_repository(artefacts: &[PathBuf], work_dir: &Path) -> R
     }
 
     Ok(results)
+}
+
+pub fn find_artefacts_in_build_dir(distro: &'static Distro, build_dir: &Path) -> Vec<PathBuf> {
+    let pattern = match distro.package_type.as_str() {
+        "rpm" => build_dir.join("RPMS/**/*.rpm"),
+        "deb" => build_dir.join("output").join("*.deb"), // NOTE: copy-paste, same logic happens in Package build
+        _ => panic!("unknown package type {}", distro.package_type),
+    };
+
+    glob::glob(pattern.to_str().unwrap()).unwrap().filter_map(|e| e.ok()).collect()
 }
 
 #[cfg(test)]
