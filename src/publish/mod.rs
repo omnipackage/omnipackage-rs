@@ -226,6 +226,7 @@ impl PublishContext {
 
     fn update_install_page(&self, setup_repo_output: SetupRepoOutput) {
         const INSTALL_PAGE_NAME: &str = "install.html";
+        const BADGE_NAME: &str = "badge.svg";
 
         let download_url = match self.package_download_url(&setup_repo_output) {
             Ok(url) => url,
@@ -241,6 +242,7 @@ impl PublishContext {
             ("install_steps".to_string(), self.install_steps().join("\n")),
             ("gpg_key".to_string(), setup_repo_output.gpgkey.pub_key),
             ("download_url".to_string(), download_url),
+            ("package_type".to_string(), self.distro.package_type.clone()),
         ]);
         let repositories: install_page::Repositories = vec![repo];
 
@@ -252,12 +254,25 @@ impl PublishContext {
 
                 let existing_page_bytes = s3.download_file(INSTALL_PAGE_NAME).unwrap_or(vec![]);
                 let existing_install_page = String::from_utf8_lossy(&existing_page_bytes).into_owned();
-                let result_html = install_page::upsert(&existing_install_page, &repositories, self.config.to_template_vars()).unwrap();
+                let output = install_page::upsert(&existing_install_page, &repositories, self.config.to_template_vars()).unwrap();
 
-                match s3.upload_file(INSTALL_PAGE_NAME, result_html.as_bytes().to_vec(), Some("text/html")) {
+                match s3.upload_file(INSTALL_PAGE_NAME, output.install_page.as_bytes().to_vec(), Some("text/html")) {
                     Ok(_) => {
-                        let url = format!("{}/{}", s3_config.base_bucket_url(), INSTALL_PAGE_NAME);
-                        Logger::new().info(format!("package install page deployed: {}", url));
+                        let page_url = format!("{}/{}", s3_config.base_bucket_url(), INSTALL_PAGE_NAME);
+                        Logger::new().info(format!("package install page deployed: {}", page_url));
+
+                        match s3.upload_file(BADGE_NAME, output.badge.as_bytes().to_vec(), Some("image/svg+xml")) {
+                            Ok(_) => {
+                                let badge_url = format!("{}/{}", s3_config.base_bucket_url(), BADGE_NAME);
+                                let page_url = format!("{}/{}", s3_config.base_bucket_url(), INSTALL_PAGE_NAME);
+                                let title = "OmniPackage repositories badge";
+                                let md = format!("[![{title}]({badge_url})]({page_url})");
+                                Logger::new().info(format!("badge deployed: {}", md));
+                            }
+                            Err(e) => {
+                                Logger::new().error(format!("error uploading badge: {}", e));
+                            }
+                        }
                     }
                     Err(e) => {
                         Logger::new().error(format!("error uploading install page: {}", e));

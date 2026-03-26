@@ -8,7 +8,13 @@ const BADGE_TEMPLATE_SVG: &str = include_str!("badge.svg.liquid");
 pub type Repository = HashMap<String, String>;
 pub type Repositories = Vec<Repository>;
 
-pub fn upsert(existing_page_html: &str, repositories: &Repositories, template_vars: HashMap<String, Var>) -> Result<String, String> {
+#[derive(Debug, Clone)]
+pub struct Output {
+    pub install_page: String,
+    pub badge: String,
+}
+
+pub fn upsert(existing_page_html: &str, repositories: &Repositories, template_vars: HashMap<String, Var>) -> Result<Output, String> {
     let mut repos = parse(existing_page_html).unwrap_or_else(|_| vec![]);
 
     repositories.iter().for_each(|repo| {
@@ -16,18 +22,26 @@ pub fn upsert(existing_page_html: &str, repositories: &Repositories, template_va
     });
 
     let template_html = render(&repos)?;
-    Ok(Template::from_content(&template_html).render(template_vars))
+
+    let install_page = Template::from_content(&template_html).render(template_vars.clone());
+    let badge = render_badge(&repos, template_vars.clone());
+    Ok(Output { install_page, badge })
 }
 
-/*pub fn render_badge(repositories: &Repositories, template_vars: HashMap<String, Var>) -> Result<String, String> {
+fn render_badge(repositories: &Repositories, template_vars: HashMap<String, Var>) -> String {
     let mut vars = template_vars.clone();
-    vars.insert("title".to_string(), "OmniPackage repositories badge".to_string());
-    vars.insert("text".to_string(), "#{result.rpm} RPM #{result.deb} DEB".to_string());
 
-    let template_html = render(&repos)?;
+    let (rpm_count, deb_count) = repositories.iter().fold((0, 0), |(rpm, deb), r| match r.get("package_type").map(|t| t.as_str()) {
+        Some("rpm") => (rpm + 1, deb),
+        Some("deb") => (rpm, deb + 1),
+        _ => (rpm, deb),
+    });
 
-    Ok(Template::from_content(&template_html).render(vars))
-}*/
+    vars.insert("title".to_string(), "OmniPackage repositories badge".into());
+    vars.insert("text".to_string(), format!("{rpm_count} RPM {deb_count} DEB").into());
+
+    Template::from_content(BADGE_TEMPLATE_SVG).render(vars)
+}
 
 fn parse(html: &str) -> Result<Repositories, String> {
     let (start, end) = extract_json_bounds(html)?;
@@ -201,6 +215,7 @@ mod tests {
                 "download_url".to_string(),
                 "https://repositories.omnipackage.org/oleg/mpz/debian-14/stable/mpz_2.0.3-0_amd64.deb".to_string(),
             ),
+            ("package_type".to_string(), "rpm".into()),
         ]);
         let new_repo2 = Repository::from([
             ("distro_id".to_string(), "debian_15".to_string()),
@@ -211,6 +226,7 @@ mod tests {
                 "download_url".to_string(),
                 "https://repositories.omnipackage.org/oleg/mpz/debian-15/stable/mpz_2.0.3-0_amd64.deb".to_string(),
             ),
+            ("package_type".to_string(), "deb".into()),
         ]);
 
         let vars: HashMap<String, Var> = HashMap::from([
@@ -221,11 +237,13 @@ mod tests {
         let new_repos: Repositories = vec![new_repo1, new_repo2];
         let result = upsert(&html, &new_repos, vars).unwrap();
 
-        assert!(result.contains("Debian 14"));
-        assert!(result.contains("Debian 15 LTS"));
-        assert!(result.contains("http://testpacka.ge"));
+        assert!(result.install_page.contains("Debian 14"));
+        assert!(result.install_page.contains("Debian 15 LTS"));
+        assert!(result.install_page.contains("http://testpacka.ge"));
 
-        let repos2 = parse(&result).unwrap();
+        assert!(result.badge.contains("1 RPM 1 DEB"));
+
+        let repos2 = parse(&result.install_page).unwrap();
         assert_eq!(repos2.len(), 24);
     }
 }
