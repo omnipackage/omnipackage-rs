@@ -29,6 +29,12 @@ struct SetupRepoOutput {
     pub dir: PathBuf,
 }
 
+#[derive(Debug, Clone)]
+struct InstallPageBadge {
+    pub page_url: String,
+    pub badge_md: String,
+}
+
 pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs, repository: &Option<String>) -> Result<(), String> {
     let config = project.load_config()?;
 
@@ -97,7 +103,21 @@ impl PublishContext {
         match result {
             Ok(output) => {
                 Logger::new().info(format!("done repository publish for {}", self.distro.id));
-                self.update_install_page(output);
+                match self.update_install_page(output) {
+                    Ok(res) => {
+                        let mut lines = vec![];
+                        if !res.page_url.is_empty() {
+                            lines.push(format!("install page:   {}", colorize(Color::Cyan, res.page_url)));
+                        }
+                        if !res.badge_md.is_empty() {
+                            lines.push(format!("badge markdown: {}", colorize(Color::Yellow, res.badge_md)));
+                        }
+                        if !lines.is_empty() {
+                            Logger::new().info(format!("deployed\n  {}", lines.join("\n  ")));
+                        }
+                    }
+                    Err(msg) => Logger::new().error(msg),
+                }
             }
             Err(msg) => Logger::new().error(format!("error repository publish for {}: {}", self.distro.id, msg)),
         }
@@ -224,17 +244,11 @@ impl PublishContext {
             .collect()
     }
 
-    fn update_install_page(&self, setup_repo_output: SetupRepoOutput) {
+    fn update_install_page(&self, setup_repo_output: SetupRepoOutput) -> Result<InstallPageBadge, String> {
         const INSTALL_PAGE_NAME: &str = "install.html";
         const BADGE_NAME: &str = "badge.svg";
 
-        let download_url = match self.package_download_url(&setup_repo_output) {
-            Ok(url) => url,
-            Err(e) => {
-                Logger::new().error(e);
-                return;
-            }
-        };
+        let download_url = self.package_download_url(&setup_repo_output)?;
 
         let repo = install_page::Repository::from([
             ("distro_id".to_string(), self.distro.id.clone()),
@@ -254,33 +268,22 @@ impl PublishContext {
 
                 let existing_page_bytes = s3.download_file(INSTALL_PAGE_NAME).unwrap_or(vec![]);
                 let existing_install_page = String::from_utf8_lossy(&existing_page_bytes).into_owned();
-                let output = install_page::upsert(&existing_install_page, &repositories, self.config.to_template_vars()).unwrap();
+                let output = install_page::upsert(&existing_install_page, &repositories, self.config.to_template_vars())?;
 
-                match s3.upload_file(INSTALL_PAGE_NAME, output.install_page.as_bytes().to_vec(), Some("text/html")) {
-                    Ok(_) => {
-                        let page_url = format!("{}/{}", s3_config.base_bucket_url(), INSTALL_PAGE_NAME);
-                        Logger::new().info(format!("package install page deployed: {}", page_url));
+                s3.upload_file(INSTALL_PAGE_NAME, output.install_page.as_bytes().to_vec(), Some("text/html"))
+                    .map_err(|e| format!("error uploading install page: {}", e))?;
 
-                        match s3.upload_file(BADGE_NAME, output.badge.as_bytes().to_vec(), Some("image/svg+xml")) {
-                            Ok(_) => {
-                                let badge_url = format!("{}/{}", s3_config.base_bucket_url(), BADGE_NAME);
-                                let page_url = format!("{}/{}", s3_config.base_bucket_url(), INSTALL_PAGE_NAME);
-                                let title = "OmniPackage repositories badge";
-                                let md = format!("[![{title}]({badge_url})]({page_url})");
-                                Logger::new().info(format!("badge deployed: {}", md));
-                            }
-                            Err(e) => {
-                                Logger::new().error(format!("error uploading badge: {}", e));
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        Logger::new().error(format!("error uploading install page: {}", e));
-                    }
-                }
+                let page_url = format!("{}/{}", s3_config.base_bucket_url(), INSTALL_PAGE_NAME);
+                s3.upload_file(BADGE_NAME, output.badge.as_bytes().to_vec(), Some("image/svg+xml"))
+                    .map_err(|e| format!("error uploading badge: {}", e))?;
+
+                let badge_url = format!("{}/{}", s3_config.base_bucket_url(), BADGE_NAME);
+                let badge_md = format!("[![OmniPackage repositories badge]({badge_url})]({page_url})");
+
+                Ok(InstallPageBadge { page_url, badge_md })
             }
             &_ => todo!(),
-        };
+        }
     }
 
     fn package_download_url(&self, setup_repo_output: &SetupRepoOutput) -> Result<String, String> {
