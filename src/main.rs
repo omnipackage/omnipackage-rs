@@ -61,6 +61,10 @@ pub struct JobArgs {
     /// Root directory for temporary build/publish files
     #[arg(long, default_value_t = default_build_dir())]
     build_dir: String,
+
+    /// Stop on first error instead of continuing with remaining distros
+    #[arg(long, default_value_t = false)]
+    fail_fast: bool,
 }
 
 #[derive(Args, Clone, Debug)]

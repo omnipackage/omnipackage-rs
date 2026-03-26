@@ -72,55 +72,54 @@ pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs, reposito
         contexts.iter().map(|c| colorize(Color::BoldCyan, &c.distro.name)).collect::<Vec<_>>().join(", ")
     ));
 
-    contexts.iter().for_each(|c| c.run());
+    if job.fail_fast {
+        contexts.iter().try_for_each(|c| c.run())?;
+    } else {
+        let errors: Vec<String> = contexts.iter().filter_map(|c| c.run().err()).collect();
+        if !errors.is_empty() {
+            return Err(errors.join("\n"));
+        }
+    }
 
     Ok(())
 }
 
 impl PublishContext {
-    pub fn run(&self) {
+    pub fn run(&self) -> Result<(), String> {
         Logger::new().info(format!("starting repository publish for {}", self.distro.id));
 
-        let result = self.within_repository_dir(|dir| {
-            match self.config.provider.as_str() {
-                "s3" => {
-                    let s3_config = self.config.s3();
-                    let s3 = s3::S3::new(s3_config, self.s3_in_bucket_distro_path(s3_config));
+        let output = self.within_repository_dir(|dir| match self.config.provider.as_str() {
+            "s3" => {
+                let s3_config = self.config.s3();
+                let s3 = s3::S3::new(s3_config, self.s3_in_bucket_distro_path(s3_config));
 
-                    if !s3.bucket_exists()? {
-                        return Err(format!("bucket '{}' does not exist", s3_config.bucket));
-                    }
-                    //s3.download_all(dir)?; // TODO: why this was disabled in Ruby's version? find out, also research how to keep N packages and publish multiple projects to one repo
-                    let output = self.setup_repo(dir)?;
-                    s3.upload_all(dir)?;
-                    s3.delete_deleted_files(dir)?;
-                    Ok(output)
+                if !s3.bucket_exists()? {
+                    return Err(format!("bucket '{}' does not exist", s3_config.bucket));
                 }
-                &_ => todo!(),
+                let output = self.setup_repo(dir)?;
+                s3.upload_all(dir)?;
+                s3.delete_deleted_files(dir)?;
+                Ok(output)
             }
-        });
+            &_ => todo!(),
+        })?;
 
-        match result {
-            Ok(output) => {
-                Logger::new().info(format!("done repository publish for {}", self.distro.id));
-                match self.update_install_page(output) {
-                    Ok(res) => {
-                        let mut lines = vec![];
-                        if !res.page_url.is_empty() {
-                            lines.push(format!("install page:   {}", colorize(Color::Cyan, res.page_url)));
-                        }
-                        if !res.badge_md.is_empty() {
-                            lines.push(format!("badge markdown: {}", colorize(Color::Yellow, res.badge_md)));
-                        }
-                        if !lines.is_empty() {
-                            Logger::new().info(format!("deployed\n  {}", lines.join("\n  ")));
-                        }
-                    }
-                    Err(msg) => Logger::new().error(msg),
-                }
-            }
-            Err(msg) => Logger::new().error(format!("error repository publish for {}: {}", self.distro.id, msg)),
+        Logger::new().info(format!("done repository publish for {}", self.distro.id));
+
+        let res = self.update_install_page(output)?;
+
+        let mut lines = vec![];
+        if !res.page_url.is_empty() {
+            lines.push(format!("install page:   {}", colorize(Color::Cyan, res.page_url)));
         }
+        if !res.badge_md.is_empty() {
+            lines.push(format!("badge markdown: {}", colorize(Color::Yellow, res.badge_md)));
+        }
+        if !lines.is_empty() {
+            Logger::new().info(format!("deployed\n  {}", lines.join("\n  ")));
+        }
+
+        Ok(())
     }
 
     fn within_repository_dir<F, R>(&self, f: F) -> Result<R, String>
