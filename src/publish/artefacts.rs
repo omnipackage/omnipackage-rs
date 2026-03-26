@@ -10,10 +10,8 @@ pub fn find_artefacts_in_repository(artefacts: &[PathBuf], work_dir: &Path) -> R
     let mut results = Vec::new();
 
     for artifact in artefacts {
-        // Extract just the filename component (e.g. "foo.tar.gz")
         let filename = artifact.file_name().ok_or_else(|| format!("artifact has no filename: {}", artifact.display()))?.to_string_lossy();
 
-        // Build a recursive glob: <work_dir>/**/filename
         let pattern = work_dir.join("**").join(filename.as_ref()).to_string_lossy().into_owned();
 
         for entry in glob::glob(&pattern)? {
@@ -43,12 +41,10 @@ mod tests {
         let dir = tempdir().unwrap();
         let work_dir = dir.path();
 
-        // Create work_dir/sub/deep/foo.txt
         let deep = work_dir.join("sub").join("deep");
         fs::create_dir_all(&deep).unwrap();
         fs::write(deep.join("foo.txt"), b"").unwrap();
 
-        // Also work_dir/bar.txt at root level
         fs::write(work_dir.join("bar.txt"), b"").unwrap();
 
         let artefacts = vec![PathBuf::from("/some/original/path/foo.txt"), PathBuf::from("/another/path/bar.txt")];
