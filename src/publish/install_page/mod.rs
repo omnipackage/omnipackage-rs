@@ -1,20 +1,33 @@
 use crate::distros::Distros;
+use crate::template::{Template, Var};
 use std::collections::HashMap;
 
 const PAGE_TEMPLATE_HTML: &str = include_str!("install.html.liquid");
+const BADGE_TEMPLATE_SVG: &str = include_str!("badge.svg.liquid");
 
 pub type Repository = HashMap<String, String>;
 pub type Repositories = Vec<Repository>;
 
-pub fn upsert(html: &str, repositories: &Repositories) -> Result<String, String> {
-    let mut repos = parse(html).unwrap_or_else(|_| vec![]);
+pub fn upsert(existing_page_html: &str, repositories: &Repositories, template_vars: HashMap<String, Var>) -> Result<String, String> {
+    let mut repos = parse(existing_page_html).unwrap_or_else(|_| vec![]);
 
     repositories.iter().for_each(|repo| {
-        upsert_one(&mut repos, repo.clone());
+        upsert_repository(&mut repos, repo.clone());
     });
 
-    render(&repos)
+    let template_html = render(&repos)?;
+    Ok(Template::from_content(&template_html).render(template_vars))
 }
+
+/*pub fn render_badge(repositories: &Repositories, template_vars: HashMap<String, Var>) -> Result<String, String> {
+    let mut vars = template_vars.clone();
+    vars.insert("title".to_string(), "OmniPackage repositories badge".to_string());
+    vars.insert("text".to_string(), "#{result.rpm} RPM #{result.deb} DEB".to_string());
+
+    let template_html = render(&repos)?;
+
+    Ok(Template::from_content(&template_html).render(vars))
+}*/
 
 fn parse(html: &str) -> Result<Repositories, String> {
     let (start, end) = extract_json_bounds(html)?;
@@ -46,7 +59,7 @@ fn extract_json_bounds(html: &str) -> Result<(usize, usize), String> {
     Ok((start, end))
 }
 
-fn upsert_one(repositories: &mut Repositories, data: Repository) {
+fn upsert_repository(repositories: &mut Repositories, data: Repository) {
     let distro_id = data.get("distro_id").unwrap();
 
     if let Some(repo) = repositories.iter_mut().find(|repo| repo.get("distro_id").is_some_and(|value| value == distro_id)) {
@@ -148,7 +161,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mutate_add_entry() {
+    fn test_upsert_repository() {
         let html = fixture();
         let mut repos = parse(&html).expect("cannot parse");
 
@@ -162,7 +175,7 @@ mod tests {
                 "https://repositories.omnipackage.org/oleg/mpz/debian-14/stable/mpz_2.0.3-0_amd64.deb".to_string(),
             ),
         ]);
-        upsert_one(&mut repos, new_repo);
+        upsert_repository(&mut repos, new_repo);
 
         let injected = render(&repos).expect("cannot render");
         let repos2 = parse(&injected).expect("cannot parse after render");
@@ -200,11 +213,17 @@ mod tests {
             ),
         ]);
 
+        let vars: HashMap<String, Var> = HashMap::from([
+            ("package_name".to_string(), "testpackage".to_string().into()),
+            ("description".to_string(), "testpackage description".to_string().into()),
+            ("homepage".to_string(), "http://testpacka.ge".to_string().into()),
+        ]);
         let new_repos: Repositories = vec![new_repo1, new_repo2];
-        let result = upsert(&html, &new_repos).unwrap();
+        let result = upsert(&html, &new_repos, vars).unwrap();
 
         assert!(result.contains("Debian 14"));
         assert!(result.contains("Debian 15 LTS"));
+        assert!(result.contains("http://testpacka.ge"));
 
         let repos2 = parse(&result).unwrap();
         assert_eq!(repos2.len(), 24);

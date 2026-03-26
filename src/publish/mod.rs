@@ -245,7 +245,6 @@ impl PublishContext {
             }
         };
 
-        let vars = self.config.to_template_vars();
         let repo = install_page::Repository::from([
             ("distro_id".to_string(), self.distro.id.clone()),
             ("distro_name".to_string(), self.distro.name.clone()),
@@ -263,8 +262,7 @@ impl PublishContext {
 
                 let existing_page_bytes = s3.download_file(INSTALL_PAGE_NAME).unwrap_or(vec![]);
                 let existing_install_page = String::from_utf8_lossy(&existing_page_bytes).into_owned();
-                let template_html = install_page::upsert(&existing_install_page, &repositories).unwrap();
-                let result_html = Template::from_content(&template_html).render(vars);
+                let result_html = install_page::upsert(&existing_install_page, &repositories, self.config.to_template_vars()).unwrap();
 
                 match s3.upload_file(INSTALL_PAGE_NAME, result_html.as_bytes().to_vec(), Some("text/html")) {
                     Ok(_) => {
