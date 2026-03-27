@@ -110,13 +110,13 @@ impl PublishContext {
 
         let mut lines = vec![];
         if !res.page_url.is_empty() {
-            lines.push(format!("install page:   {}", colorize(Color::Cyan, res.page_url)));
+            lines.push(format!("install page: {}", colorize(Color::Green, res.page_url)));
         }
         if !res.badge_md.is_empty() {
             lines.push(format!("badge markdown: {}", colorize(Color::Yellow, res.badge_md)));
         }
         if !lines.is_empty() {
-            Logger::new().info(format!("deployed\n  {}", lines.join("\n  ")));
+            Logger::new().info(format!("{}", lines.join(", ")));
         }
 
         Ok(())

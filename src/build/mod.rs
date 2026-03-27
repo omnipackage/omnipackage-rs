@@ -1,14 +1,14 @@
 use crate::config::{Build, Config};
 use crate::distros::{Distro, Distros};
-use crate::logger::{LogOutput, Logger};
+use crate::logger::{LogOutput, Logger, Color, colorize};
 use crate::shell::Command;
 use crate::{BuildArgs, JobArgs, LoggingArgs, ProjectArgs};
 use std::path::PathBuf;
 use std::result::Result;
 use std::time::Instant;
 
-mod extract_version;
-mod job_variables;
+pub mod extract_version;
+pub mod job_variables;
 pub mod output;
 mod package;
 
@@ -62,11 +62,10 @@ impl BuildContext {
         match result {
             Ok((artefacts, build_log)) => {
                 Logger::new().info(format!(
-                    "successfully finished build for {} in {:.1}s, artefacts: {:?}, log: {}",
+                    "successfully finished build for {} in {:.1}s, artefacts: {}",
                     self.distro.id,
                     finished_at,
-                    artefacts,
-                    build_log.display()
+                    colorize(Color::Green, artefacts.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join(", ")),
                 ));
 
                 Output {
@@ -78,7 +77,12 @@ impl BuildContext {
                 }
             }
             Err((_code, build_log)) => {
-                Logger::new().error(format!("failed build for {} in {:.1}s, log: {}", self.distro.id, finished_at, build_log.display()));
+                Logger::new().error(format!(
+                    "failed build for {} in {:.1}s, log: {}",
+                    self.distro.id,
+                    finished_at,
+                    colorize(Color::Red, build_log.display())
+                ));
 
                 Output {
                     success: false,
