@@ -172,11 +172,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match cli.command {
         Commands::Build(args) => {
-            //let outputs = exit_on_error(build::run(&args.project, &args.job, &args.logging));
-            //build::output::log_all(&outputs);
+            let outputs = build::run(&args.project, &args.job, &args.logging)?;
+            build::output::log_all(&outputs);
         }
         Commands::Publish(args) => {
-            //exit_on_error(publish::run(&args.project, &args.job, &args.logging, &args.repository));
+            publish::run(&args.project, &args.job, &args.logging, &args.repository)?;
         }
         Commands::Release(args) => {
             /*let outputs = exit_on_error(build::run(&args.project, &args.job, &args.logging));
