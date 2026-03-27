@@ -36,57 +36,33 @@ struct InstallPageBadge {
     pub badge_md: String,
 }
 
-pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs, repository: &Option<String>) -> Result<(), Box<dyn Error>> {
-    let config = project.load_config()?;
-
-    let repository_config = config.repositories.find_by_name_or_default(repository.as_deref())?;
-
-    let contexts: Vec<PublishContext> = config
-        .builds
-        .iter()
-        .filter(|build| Distros::get().contains(&build.distro))
-        .filter(|build| job.distros.is_empty() || job.distros.contains(&build.distro))
-        .filter_map(|build| {
-            let build_dir = PathBuf::from(&job.build_dir).join(build.build_folder_name());
-            if !build_dir.exists() {
-                return None;
-            }
-
-            let distro = Distros::get().by_id(&build.distro);
-            let artefacts = artefacts::find_artefacts_in_build_dir(distro, &build_dir);
-            if artefacts.is_empty() {
-                return None;
-            }
-
-            Some(PublishContext {
-                distro,
-                logging_args: logging.clone(),
-                config: repository_config.clone(),
-                artefacts,
-                build_dir,
-            })
-        })
-        .collect();
-
-    Logger::new().info(format!(
-        "found artefacts for {}",
-        contexts.iter().map(|c| colorize(Color::BoldCyan, &c.distro.name)).collect::<Vec<_>>().join(", ")
-    ));
-
-    if job.fail_fast {
-        contexts.iter().try_for_each(|c| c.run())?;
-    } else {
-        let errors: Vec<String> = contexts.iter().filter_map(|c| c.run().err().map(|e| e.to_string())).collect();
-        if !errors.is_empty() {
-            return Err(errors.join("\n").into());
-        }
-    }
-
-    Ok(())
-}
-
 impl PublishContext {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
+        Logger::new().info(format!("starting repository publish for {}", self.distro.id));
+
+        let output = self.run_publish().map_err(|e| {
+            Logger::new().error(format!("failed publish for {} ({})", self.distro.id, e));
+            e
+        })?;
+
+        Logger::new().info(format!("done repository publish for {}", self.distro.id));
+
+        let res = self.update_install_page(output).map_err(|e| {
+            Logger::new().error(format!("failed deploy install page for {} ({})", self.distro.id, e));
+            e
+        })?;
+
+        if !res.page_url.is_empty() {
+            Logger::new().info(format!("install page: {}", colorize(Color::Green, res.page_url)));
+        }
+        if !res.badge_md.is_empty() {
+            Logger::new().info(format!("badge markdown: {}", colorize(Color::Yellow, res.badge_md)));
+        }
+
+        Ok(())
+    }
+
+    fn run_publish(&self) -> Result<SetupRepoOutput, Box<dyn Error>> {
         if !self.build_dir.exists() {
             return Err(format!("distro build dir does not exist: {}", self.build_dir.display()).into());
         }
@@ -94,9 +70,7 @@ impl PublishContext {
             return Err(format!("no artefacts in {}", self.build_dir.display()).into());
         }
 
-        Logger::new().info(format!("starting repository publish for {}", self.distro.id));
-
-        let output = self.within_repository_dir(|dir| match self.config.provider.as_str() {
+        self.within_repository_dir(|dir| match self.config.provider.as_str() {
             "s3" => {
                 let s3_config = self.config.s3();
                 let s3 = s3::S3::new(s3_config, self.s3_in_bucket_distro_path(s3_config));
@@ -110,24 +84,7 @@ impl PublishContext {
                 Ok(output)
             }
             &_ => todo!(),
-        })?;
-
-        Logger::new().info(format!("done repository publish for {}", self.distro.id));
-
-        let res = self.update_install_page(output)?;
-
-        let mut lines = vec![];
-        if !res.page_url.is_empty() {
-            lines.push(format!("install page: {}", colorize(Color::Green, res.page_url)));
-        }
-        if !res.badge_md.is_empty() {
-            lines.push(format!("badge markdown: {}", colorize(Color::Yellow, res.badge_md)));
-        }
-        if !lines.is_empty() {
-            Logger::new().info(lines.join(", ").to_string());
-        }
-
-        Ok(())
+        })
     }
 
     fn within_repository_dir<F, R>(&self, f: F) -> Result<R, Box<dyn Error>>
@@ -159,11 +116,11 @@ impl PublishContext {
 
         match self.distro.package_type.as_str() {
             "rpm" => {
-                self.setup_rpm_repo(&gpgkey, home_dir, dir);
+                self.setup_rpm_repo(&gpgkey, home_dir, dir)?;
                 Ok(SetupRepoOutput { gpgkey, dir: dir.to_path_buf() })
             }
             "deb" => {
-                self.setup_deb_repo(&gpgkey, home_dir, dir);
+                self.setup_deb_repo(&gpgkey, home_dir, dir)?;
                 Ok(SetupRepoOutput { gpgkey, dir: dir.to_path_buf() })
             }
             _ => Err(format!("unknown package type {}", self.distro.package_type).into()),

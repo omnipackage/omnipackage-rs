@@ -9,10 +9,66 @@ use std::error::Error;
 use std::path::PathBuf;
 
 pub fn build(project: ProjectArgs, job: JobArgs, logging: LoggingArgs) -> Result<(), Box<dyn Error>> {
+    let config = project.load_config()?;
+
+    let version = extract_version::extract_version(&project.source_dir, &config.extract_version);
+    let job_variables = job_variables::JobVariables::build(version.clone()).with_secrets(config.secrets.clone().into_iter().collect());
+
+    let build_dir = PathBuf::from(&job.build_dir);
+    let logging = logging.clone();
+    let source_dir = project.source_dir.clone();
+
+    for build_config in detect_builds(job.clone(), config) {
+        let distro = Distros::get().by_id(&build_config.distro);
+        let build_context = BuildContext {
+            distro,
+            source_dir: source_dir.clone(),
+            config: build_config.clone(),
+            job_variables: job_variables.clone(),
+            build_dir: build_dir.clone(),
+            logging_args: logging.clone(),
+        };
+        let build_result = build_context.run();
+
+        if build_result.is_err() && job.fail_fast {
+            return build_result;
+        }
+    }
+
     Ok(())
 }
 
 pub fn publish(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, repository: Option<String>) -> Result<(), Box<dyn Error>> {
+    let config = project.load_config()?;
+
+    let version = extract_version::extract_version(&project.source_dir, &config.extract_version);
+    let job_variables = job_variables::JobVariables::build(version.clone()).with_secrets(config.secrets.clone().into_iter().collect());
+
+    let repositories = config.repositories.clone();
+    let repository_config = repositories.find_by_name_or_default(repository.as_deref())?;
+
+    let build_dir = PathBuf::from(&job.build_dir);
+    let logging = logging.clone();
+    let source_dir = project.source_dir.clone();
+
+    for build_config in detect_builds(job.clone(), config) {
+        let distro = Distros::get().by_id(&build_config.distro);
+        let distro_build_dir = PathBuf::from(&job.build_dir).join(build_config.build_folder_name());
+        let artefacts = artefacts::find_artefacts_in_build_dir(distro, &distro_build_dir);
+
+        let publish_result = PublishContext {
+            distro,
+            logging_args: logging.clone(),
+            config: repository_config.clone(),
+            artefacts,
+            build_dir: distro_build_dir,
+        }
+        .run();
+        if publish_result.is_err() && job.fail_fast {
+            return publish_result;
+        }
+    }
+
     Ok(())
 }
 

@@ -14,32 +14,6 @@ mod package;
 use job_variables::JobVariables;
 use package::Package;
 
-pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs) -> Result<(), Box<dyn Error>> {
-    let config = project.load_config()?;
-
-    let version = extract_version::extract_version(&project.source_dir, &config.extract_version);
-    let job_variables = JobVariables::build(version.clone()).with_secrets(config.secrets.clone().into_iter().collect());
-
-    config
-        .builds
-        .iter()
-        .filter(|build| Distros::get().contains(&build.distro))
-        .filter(|build| job.distros.is_empty() || job.distros.contains(&build.distro))
-        .for_each(|build| {
-            BuildContext {
-                distro: Distros::get().by_id(&build.distro),
-                source_dir: project.source_dir.clone(),
-                config: build.clone(),
-                job_variables: job_variables.clone(),
-                build_dir: PathBuf::from(&job.build_dir),
-                logging_args: logging.clone(),
-            }
-            .run()
-            .unwrap();
-        });
-    Ok(())
-}
-
 #[derive(Debug, Clone)]
 pub struct BuildContext {
     pub distro: &'static Distro,
