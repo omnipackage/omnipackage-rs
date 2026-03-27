@@ -116,7 +116,7 @@ impl PublishContext {
             lines.push(format!("badge markdown: {}", colorize(Color::Yellow, res.badge_md)));
         }
         if !lines.is_empty() {
-            Logger::new().info(format!("{}", lines.join(", ")));
+            Logger::new().info(lines.join(", ").to_string());
         }
 
         Ok(())

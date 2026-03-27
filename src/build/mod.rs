@@ -1,6 +1,6 @@
 use crate::config::{Build, Config};
 use crate::distros::{Distro, Distros};
-use crate::logger::{LogOutput, Logger, Color, colorize};
+use crate::logger::{Color, LogOutput, Logger, colorize};
 use crate::shell::Command;
 use crate::{BuildArgs, JobArgs, LoggingArgs, ProjectArgs};
 use std::path::PathBuf;
