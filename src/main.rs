@@ -199,8 +199,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                 std::fs::write(&priv_path, &priv_content)?;
                 std::fs::write(&pub_path, &pub_content)?;
 
-                Logger::new().info(format!("private key written to {}", colorize(Color::BoldYellow, priv_path.display())));
-                Logger::new().info(format!("public key written to {}", colorize(Color::BoldYellow, pub_path.display())));
+                println!("private key written to {}", colorize(Color::BoldYellow, priv_path.display()));
+                println!("public key written to {}", colorize(Color::BoldYellow, pub_path.display()));
             }
         },
     }
