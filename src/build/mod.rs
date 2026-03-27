@@ -90,8 +90,10 @@ impl BuildContext {
         let mut args = vec!["run".to_string(), "--rm".to_string(), "--entrypoint".to_string(), "/bin/sh".to_string()];
 
         let mut commands = package.commands.clone();
-        if !self.logging_args.disable_container_echo {
-            commands.insert(0, "set -x".to_string());
+        if self.logging_args.disable_container_echo {
+            commands.insert(0, "set -euo pipefail".to_string());
+        } else {
+            commands.insert(0, "set -euxo pipefail".to_string());
         }
 
         let mount_args: Vec<String> = package

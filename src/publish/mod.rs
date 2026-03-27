@@ -163,8 +163,10 @@ impl PublishContext {
         let mut commands_with_setup = self.distro.setup_repo.clone();
         commands_with_setup.extend(commands);
 
-        if !self.logging_args.disable_container_echo {
-            commands_with_setup.insert(0, "set -x".to_string());
+        if self.logging_args.disable_container_echo {
+            commands_with_setup.insert(0, "set -euo pipefail".to_string());
+        } else {
+            commands_with_setup.insert(0, "set -euxo pipefail".to_string());
         }
 
         args.push(self.distro.image.clone());
