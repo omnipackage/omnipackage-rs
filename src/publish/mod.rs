@@ -1,3 +1,4 @@
+use crate::artefacts;
 use crate::config::{Config, Repository, S3Config};
 use crate::distros::{Distro, Distros};
 use crate::gpg::{Gpg, Key};
@@ -9,7 +10,6 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
 
-pub mod artefacts;
 mod deb;
 mod install_page;
 mod rpm;
@@ -87,6 +87,13 @@ pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs, reposito
 
 impl PublishContext {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
+        if !self.build_dir.exists() {
+            return Err(format!("distro build dir does not exist: {}", self.build_dir.display()).into());
+        }
+        if self.artefacts.is_empty() {
+            return Err(format!("no artefacts in {}", self.build_dir.display()).into());
+        }
+
         Logger::new().info(format!("starting repository publish for {}", self.distro.id));
 
         let output = self.within_repository_dir(|dir| match self.config.provider.as_str() {
@@ -284,7 +291,7 @@ impl PublishContext {
     }
 
     fn package_download_url(&self, setup_repo_output: &SetupRepoOutput) -> Result<String, Box<dyn Error>> {
-        let package_files = artefacts::find_artefacts_in_repository(&self.artefacts, &setup_repo_output.dir).map_err(|e| format!("cannot find packages in repository dir: {e}"))?;
+        let package_files = artefacts::find_artefacts_in_repository_dir(&self.artefacts, &setup_repo_output.dir).map_err(|e| format!("cannot find packages in repository dir: {e}"))?;
         let package_file = package_files.first().ok_or_else(|| "no packages found in repository dir".to_string())?;
 
         Ok(format!("{}/{}", self.distro_url().trim_end_matches('/'), package_file.relative_path.display()))

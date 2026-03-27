@@ -1,9 +1,9 @@
+use crate::artefacts;
 use crate::build::{BuildContext, extract_version, job_variables};
 use crate::config::{Build, Config};
 use crate::distros::{Distro, Distros};
 use crate::logger::{Color, LogOutput, Logger, colorize};
 use crate::publish::PublishContext;
-use crate::publish::artefacts;
 use crate::{BuildArgs, JobArgs, LoggingArgs, ProjectArgs, PublishArgs, ReleaseArgs};
 use std::error::Error;
 use std::path::PathBuf;
@@ -31,29 +31,23 @@ pub fn release(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, reposit
 
     for build_config in detect_builds(job.clone(), config) {
         let distro = Distros::get().by_id(&build_config.distro);
-        let build_result = BuildContext {
+        let build_context = BuildContext {
             distro,
             source_dir: source_dir.clone(),
             config: build_config.clone(),
             job_variables: job_variables.clone(),
             build_dir: build_dir.clone(),
             logging_args: logging.clone(),
-        }
-        .run();
+        };
+        let build_result = build_context.run();
 
-        if build_result.is_err() && job.fail_fast {
-            return build_result;
-        }
-
-        if build_result.is_ok() {
+        if build_result.is_err() {
+            if job.fail_fast {
+                return build_result;
+            }
+        } else {
             let distro_build_dir = PathBuf::from(&job.build_dir).join(build_config.build_folder_name());
-            if !distro_build_dir.exists() {
-                return Err(format!("distro build dir '{}' does not exist", distro_build_dir.display()).into());
-            }
             let artefacts = artefacts::find_artefacts_in_build_dir(distro, &distro_build_dir);
-            if artefacts.is_empty() {
-                return Err(format!("no artefacts in {}", distro_build_dir.display()).into());
-            }
 
             let publish_result = PublishContext {
                 distro,

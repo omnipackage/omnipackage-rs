@@ -6,6 +6,7 @@ use clap::{Args, Parser, Subcommand};
 use std::error::Error;
 use std::path::PathBuf;
 
+mod artefacts;
 mod build;
 mod config;
 mod distros;
