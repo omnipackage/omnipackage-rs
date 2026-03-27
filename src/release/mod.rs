@@ -4,6 +4,7 @@ use crate::distros::{Distro, Distros};
 use crate::logger::{LogOutput, Logger};
 use crate::publish::PublishContext;
 use crate::{BuildArgs, JobArgs, LoggingArgs, ProjectArgs, ReleaseArgs};
+use std::error::Error;
 use std::path::PathBuf;
 
 pub fn detect_builds(job: JobArgs, config: Config) -> impl Iterator<Item = Build> {
@@ -14,7 +15,7 @@ pub fn detect_builds(job: JobArgs, config: Config) -> impl Iterator<Item = Build
         .filter(move |build| job.distros.is_empty() || job.distros.contains(&build.distro))
 }
 
-pub fn run(args: ReleaseArgs) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(args: ReleaseArgs) -> Result<(), Box<dyn Error>> {
     let config = args.project.load_config()?;
 
     let version = extract_version::extract_version(&args.project.source_dir, &config.extract_version);

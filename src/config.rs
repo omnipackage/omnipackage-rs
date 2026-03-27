@@ -3,6 +3,7 @@ use crate::template::Var;
 use base64::{Engine, engine::general_purpose};
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::error::Error;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Deserialize, Clone)]
@@ -93,11 +94,11 @@ impl Repository {
         self.s3.as_ref().unwrap_or_else(|| panic!("repository '{}' has no s3 config", self.name))
     }
 
-    pub fn gpg_private_key(&self) -> Result<String, String> {
+    pub fn gpg_private_key(&self) -> Result<String, Box<dyn Error>> {
         let decoded = general_purpose::STANDARD
             .decode(self.gpg_private_key_base64.clone())
             .map_err(|e| format!("cannot decode GPG key: {}", e))?;
-        String::from_utf8(decoded).map_err(|e| format!("invalid UTF-8 in GPG key: {}", e))
+        Ok(String::from_utf8(decoded)?)
     }
 
     pub fn project_slug(&self) -> String {
@@ -139,10 +140,10 @@ impl S3Config {
 pub struct Repositories(Vec<Repository>);
 
 impl Repositories {
-    pub fn find_by_name_or_default(&self, name: Option<&str>) -> Result<&Repository, String> {
+    pub fn find_by_name_or_default(&self, name: Option<&str>) -> Result<&Repository, Box<dyn Error>> {
         match name {
-            Some(name) => self.0.iter().find(|r| r.name == name).ok_or_else(|| format!("repository '{}' not found in config", name)),
-            None => self.0.first().ok_or_else(|| "no repositories configured".to_string()),
+            Some(name) => self.0.iter().find(|r| r.name == name).ok_or_else(|| format!("repository '{}' not found", name).into()),
+            None => self.0.first().ok_or_else(|| "no repositories configured".into()),
         }
     }
 }

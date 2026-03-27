@@ -1,8 +1,7 @@
-// src/publish/s3.rs
-
 use crate::config::S3Config;
 use aws_sdk_s3::Client;
 use aws_sdk_s3::config::{BehaviorVersion, Credentials, Region};
+use std::error::Error;
 use std::path::Path;
 
 pub struct S3 {
@@ -34,7 +33,7 @@ impl S3 {
         }
     }
 
-    pub fn bucket_exists(&self) -> Result<bool, String> {
+    pub fn bucket_exists(&self) -> Result<bool, Box<dyn Error>> {
         block(async {
             match self.client.head_bucket().bucket(&self.bucket).send().await {
                 Ok(_) => Ok(true),
@@ -42,14 +41,14 @@ impl S3 {
                     if e.into_service_error().is_not_found() {
                         Ok(false)
                     } else {
-                        Err(format!("error checking bucket '{}'", self.bucket))
+                        Err(format!("error checking bucket '{}'", self.bucket).into())
                     }
                 }
             }
         })
     }
 
-    pub fn download_all(&self, to: &Path) -> Result<(), String> {
+    pub fn download_all(&self, to: &Path) -> Result<(), Box<dyn Error>> {
         block(async {
             let objects = self.list_objects().await?;
 
@@ -79,7 +78,7 @@ impl S3 {
         })
     }
 
-    pub fn upload_all(&self, from: &Path) -> Result<(), String> {
+    pub fn upload_all(&self, from: &Path) -> Result<(), Box<dyn Error>> {
         block(async {
             let pattern = format!("{}/**/*", from.to_string_lossy());
             let entries = glob::glob(&pattern).map_err(|e| format!("invalid glob pattern: {}", e))?;
@@ -111,7 +110,7 @@ impl S3 {
         })
     }
 
-    pub fn delete_deleted_files(&self, from: &Path) -> Result<(), String> {
+    pub fn delete_deleted_files(&self, from: &Path) -> Result<(), Box<dyn Error>> {
         block(async {
             let objects = self.list_objects().await?;
 
@@ -134,7 +133,7 @@ impl S3 {
         })
     }
 
-    pub fn download_file(&self, key: &str) -> Result<Vec<u8>, String> {
+    pub fn download_file(&self, key: &str) -> Result<Vec<u8>, Box<dyn Error>> {
         block(async {
             let full_key = format!("{}/{}", self.path.trim_end_matches('/'), key.trim_start_matches('/'));
 
@@ -152,7 +151,7 @@ impl S3 {
         })
     }
 
-    pub fn upload_file(&self, key: &str, data: Vec<u8>, content_type: Option<&str>) -> Result<(), String> {
+    pub fn upload_file(&self, key: &str, data: Vec<u8>, content_type: Option<&str>) -> Result<(), Box<dyn Error>> {
         block(async {
             let full_key = format!("{}/{}", self.path.trim_end_matches('/'), key.trim_start_matches('/'));
 
@@ -166,7 +165,7 @@ impl S3 {
         })
     }
 
-    async fn list_objects(&self) -> Result<Vec<String>, String> {
+    async fn list_objects(&self) -> Result<Vec<String>, Box<dyn Error>> {
         let mut keys = vec![];
         let mut continuation_token: Option<String> = None;
 

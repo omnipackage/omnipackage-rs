@@ -6,6 +6,7 @@ use crate::shell::Command;
 use crate::template::{Template, Var};
 use crate::{JobArgs, LoggingArgs, ProjectArgs, PublishArgs};
 use std::collections::HashMap;
+use std::error::Error;
 use std::path::{Path, PathBuf};
 
 mod artefacts;
@@ -35,7 +36,7 @@ struct InstallPageBadge {
     pub badge_md: String,
 }
 
-pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs, repository: &Option<String>) -> Result<(), String> {
+pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs, repository: &Option<String>) -> Result<(), Box<dyn Error>> {
     let config = project.load_config()?;
 
     let repository_config = config.repositories.find_by_name_or_default(repository.as_deref())?;
@@ -75,9 +76,9 @@ pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs, reposito
     if job.fail_fast {
         contexts.iter().try_for_each(|c| c.run())?;
     } else {
-        let errors: Vec<String> = contexts.iter().filter_map(|c| c.run().err()).collect();
+        let errors: Vec<String> = contexts.iter().filter_map(|c| c.run().err().map(|e| e.to_string())).collect();
         if !errors.is_empty() {
-            return Err(errors.join("\n"));
+            return Err(errors.join("\n").into());
         }
     }
 
@@ -85,7 +86,7 @@ pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs, reposito
 }
 
 impl PublishContext {
-    pub fn run(&self) -> Result<(), String> {
+    pub fn run(&self) -> Result<(), Box<dyn Error>> {
         Logger::new().info(format!("starting repository publish for {}", self.distro.id));
 
         let output = self.within_repository_dir(|dir| match self.config.provider.as_str() {
@@ -94,7 +95,7 @@ impl PublishContext {
                 let s3 = s3::S3::new(s3_config, self.s3_in_bucket_distro_path(s3_config));
 
                 if !s3.bucket_exists()? {
-                    return Err(format!("bucket '{}' does not exist", s3_config.bucket));
+                    return Err(format!("bucket '{}' does not exist", s3_config.bucket).into());
                 }
                 let output = self.setup_repo(dir)?;
                 s3.upload_all(dir)?;
@@ -122,19 +123,19 @@ impl PublishContext {
         Ok(())
     }
 
-    fn within_repository_dir<F, R>(&self, f: F) -> Result<R, String>
+    fn within_repository_dir<F, R>(&self, f: F) -> Result<R, Box<dyn Error>>
     where
-        F: FnOnce(&Path) -> Result<R, String>,
+        F: FnOnce(&Path) -> Result<R, Box<dyn Error>>,
     {
         let dir = self.build_dir.join("repository");
         if dir.exists() {
-            std::fs::remove_dir_all(&dir).map_err(|e| format!("cannot clear repository dir {}: {}", dir.display(), e))?;
+            std::fs::remove_dir_all(&dir)?;
         }
-        std::fs::create_dir_all(&dir).map_err(|e| format!("cannot create repository dir {}: {}", dir.display(), e))?;
+        std::fs::create_dir_all(&dir)?;
         f(&dir)
     }
 
-    fn setup_repo(&self, dir: &Path) -> Result<SetupRepoOutput, String> {
+    fn setup_repo(&self, dir: &Path) -> Result<SetupRepoOutput, Box<dyn Error>> {
         for artefact in &self.artefacts {
             let dest = dir.join(artefact.file_name().unwrap_or_else(|| artefact.as_os_str()));
             std::fs::copy(artefact, &dest).map_err(|e| format!("cannot copy {} to {}: {}", artefact.display(), dest.display(), e))?;
@@ -158,13 +159,13 @@ impl PublishContext {
                 self.setup_deb_repo(&gpgkey, home_dir, dir);
                 Ok(SetupRepoOutput { gpgkey, dir: dir.to_path_buf() })
             }
-            _ => Err(format!("unknown package type {}", self.distro.package_type)),
+            _ => Err(format!("unknown package type {}", self.distro.package_type).into()),
         }
     }
 
-    fn write_gpg_keys(&self, key: &Key, home_dir: &Path, work_dir: &Path) -> Result<(), String> {
-        std::fs::write(work_dir.join("public.key"), &key.pub_key).map_err(|e| format!("cannot write public key: {}", e))?;
-        std::fs::write(home_dir.join("key.priv"), &key.priv_key).map_err(|e| format!("cannot write private key: {}", e))?;
+    fn write_gpg_keys(&self, key: &Key, home_dir: &Path, work_dir: &Path) -> Result<(), Box<dyn Error>> {
+        std::fs::write(work_dir.join("public.key"), &key.pub_key)?;
+        std::fs::write(home_dir.join("key.priv"), &key.priv_key)?;
         Ok(())
     }
 
@@ -172,7 +173,7 @@ impl PublishContext {
         vec!["gpg --no-tty --batch --import /root/key.priv".to_string(), "gpg --no-tty --batch --import public.key".to_string()]
     }
 
-    fn execute(&self, commands: Vec<String>, home_dir: &Path, work_dir: &Path) -> Result<(), String> {
+    fn execute(&self, commands: Vec<String>, home_dir: &Path, work_dir: &Path) -> Result<(), Box<dyn Error>> {
         let mut args = vec![
             "run".to_string(),
             "--rm".to_string(),
@@ -209,11 +210,7 @@ impl PublishContext {
         let log_path = self.build_dir.join("publish.log");
         let _ = std::fs::remove_file(&log_path);
 
-        Command::container(args)
-            .stream_output_to(self.logging_args.container_logger())
-            .log_to(&log_path)
-            .run()
-            .map_err(|code| format!("command failed with exit code {}", code))
+        Command::container(args).stream_output_to(self.logging_args.container_logger()).log_to(&log_path).run()
     }
 
     fn s3_in_bucket_distro_path(&self, s3_config: &S3Config) -> String {
@@ -244,7 +241,7 @@ impl PublishContext {
             .collect()
     }
 
-    fn update_install_page(&self, setup_repo_output: SetupRepoOutput) -> Result<InstallPageBadge, String> {
+    fn update_install_page(&self, setup_repo_output: SetupRepoOutput) -> Result<InstallPageBadge, Box<dyn Error>> {
         const INSTALL_PAGE_NAME: &str = "install.html";
         const BADGE_NAME: &str = "badge.svg";
 
@@ -286,7 +283,7 @@ impl PublishContext {
         }
     }
 
-    fn package_download_url(&self, setup_repo_output: &SetupRepoOutput) -> Result<String, String> {
+    fn package_download_url(&self, setup_repo_output: &SetupRepoOutput) -> Result<String, Box<dyn Error>> {
         let package_files = artefacts::find_artefacts_in_repository(&self.artefacts, &setup_repo_output.dir).map_err(|e| format!("cannot find packages in repository dir: {e}"))?;
         let package_file = package_files.first().ok_or_else(|| "no packages found in repository dir".to_string())?;
 

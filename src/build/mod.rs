@@ -5,7 +5,6 @@ use crate::shell::Command;
 use crate::{BuildArgs, JobArgs, LoggingArgs, ProjectArgs};
 use std::error::Error;
 use std::path::PathBuf;
-use std::result::Result;
 use std::time::Instant;
 
 pub mod extract_version;
@@ -52,6 +51,8 @@ pub struct BuildContext {
     pub build_dir: PathBuf,
     pub logging_args: LoggingArgs,
 }
+
+type BuildError = (Box<dyn Error>, PathBuf);
 
 impl BuildContext {
     pub fn run(&self) -> Output {
@@ -125,7 +126,7 @@ impl BuildContext {
         self.logging_args.container_logger().with_secrets(self.job_variables.secrets.values().cloned().collect::<Vec<String>>())
     }
 
-    fn execute(&self, package: &Package) -> Result<(Vec<PathBuf>, PathBuf), (Box<dyn Error>, PathBuf)> {
+    fn execute(&self, package: &Package) -> Result<(Vec<PathBuf>, PathBuf), BuildError> {
         let mut args = vec!["run".to_string(), "--rm".to_string(), "--entrypoint".to_string(), "/bin/sh".to_string()];
 
         let mut commands = package.commands.clone();

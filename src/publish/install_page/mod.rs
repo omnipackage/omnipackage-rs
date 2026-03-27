@@ -1,6 +1,7 @@
 use crate::distros::Distros;
 use crate::template::{Template, Var};
 use std::collections::HashMap;
+use std::error::Error;
 
 const PAGE_TEMPLATE_HTML: &str = include_str!("install.html.liquid");
 const BADGE_TEMPLATE_SVG: &str = include_str!("badge.svg.liquid");
@@ -14,7 +15,7 @@ pub struct Output {
     pub badge: String,
 }
 
-pub fn upsert(existing_page_html: &str, repositories: &Repositories, template_vars: HashMap<String, Var>) -> Result<Output, String> {
+pub fn upsert(existing_page_html: &str, repositories: &Repositories, template_vars: HashMap<String, Var>) -> Result<Output, Box<dyn Error>> {
     let mut repos = parse(existing_page_html).unwrap_or_else(|_| vec![]);
 
     repositories.iter().for_each(|repo| {
@@ -43,20 +44,20 @@ fn render_badge(repositories: &Repositories, template_vars: HashMap<String, Var>
     Template::from_content(BADGE_TEMPLATE_SVG).render(vars)
 }
 
-fn parse(html: &str) -> Result<Repositories, String> {
+fn parse(html: &str) -> Result<Repositories, Box<dyn Error>> {
     let (start, end) = extract_json_bounds(html)?;
     let json = html[start..end].trim();
-    serde_json::from_str(json).map_err(|e| format!("cannot parse data json: {}", e))
+    Ok(serde_json::from_str(json)?)
 }
 
-fn render(repositories: &Repositories) -> Result<String, String> {
+fn render(repositories: &Repositories) -> Result<String, Box<dyn Error>> {
     let html = PAGE_TEMPLATE_HTML;
     let (start_pos, end_pos) = extract_json_bounds(html)?;
 
     let ids = Distros::get().ids();
     let mut sorted = repositories.clone();
     sorted.sort_by_key(|repo| repo.get("distro_id").and_then(|id| ids.iter().position(|d| d == id)).unwrap_or(usize::MAX));
-    let json = serde_json::to_string_pretty(&sorted).map_err(|e| format!("cannot serialize data json: {}", e))?;
+    let json = serde_json::to_string_pretty(&sorted)?;
 
     let mut rendered = String::with_capacity(html.len() + json.len());
     rendered.push_str(&html[..start_pos]);
@@ -66,7 +67,7 @@ fn render(repositories: &Repositories) -> Result<String, String> {
     Ok(rendered)
 }
 
-fn extract_json_bounds(html: &str) -> Result<(usize, usize), String> {
+fn extract_json_bounds(html: &str) -> Result<(usize, usize), Box<dyn Error>> {
     let start_tag = r#"<script type="application/json" id="data">"#;
     let start = html.find(start_tag).ok_or("cannot find data script tag")? + start_tag.len();
     let end = html[start..].find("</script>").ok_or("cannot find closing script tag")? + start;
@@ -139,21 +140,21 @@ mod tests {
     fn test_parse_missing_script_tag() {
         let html = "<html><body><p>no data here</p></body></html>";
         let err = parse(html).unwrap_err();
-        assert_eq!(err, "cannot find data script tag");
+        assert_eq!(err.to_string(), "cannot find data script tag");
     }
 
     #[test]
     fn test_parse_missing_closing_tag() {
         let html = r#"<script type="application/json" id="data">[{"key": "value"}]"#;
         let err = parse(html).unwrap_err();
-        assert_eq!(err, "cannot find closing script tag");
+        assert_eq!(err.to_string(), "cannot find closing script tag");
     }
 
     #[test]
     fn test_parse_invalid_json() {
         let html = r#"<script type="application/json" id="data">not json</script>"#;
         let err = parse(html).unwrap_err();
-        assert!(err.starts_with("cannot parse data json:"), "unexpected error: {err}");
+        assert_eq!(err.to_string(), "expected ident at line 1 column 2");
     }
 
     #[test]

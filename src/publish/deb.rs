@@ -1,9 +1,10 @@
 use crate::gpg::Key;
 use crate::publish::PublishContext;
+use std::error::Error;
 use std::path::{Path, PathBuf};
 
 impl PublishContext {
-    pub fn setup_deb_repo(&self, key: &Key, home_dir: &Path, work_dir: &Path) -> Result<(), String> {
+    pub fn setup_deb_repo(&self, key: &Key, home_dir: &Path, work_dir: &Path) -> Result<(), Box<dyn Error>> {
         self.write_releases_script(home_dir)?;
 
         let mut commands = self.import_gpg_keys_commands();
@@ -23,7 +24,7 @@ impl PublishContext {
         self.execute(commands, home_dir, work_dir)
     }
 
-    fn write_releases_script(&self, home_dir: &Path) -> Result<(), String> {
+    fn write_releases_script(&self, home_dir: &Path) -> Result<(), Box<dyn Error>> {
         // credit: https://earthly.dev/blog/creating-and-hosting-your-own-deb-packages-and-apt-repo/
         let script = r#"#!/bin/sh
 set -e
@@ -57,6 +58,6 @@ do_hash "SHA1" "sha1sum"
 do_hash "SHA256" "sha256sum"
 "#;
 
-        std::fs::write(home_dir.join("generate_releases_script.sh"), script).map_err(|e| format!("cannot write releases script: {}", e))
+        Ok(std::fs::write(home_dir.join("generate_releases_script.sh"), script)?)
     }
 }

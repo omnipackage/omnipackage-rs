@@ -1,4 +1,5 @@
 use crate::distros::Distro;
+use std::error::Error;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
@@ -7,7 +8,7 @@ pub struct ArtifactMatch {
     pub relative_path: PathBuf,
 }
 
-pub fn find_artefacts_in_repository(artefacts: &[PathBuf], work_dir: &Path) -> Result<Vec<ArtifactMatch>, Box<dyn std::error::Error>> {
+pub fn find_artefacts_in_repository(artefacts: &[PathBuf], work_dir: &Path) -> Result<Vec<ArtifactMatch>, Box<dyn Error>> {
     let mut results = Vec::new();
 
     for artifact in artefacts {
