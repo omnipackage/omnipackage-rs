@@ -3,8 +3,8 @@
 
 use clap::builder::styling::{AnsiColor, Effects, Styles};
 use clap::{Args, Parser, Subcommand};
-use std::path::PathBuf;
 use std::error::Error;
+use std::path::PathBuf;
 
 mod build;
 mod config;

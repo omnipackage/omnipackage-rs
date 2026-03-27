@@ -145,7 +145,8 @@ impl PublishContext {
 
         let key = self.config.gpg_private_key()?;
         let gpg = Gpg::new();
-        let gpgkey = gpg.test_private_key(&key).map_err(|e| format!("GPG key test failed: {}", e)).and_then(|_| gpg.key_from_private(&key))?;
+        gpg.test_private_key(&key).map_err(|e| format!("GPG key test failed: {}", e))?;
+        let gpgkey = gpg.key_from_private(&key).map_err(|e| e.to_string())?;
         self.write_gpg_keys(&gpgkey, home_dir, dir)?;
 
         match self.distro.package_type.as_str() {

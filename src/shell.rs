@@ -1,9 +1,9 @@
 use crate::logger::Logger;
+use std::error::Error;
 use std::fs::OpenOptions;
 use std::io::BufReader;
 use std::io::{BufRead, Write};
 use subprocess::{Exec, Redirection};
-use std::error::Error;
 
 static CONTAINER_RUNTIME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
@@ -113,11 +113,7 @@ impl Command {
     fn build_exec(&self) -> Exec {
         let stdin_redirect = if self.stdin_fn.is_some() { Redirection::Pipe } else { Redirection::None };
 
-        let mut exec = Exec::cmd(&self.program)
-            .args(&self.args)
-            .stdin(stdin_redirect)
-            .stdout(Redirection::Pipe)
-            .stderr(Redirection::Merge);
+        let mut exec = Exec::cmd(&self.program).args(&self.args).stdin(stdin_redirect).stdout(Redirection::Pipe).stderr(Redirection::Merge);
 
         for (k, v) in &self.env_vars {
             exec = exec.env(k, v);
@@ -159,11 +155,7 @@ impl Command {
         }
 
         let status = job.wait()?;
-        if status.success() {
-            Ok(())
-        } else {
-            Err(Box::new(ExitError(status.code().unwrap_or(1) as i32)))
-        }
+        if status.success() { Ok(()) } else { Err(Box::new(ExitError(status.code().unwrap_or(1) as i32))) }
     }
 
     pub fn capture(self) -> Result<String, Box<dyn Error>> {

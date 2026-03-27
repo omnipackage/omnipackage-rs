@@ -3,10 +3,10 @@ use crate::distros::{Distro, Distros};
 use crate::logger::{Color, LogOutput, Logger, colorize};
 use crate::shell::Command;
 use crate::{BuildArgs, JobArgs, LoggingArgs, ProjectArgs};
+use std::error::Error;
 use std::path::PathBuf;
 use std::result::Result;
 use std::time::Instant;
-use std::error::Error;
 
 pub mod extract_version;
 pub mod job_variables;

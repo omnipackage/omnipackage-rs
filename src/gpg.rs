@@ -1,5 +1,6 @@
 use crate::logger::{LogOutput, Logger};
 use crate::shell::Command;
+use std::error::Error;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -21,14 +22,12 @@ impl Gpg {
         }
     }
 
-    pub fn generate_keys(&self, name: &str, email: &str) -> Result<Key, String> {
+    pub fn generate_keys(&self, name: &str, email: &str) -> Result<Key, Box<dyn Error>> {
         self.within_tmp_dir(|gpg, dir| {
             let batchfile_path = dir.join("genkey.batch");
-            std::fs::write(&batchfile_path, self.batch_generate_keys(name, email)).map_err(|e| format!("cannot write batchfile: {}", e))?;
+            std::fs::write(&batchfile_path, self.batch_generate_keys(name, email))?;
 
-            gpg.cmd(["--no-tty", "--batch", "--gen-key", batchfile_path.to_str().unwrap()])
-                .run()
-                .map_err(|code| format!("gpg gen-key failed with exit code {}", code))?;
+            gpg.cmd(["--no-tty", "--batch", "--gen-key", batchfile_path.to_str().unwrap()]).run()?;
 
             let pub_key = gpg.export_key(name, false)?;
             let priv_key = gpg.export_key(name, true)?;
@@ -36,7 +35,7 @@ impl Gpg {
         })
     }
 
-    pub fn key_id(&self, key_string: &str) -> Result<String, String> {
+    pub fn key_id(&self, key_string: &str) -> Result<String, Box<dyn Error>> {
         self.within_tmp_dir(|gpg, _dir| {
             let key = key_string.to_string();
             let output = gpg
@@ -44,14 +43,13 @@ impl Gpg {
                 .with_stdin(move |stdin| {
                     stdin.write_all(key.as_bytes()).unwrap();
                 })
-                .capture()
-                .map_err(|code| format!("gpg --show-keys failed with exit code {}", code))?;
+                .capture()?;
 
             Ok(output.lines().nth(1).unwrap_or("").trim().to_string())
         })
     }
 
-    pub fn key_info(&self, key_string: &str) -> Result<String, String> {
+    pub fn key_info(&self, key_string: &str) -> Result<String, Box<dyn Error>> {
         self.within_tmp_dir(|gpg, _dir| {
             let key = key_string.to_string();
             gpg.cmd(["--quiet", "--no-tty", "--show-keys", "--with-fingerprint"])
@@ -59,19 +57,17 @@ impl Gpg {
                     stdin.write_all(key.as_bytes()).unwrap();
                 })
                 .capture()
-                .map_err(|code| format!("gpg --show-keys failed with exit code {}", code))
         })
     }
 
-    pub fn test_private_key(&self, key_string: &str) -> Result<(), String> {
+    pub fn test_private_key(&self, key_string: &str) -> Result<(), Box<dyn Error>> {
         self.within_tmp_dir(|gpg, _dir| {
             let key = key_string.to_string();
             gpg.cmd(["--quiet", "--no-tty", "--import"])
                 .with_stdin(move |stdin| {
                     stdin.write_all(key.as_bytes()).unwrap();
                 })
-                .run()
-                .map_err(|code| format!("gpg --import failed with exit code {}", code))?;
+                .run()?;
 
             let data = "random string to encrypt".to_string();
             gpg.cmd(["-o", "/dev/null", "-as", "-"])
@@ -79,21 +75,19 @@ impl Gpg {
                     stdin.write_all(data.as_bytes()).unwrap();
                 })
                 .run()
-                .map_err(|code| format!("gpg sign test failed with exit code {}", code))
         })
     }
 
-    pub fn key_from_private(&self, priv_key: &str) -> Result<Key, String> {
+    pub fn key_from_private(&self, priv_key: &str) -> Result<Key, Box<dyn Error>> {
         self.within_tmp_dir(|gpg, _dir| {
             let key = priv_key.to_string();
             gpg.cmd(["--quiet", "--no-tty", "--import"])
                 .with_stdin(move |stdin| {
                     stdin.write_all(key.as_bytes()).unwrap();
                 })
-                .run()
-                .map_err(|code| format!("gpg --import failed with exit code {}", code))?;
+                .run()?;
 
-            let pub_key = gpg.cmd(["--armor", "--export"]).capture().map_err(|code| format!("gpg --export failed with exit code {}", code))?;
+            let pub_key = gpg.cmd(["--armor", "--export"]).capture()?;
 
             Ok(Key {
                 priv_key: priv_key.to_string(),
@@ -102,7 +96,7 @@ impl Gpg {
         })
     }
 
-    fn export_key(&self, name: &str, secret: bool) -> Result<String, String> {
+    fn export_key(&self, name: &str, secret: bool) -> Result<String, Box<dyn Error>> {
         let mut args = vec!["--armor".to_string()];
         if secret {
             args.push("--export-secret-keys".to_string())
@@ -111,7 +105,7 @@ impl Gpg {
         }
         args.push(name.to_string());
 
-        self.cmd(args).capture().map_err(|code| format!("gpg export failed with exit code {}", code))
+        self.cmd(args).capture()
     }
 
     fn cmd(&self, args: impl IntoIterator<Item = impl Into<String>>) -> Command {
