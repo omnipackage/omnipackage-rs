@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::error::Error;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Distro {
@@ -37,7 +38,7 @@ impl Distros {
         DISTROS.get_or_init(Self::load_default)
     }
 
-    pub fn load(path: &std::path::Path) -> std::result::Result<Self, Box<dyn std::error::Error>> {
+    pub fn load(path: &std::path::Path) -> std::result::Result<Self, Box<dyn Error>> {
         let content = std::fs::read_to_string(path)?;
         Ok(serde_saphyr::from_str(&content)?)
     }

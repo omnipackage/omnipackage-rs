@@ -6,6 +6,7 @@ use crate::{BuildArgs, JobArgs, LoggingArgs, ProjectArgs};
 use std::path::PathBuf;
 use std::result::Result;
 use std::time::Instant;
+use std::error::Error;
 
 pub mod extract_version;
 pub mod job_variables;
@@ -16,7 +17,7 @@ use job_variables::JobVariables;
 use output::Output;
 use package::Package;
 
-pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs) -> Result<Vec<Output>, String> {
+pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs) -> Result<Vec<Output>, Box<dyn Error>> {
     let config = project.load_config()?;
 
     let version = extract_version::extract_version(&project.source_dir, &config.extract_version);
@@ -76,11 +77,12 @@ impl BuildContext {
                     distro_build_dir: self.distro_build_dir(),
                 }
             }
-            Err((_code, build_log)) => {
+            Err((err, build_log)) => {
                 Logger::new().error(format!(
-                    "failed build for {} in {:.1}s, log: {}",
+                    "failed build for {} in {:.1}s ({}), log: {}",
                     self.distro.id,
                     finished_at,
+                    err,
                     colorize(Color::Red, build_log.display())
                 ));
 
@@ -123,7 +125,7 @@ impl BuildContext {
         self.logging_args.container_logger().with_secrets(self.job_variables.secrets.values().cloned().collect::<Vec<String>>())
     }
 
-    fn execute(&self, package: &Package) -> Result<(Vec<PathBuf>, PathBuf), (i32, PathBuf)> {
+    fn execute(&self, package: &Package) -> Result<(Vec<PathBuf>, PathBuf), (Box<dyn Error>, PathBuf)> {
         let mut args = vec!["run".to_string(), "--rm".to_string(), "--entrypoint".to_string(), "/bin/sh".to_string()];
 
         let mut commands = package.commands.clone();
@@ -153,6 +155,6 @@ impl BuildContext {
             .log_to(&log_path)
             .run()
             .map(|_| (package.artefacts(), log_path.clone()))
-            .map_err(|code| (code, log_path.clone()))
+            .map_err(|err| (err, log_path.clone()))
     }
 }

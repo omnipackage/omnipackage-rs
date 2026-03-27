@@ -3,6 +3,7 @@ use std::fs::OpenOptions;
 use std::io::BufReader;
 use std::io::{BufRead, Write};
 use subprocess::{Exec, Redirection};
+use std::error::Error;
 
 static CONTAINER_RUNTIME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
@@ -35,6 +36,17 @@ fn container_runtime() -> &'static str {
 }
 
 type StdinFn = Box<dyn FnOnce(&mut dyn std::io::Write)>;
+
+#[derive(Debug)]
+struct ExitError(i32);
+
+impl std::fmt::Display for ExitError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "process exited with code {}", self.0)
+    }
+}
+
+impl Error for ExitError {}
 
 pub struct Command {
     program: String,
@@ -101,7 +113,11 @@ impl Command {
     fn build_exec(&self) -> Exec {
         let stdin_redirect = if self.stdin_fn.is_some() { Redirection::Pipe } else { Redirection::None };
 
-        let mut exec = Exec::cmd(&self.program).args(&self.args).stdin(stdin_redirect).stdout(Redirection::Pipe).stderr(Redirection::Merge);
+        let mut exec = Exec::cmd(&self.program)
+            .args(&self.args)
+            .stdin(stdin_redirect)
+            .stdout(Redirection::Pipe)
+            .stderr(Redirection::Merge);
 
         for (k, v) in &self.env_vars {
             exec = exec.env(k, v);
@@ -118,7 +134,7 @@ impl Command {
         }
     }
 
-    pub fn run(self) -> std::result::Result<(), i32> {
+    pub fn run(self) -> Result<(), Box<dyn Error>> {
         self.logger.cmd(&self.program, &self.args, &self.env_vars);
 
         let mut log_file = self.log_file.as_ref().map(|path| {
@@ -129,10 +145,7 @@ impl Command {
                 .unwrap_or_else(|e| panic!("cannot open log file {}: {}", path.display(), e))
         });
 
-        let mut job = self.build_exec().start().map_err(|e| {
-            eprintln!("{}", e);
-            1
-        })?;
+        let mut job = self.build_exec().start()?;
 
         Self::feed_stdin(self.stdin_fn, &mut job);
 
@@ -145,20 +158,18 @@ impl Command {
             }
         }
 
-        let status = job.wait().map_err(|e| {
-            eprintln!("{}", e);
-            1
-        })?;
-        if status.success() { Ok(()) } else { Err(status.code().unwrap_or(1) as i32) }
+        let status = job.wait()?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(Box::new(ExitError(status.code().unwrap_or(1) as i32)))
+        }
     }
 
-    pub fn capture(self) -> std::result::Result<String, i32> {
+    pub fn capture(self) -> Result<String, Box<dyn Error>> {
         self.logger.cmd(&self.program, &self.args, &self.env_vars);
 
-        let mut job = self.build_exec().start().map_err(|e| {
-            eprintln!("{}", e);
-            1
-        })?;
+        let mut job = self.build_exec().start()?;
 
         Self::feed_stdin(self.stdin_fn, &mut job);
 
@@ -170,10 +181,11 @@ impl Command {
             }
         }
 
-        let status = job.wait().map_err(|e| {
-            eprintln!("{}", e);
-            1
-        })?;
-        if status.success() { Ok(output) } else { Err(status.code().unwrap_or(1) as i32) }
+        let status = job.wait()?;
+        if status.success() {
+            Ok(output)
+        } else {
+            Err(Box::new(ExitError(status.code().unwrap_or(1) as i32)))
+        }
     }
 }

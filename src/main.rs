@@ -4,6 +4,7 @@
 use clap::builder::styling::{AnsiColor, Effects, Styles};
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
+use std::error::Error;
 
 mod build;
 mod config;
@@ -162,7 +163,7 @@ enum Commands {
     },
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
 
     if let Some(runtime) = cli.global.container_runtime {
@@ -171,11 +172,11 @@ fn main() {
 
     match cli.command {
         Commands::Build(args) => {
-            let outputs = exit_on_error(build::run(&args.project, &args.job, &args.logging));
-            build::output::log_all(&outputs);
+            //let outputs = exit_on_error(build::run(&args.project, &args.job, &args.logging));
+            //build::output::log_all(&outputs);
         }
         Commands::Publish(args) => {
-            exit_on_error(publish::run(&args.project, &args.job, &args.logging, &args.repository));
+            //exit_on_error(publish::run(&args.project, &args.job, &args.logging, &args.repository));
         }
         Commands::Release(args) => {
             /*let outputs = exit_on_error(build::run(&args.project, &args.job, &args.logging));
@@ -195,7 +196,7 @@ fn main() {
         }
         Commands::Gpg { command } => match command {
             GpgCommands::Generate { output_dir, name, email, format } => {
-                let keys = exit_on_error(Gpg::new().generate_keys(&name, &email));
+                let keys = Gpg::new().generate_keys(&name, &email)?;
 
                 let (priv_content, pub_content) = match format.as_str() {
                     "base64" => {
@@ -209,21 +210,15 @@ fn main() {
                 let priv_path = output_dir.join(format!("private.asc{}", ext));
                 let pub_path = output_dir.join(format!("public.asc{}", ext));
 
-                exit_on_error(std::fs::write(&priv_path, &priv_content).map_err(|e| format!("cannot write {}: {}", priv_path.display(), e)));
-                exit_on_error(std::fs::write(&pub_path, &pub_content).map_err(|e| format!("cannot write {}: {}", pub_path.display(), e)));
+                std::fs::write(&priv_path, &priv_content)?;
+                std::fs::write(&pub_path, &pub_content)?;
 
                 Logger::new().info(format!("private key written to {}", colorize(Color::BoldYellow, priv_path.display())));
                 Logger::new().info(format!("public key written to {}", colorize(Color::BoldYellow, pub_path.display())));
             }
         },
     }
-}
-
-fn exit_on_error<T>(result: Result<T, String>) -> T {
-    result.unwrap_or_else(|e| {
-        Logger::new().error(e);
-        std::process::exit(1);
-    })
+    Ok(())
 }
 
 fn default_build_dir() -> String {
