@@ -9,25 +9,23 @@ use std::time::Instant;
 
 pub mod extract_version;
 pub mod job_variables;
-pub mod output;
 mod package;
 
 use job_variables::JobVariables;
-use output::Output;
 use package::Package;
 
-pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs) -> Result<Vec<Output>, Box<dyn Error>> {
+pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs) -> Result<(), Box<dyn Error>> {
     let config = project.load_config()?;
 
     let version = extract_version::extract_version(&project.source_dir, &config.extract_version);
     let job_variables = JobVariables::build(version.clone()).with_secrets(config.secrets.clone().into_iter().collect());
 
-    let outputs = config
+    config
         .builds
         .iter()
         .filter(|build| Distros::get().contains(&build.distro))
         .filter(|build| job.distros.is_empty() || job.distros.contains(&build.distro))
-        .map(|build| {
+        .for_each(|build| {
             BuildContext {
                 distro: Distros::get().by_id(&build.distro),
                 source_dir: project.source_dir.clone(),
@@ -37,9 +35,9 @@ pub fn run(project: &ProjectArgs, job: &JobArgs, logging: &LoggingArgs) -> Resul
                 logging_args: logging.clone(),
             }
             .run()
-        })
-        .collect();
-    Ok(outputs)
+            .unwrap();
+        });
+    Ok(())
 }
 
 #[derive(Debug, Clone)]
@@ -55,7 +53,7 @@ pub struct BuildContext {
 type BuildError = (Box<dyn Error>, PathBuf);
 
 impl BuildContext {
-    pub fn run(&self) -> Output {
+    pub fn run(&self) -> Result<(), Box<dyn Error>> {
         Logger::new().info(format!("starting build for {}, variables: {}", self.distro.id, self.job_variables));
         let started_at = Instant::now();
         let package = self.setup_package();
@@ -70,13 +68,7 @@ impl BuildContext {
                     colorize(Color::Green, artefacts.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join(", ")),
                 ));
 
-                Output {
-                    success: true,
-                    artefacts,
-                    build_log,
-                    distro: self.distro,
-                    distro_build_dir: self.distro_build_dir(),
-                }
+                Ok(())
             }
             Err((err, build_log)) => {
                 Logger::new().error(format!(
@@ -87,13 +79,7 @@ impl BuildContext {
                     colorize(Color::Red, build_log.display())
                 ));
 
-                Output {
-                    success: false,
-                    artefacts: Vec::new(),
-                    build_log,
-                    distro: self.distro,
-                    distro_build_dir: self.distro_build_dir(),
-                }
+                Err(err)
             }
         }
     }

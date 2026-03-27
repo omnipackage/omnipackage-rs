@@ -19,7 +19,6 @@ mod template;
 use config::Config;
 use gpg::Gpg;
 use logger::{Color, LogOutput, Logger, colorize};
-use publish::PublishContext;
 
 #[derive(Debug, Args)]
 struct GlobalOpts {
@@ -172,27 +171,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match cli.command {
         Commands::Build(args) => {
-            let outputs = build::run(&args.project, &args.job, &args.logging)?;
-            build::output::log_all(&outputs);
+            release::build(args.project, args.job, args.logging)?;
         }
         Commands::Publish(args) => {
-            publish::run(&args.project, &args.job, &args.logging, &args.repository)?;
+            release::publish(args.project, args.job, args.logging, args.repository)?;
         }
         Commands::Release(args) => {
-            /*let outputs = exit_on_error(build::run(&args.project, &args.job, &args.logging));
-            let config = exit_on_error(args.project.load_config());
-            let repository_config = exit_on_error(config.repositories.find_by_name_or_default(args.repository.as_deref()));
-            outputs.iter().filter(|output| output.success).for_each(|output| {
-                PublishContext {
-                    distro: output.distro,
-                    logging_args: args.logging.clone(),
-                    config: repository_config.clone(),
-                    artefacts: output.artefacts.clone(),
-                    build_dir: output.distro_build_dir.clone(),
-                }
-                .run();
-            });*/
-            release::run(args);
+            release::release(args.project, args.job, args.logging, args.repository)?;
         }
         Commands::Gpg { command } => match command {
             GpgCommands::Generate { output_dir, name, email, format } => {

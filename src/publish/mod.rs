@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
 
-mod artefacts;
+pub mod artefacts;
 mod deb;
 mod install_page;
 mod rpm;
