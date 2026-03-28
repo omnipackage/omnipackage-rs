@@ -87,7 +87,7 @@ impl BuildContext {
     }
 
     fn execute(&self, package: &Package) -> Result<(Vec<PathBuf>, PathBuf), BuildError> {
-        let mut args = vec!["run".to_string(), "--rm".to_string(), "--entrypoint".to_string(), "/bin/sh".to_string()];
+        let mut args = vec!["run".to_string(), "--rm".to_string(), "--entrypoint".to_string(), "/bin/bash".to_string()];
 
         let mut commands = package.commands.clone();
         if self.logging_args.disable_container_echo {

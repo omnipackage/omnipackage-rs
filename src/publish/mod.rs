@@ -142,7 +142,7 @@ impl PublishContext {
             "run".to_string(),
             "--rm".to_string(),
             "--entrypoint".to_string(),
-            "/bin/sh".to_string(),
+            "/bin/bash".to_string(),
             "--workdir".to_string(),
             "/workdir".to_string(),
         ];
