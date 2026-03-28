@@ -1,0 +1,71 @@
+name: "Setup omnipackage"
+description: "Installs Podman and omnipackage, making it available on PATH"
+author: "Oleg Antonyan"
+
+branding:
+  icon: "package"
+  color: "orange"
+
+inputs:
+  rust-toolchain:
+    description: "Rust toolchain used to compile omnipackage"
+    required: false
+    default: "stable"
+
+  cache:
+    description: "Cache the compiled omnipackage binary between runs"
+    required: false
+    default: "true"
+
+outputs:
+  omnipackage-path:
+    description: "Absolute path to the installed omnipackage binary"
+    value: /usr/local/bin/omnipackage
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Podman
+      shell: bash
+      run: |
+        if command -v podman &>/dev/null; then
+          echo "✓ Podman already available: $(podman --version)"
+          exit 0
+        fi
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq podman
+        echo "✓ Podman installed: $(podman --version)"
+
+    - name: Restore omnipackage binary cache
+      id: cache
+      if: inputs.cache == 'true'
+      uses: actions/cache@v4
+      with:
+        path: /usr/local/bin/omnipackage
+        key: omnipackage-${{ runner.os }}-${{ github.action_ref }}
+
+    - name: Install Rust toolchain
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ inputs.rust-toolchain }}
+
+    - name: Cache Cargo registry
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: omnipackage-cargo-${{ runner.os }}-${{ github.action_ref }}
+        restore-keys: omnipackage-cargo-${{ runner.os }}-
+
+    - name: Build and install omnipackage
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cargo build --release --manifest-path "$GITHUB_WORKSPACE/Cargo.toml"
+        sudo install -m 755 "$GITHUB_WORKSPACE/target/release/omnipackage" /usr/local/bin/omnipackage
+        echo "✓ omnipackage installed: $(omnipackage --version)"
