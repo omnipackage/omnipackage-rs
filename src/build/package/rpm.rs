@@ -32,7 +32,7 @@ impl BuildContext {
             "rm -rf /root/rpmbuild/SOURCES/*".to_string(),
             format!("cp -R /source /root/rpmbuild/SOURCES/{source_folder_name}"),
             "cd /root/rpmbuild/SOURCES/".to_string(),
-            format!("tar -cvzf {source_folder_name}.tar.gz {source_folder_name}/"),
+            format!("tar -cvzf {source_folder_name}.tar.gz --exclude='.git' --exclude='node_modules' {source_folder_name}/"),
             format!("cd /root/rpmbuild/SOURCES/{source_folder_name}/"),
             format!("QA_RPATHS=$(( 0x0001|0x0010|0x0002|0x0004|0x0008|0x0020 )) rpmbuild --clean -bb /root/rpmbuild/{specfile_name}"),
         ]);
@@ -49,10 +49,10 @@ impl BuildContext {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::LoggingArgs;
     use crate::build::job_variables::JobVariables;
     use crate::config::{Build, RpmConfig};
     use crate::distros::Distro;
-    use crate::LoggingArgs;
 
     fn make_distro() -> Distro {
         Distro {

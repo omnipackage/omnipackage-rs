@@ -62,10 +62,10 @@ impl BuildContext {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::LoggingArgs;
     use crate::build::job_variables::JobVariables;
     use crate::config::{Build, DebConfig};
     use crate::distros::Distro;
-    use crate::LoggingArgs;
 
     fn make_distro() -> Distro {
         Distro {
