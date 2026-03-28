@@ -58,7 +58,7 @@ runs:
           ~/.cargo/registry/index/
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
-          target/
+          /tmp/omnipackage-rs/target/
         key: omnipackage-cargo-${{ runner.os }}-${{ github.action_ref }}
         restore-keys: omnipackage-cargo-${{ runner.os }}-
 
@@ -66,6 +66,8 @@ runs:
       if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        cargo build --release --manifest-path "$GITHUB_WORKSPACE/Cargo.toml"
-        sudo install -m 755 "$GITHUB_WORKSPACE/target/release/omnipackage" /usr/local/bin/omnipackage
+        git clone --depth 1 --branch "${{ github.action_ref }}" \
+          https://github.com/omnipackage/omnipackage-rs.git /tmp/omnipackage-rs
+        cargo build --release --manifest-path /tmp/omnipackage-rs/Cargo.toml
+        sudo install -m 755 /tmp/omnipackage-rs/target/release/omnipackage /usr/local/bin/omnipackage
         echo "✓ omnipackage installed: $(omnipackage --version)"
