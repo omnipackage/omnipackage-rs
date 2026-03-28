@@ -36,12 +36,36 @@ struct InstallPageBadge {
     pub badge_md: String,
 }
 
+#[derive(Debug)]
+pub struct ErrorWithLog {
+    pub error: Box<dyn Error>,
+    pub log_path: PathBuf,
+}
+
+impl Error for ErrorWithLog {}
+
+impl std::fmt::Display for ErrorWithLog {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} (log: {})", self.error, self.log_path.display())
+    }
+}
+
+impl ErrorWithLog {
+    pub fn wrap(error: Box<dyn Error>, log_path: PathBuf) -> Box<dyn Error> {
+        Box::new(Self { error, log_path })
+    }
+}
+
 impl PublishContext {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
         Logger::new().info(format!("starting repository publish for {}", self.distro.id));
 
         let output = self.run_publish().map_err(|e| {
-            Logger::new().error(format!("failed publish for {} ({})", self.distro.id, e));
+            if let Some(e) = e.downcast_ref::<ErrorWithLog>() {
+                Logger::new().error(format!("failed publish for {} ({}), log: {}", self.distro.id, e.error, colorize(Color::Red, e.log_path.display())));
+            } else {
+                Logger::new().error(format!("failed publish for {} ({})", self.distro.id, e));
+            }
             e
         })?;
 
@@ -180,7 +204,7 @@ impl PublishContext {
             .stream_output_to(self.logging_args.container_logger())
             .log_to(&log_path)
             .run()
-            .map_err(|e| format!("{}, log: {}", e, colorize(Color::Red, log_path.display())).into())
+            .map_err(|e| ErrorWithLog::wrap(e, log_path.clone()))
     }
 
     fn s3_in_bucket_distro_path(&self, s3_config: &S3Config) -> String {
