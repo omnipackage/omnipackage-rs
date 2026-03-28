@@ -52,7 +52,7 @@ mod tests {
     use crate::build::job_variables::JobVariables;
     use crate::config::{Build, RpmConfig};
     use crate::distros::Distro;
-    use crate::{BuildArgs, LoggingArgs};
+    use crate::LoggingArgs;
 
     fn make_distro() -> Distro {
         Distro {

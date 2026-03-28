@@ -142,6 +142,24 @@ enum GpgCommands {
         #[arg(long, default_value = "pem", value_parser = ["pem", "base64"])]
         format: String,
     },
+
+    /// Convert keys between pem and base64 formats
+    Convert {
+        /// Input file
+        #[arg()]
+        input: PathBuf,
+
+        /// Format of the input key file
+        #[arg(short, long, default_value = "pem")]
+        input_format: String,
+
+        #[arg(default_value = ".")]
+        output_dir: PathBuf,
+
+        /// Format of the output key file
+        #[arg(short, long, default_value = "base64")]
+        output_format: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -200,6 +218,40 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                 println!("private key written to {}", colorize(Color::BoldYellow, priv_path.display()));
                 println!("public key written to {}", colorize(Color::BoldYellow, pub_path.display()));
+            }
+            GpgCommands::Convert {
+                input,
+                input_format,
+                output_dir,
+                output_format,
+            } => {
+                let content = std::fs::read(&input)?;
+
+                let decoded = match input_format.as_str() {
+                    "base64" => {
+                        use base64::{Engine, engine::general_purpose};
+                        general_purpose::STANDARD.decode(&content).map_err(|e| format!("Failed to decode base64 input: {}", e))?
+                    }
+                    _ => content,
+                };
+
+                let output_content = match output_format.as_str() {
+                    "base64" => {
+                        use base64::{Engine, engine::general_purpose};
+                        general_purpose::STANDARD.encode(&decoded).into_bytes()
+                    }
+                    _ => decoded,
+                };
+
+                let input_stem = input.file_stem().and_then(|s| s.to_str()).unwrap_or("key");
+                let base_name = input_stem.trim_end_matches(".base64");
+
+                let ext = if output_format == "base64" { ".asc.base64" } else { ".asc" };
+                let output_path = output_dir.join(format!("{}{}", base_name, ext));
+
+                std::fs::write(&output_path, &output_content)?;
+
+                println!("converted key written to {}", colorize(Color::BoldYellow, output_path.display()));
             }
         },
     }

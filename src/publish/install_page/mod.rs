@@ -205,7 +205,7 @@ mod tests {
     #[test]
     fn test_mutate_upsert_all() {
         let html = fixture();
-        let mut repos = parse(&html).expect("cannot parse");
+        // let mut repos = parse(&html).expect("cannot parse");
 
         let new_repo1 = Repository::from([
             ("distro_id".to_string(), "debian_14".to_string()),
