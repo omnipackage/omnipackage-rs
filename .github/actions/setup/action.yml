@@ -42,7 +42,7 @@ runs:
 
     - name: Restore omnipackage binary cache
       id: cache
-      if: inputs.cache == 'true'
+      if: inputs.cache != 'false'
       uses: actions/cache@v4
       with:
         path: /usr/local/bin/omnipackage
