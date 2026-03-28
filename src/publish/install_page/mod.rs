@@ -24,12 +24,12 @@ pub fn upsert(existing_page_html: &str, repositories: &Repositories, template_va
 
     let template_html = render(&repos)?;
 
-    let install_page = Template::from_content(&template_html).render(template_vars.clone());
-    let badge = render_badge(&repos, template_vars.clone());
+    let install_page = Template::from_content(&template_html)?.render(template_vars.clone())?;
+    let badge = render_badge(&repos, template_vars.clone()).unwrap_or("".to_string());
     Ok(Output { install_page, badge })
 }
 
-fn render_badge(repositories: &Repositories, template_vars: HashMap<String, Var>) -> String {
+fn render_badge(repositories: &Repositories, template_vars: HashMap<String, Var>) -> Result<String, Box<dyn Error>> {
     let mut vars = template_vars.clone();
 
     let (rpm_count, deb_count) = repositories.iter().fold((0, 0), |(rpm, deb), r| match r.get("package_type").map(|t| t.as_str()) {
@@ -41,7 +41,7 @@ fn render_badge(repositories: &Repositories, template_vars: HashMap<String, Var>
     vars.insert("title".to_string(), "OmniPackage repositories badge".into());
     vars.insert("text".to_string(), format!("{rpm_count} RPM {deb_count} DEB").into());
 
-    Template::from_content(BADGE_TEMPLATE_SVG).render(vars)
+    Template::from_content(BADGE_TEMPLATE_SVG)?.render(vars)
 }
 
 fn parse(html: &str) -> Result<Repositories, Box<dyn Error>> {

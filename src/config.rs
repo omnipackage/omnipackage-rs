@@ -301,8 +301,8 @@ mod tests {
         let path = dir.path().join("template.liquid");
         std::fs::write(&path, "{{ description }} {{ custom_string }} {{ custom_bool }}").unwrap();
 
-        let template = crate::template::Template::from_file(path);
-        let output = template.render(vars);
+        let template = crate::template::Template::from_file(path).unwrap();
+        let output = template.render(vars).unwrap();
         assert_eq!(output, "Test hello true");
     }
 

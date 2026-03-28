@@ -90,8 +90,8 @@ mod tests {
         let path = dir.path().join("template.liquid");
         std::fs::write(&path, "{{ version }} {{ secrets.api_key }}").unwrap();
 
-        let template = crate::template::Template::from_file(path);
-        let output = template.render(vars.to_template_vars());
+        let template = crate::template::Template::from_file(path).unwrap();
+        let output = template.render(vars.to_template_vars()).unwrap();
         assert_eq!(output, "1.2.3 abc123");
     }
 

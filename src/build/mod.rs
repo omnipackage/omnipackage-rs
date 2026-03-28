@@ -30,7 +30,7 @@ impl BuildContext {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
         Logger::new().info(format!("starting build for {}, variables: {}", self.distro.id, self.job_variables));
         let started_at = Instant::now();
-        let package = self.setup_package();
+        let package = self.setup_package()?;
         let result = self.execute(&package);
         let finished_at = started_at.elapsed().as_secs_f32();
         match result {
@@ -62,7 +62,7 @@ impl BuildContext {
         self.build_dir.join(self.config.build_folder_name())
     }
 
-    fn setup_package(&self) -> Package {
+    fn setup_package(&self) -> Result<Package, Box<dyn Error>> {
         match self.distro.package_type.as_str() {
             "rpm" => self.setup_rpm(),
             "deb" => self.setup_deb(),

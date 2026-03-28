@@ -1,8 +1,9 @@
 use liquid::ParserBuilder;
-use liquid::model::{Value, KString};
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use liquid::model::{KString, Value};
 use regex::Regex;
+use std::collections::HashMap;
+use std::error::Error;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone)]
 pub struct Var(Value);
@@ -50,39 +51,35 @@ pub struct Template {
 }
 
 impl Template {
-    pub fn from_content(content: impl Into<String>) -> Self {
+    pub fn from_content(content: impl Into<String>) -> Result<Self, Box<dyn Error>> {
         let source_content = content.into();
-        let template = ParserBuilder::with_stdlib()
-            .build()
-            .unwrap()
-            .parse(&source_content.clone())
-            .unwrap_or_else(|e| panic!("cannot parse template: {}", e));
-        Self { source_content, template }
+        let template = ParserBuilder::with_stdlib().build()?.parse(&source_content)?;
+        Ok(Self { source_content, template })
     }
 
-    pub fn from_file(path: impl AsRef<Path>) -> Self {
-        let content = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("cannot read template {}: {}", path.as_ref().display(), e));
+    pub fn from_file(path: impl AsRef<Path>) -> Result<Self, Box<dyn Error>> {
+        let content = std::fs::read_to_string(&path).map_err(|e| format!("cannot read template {}: {}", path.as_ref().display(), e))?;
         Self::from_content(content)
     }
 
-    pub fn render(&self, vars: impl IntoIterator<Item = (String, Var)>) -> String {
+    pub fn render(&self, vars: impl IntoIterator<Item = (String, Var)>) -> Result<String, Box<dyn Error>> {
         let mut globals: liquid::Object = vars.into_iter().map(|(k, v)| (k.into(), v.0)).collect();
 
-        // make it so liquid does not panic in case of missing variable
+        // Hack for liquid to not fail on missing variable (https://github.com/cobalt-org/liquid-rust/issues/570)
         for cap in Regex::new(r"\{\{-?\s*(\w+)").unwrap().captures_iter(&self.source_content) {
-            globals.entry(KString::from_ref(&cap[1])).or_insert_with(|| Value::Nil);
+            globals.entry(KString::from_ref(&cap[1])).or_insert(Value::Nil);
         }
 
-        self.template.render(&globals).unwrap_or_else(|e| panic!("cannot render template: {}", e))
+        Ok(self.template.render(&globals)?)
     }
 
-    pub fn render_to_file(&self, vars: impl IntoIterator<Item = (String, Var)>, output_path: PathBuf) {
+    pub fn render_to_file(&self, vars: impl IntoIterator<Item = (String, Var)>, output_path: PathBuf) -> Result<(), Box<dyn Error>> {
         if let Some(parent) = output_path.parent() {
-            std::fs::create_dir_all(parent).unwrap_or_else(|e| panic!("cannot create directory {}: {}", parent.display(), e));
+            std::fs::create_dir_all(parent).map_err(|e| format!("cannot create directory {}: {}", parent.display(), e))?;
         }
-
-        let output = self.render(vars);
-        std::fs::write(&output_path, output).unwrap_or_else(|e| panic!("cannot write to {}: {}", output_path.display(), e));
+        let output = self.render(vars)?;
+        std::fs::write(&output_path, &output).map_err(|e| format!("cannot write to {}: {}", output_path.display(), e))?;
+        Ok(())
     }
 }
 
@@ -94,34 +91,34 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("template.liquid");
         std::fs::write(&path, content).unwrap();
-        (Template::from_file(path), dir)
+        (Template::from_file(path).unwrap(), dir)
     }
 
     #[test]
     fn test_render_strings() {
         let (template, _dir) = make_template("Hello, {{ name }}! Version: {{ version }}");
-        let output = template.render([("name".to_string(), "world".into()), ("version".to_string(), "1.2.3".into())]);
+        let output = template.render([("name".to_string(), "world".into()), ("version".to_string(), "1.2.3".into())]).unwrap();
         assert_eq!(output, "Hello, world! Version: 1.2.3");
     }
 
     #[test]
     fn test_render_integer() {
         let (template, _dir) = make_template("Port: {{ port }}");
-        let output = template.render([("port".to_string(), 8080i64.into())]);
+        let output = template.render([("port".to_string(), 8080i64.into())]).unwrap();
         assert_eq!(output, "Port: 8080");
     }
 
     #[test]
     fn test_render_bool() {
         let (template, _dir) = make_template("{% if debug %}DEBUG{% endif %}");
-        let output = template.render([("debug".to_string(), true.into())]);
+        let output = template.render([("debug".to_string(), true.into())]).unwrap();
         assert_eq!(output, "DEBUG");
     }
 
     #[test]
     fn test_render_vec() {
         let (template, _dir) = make_template("{% for item in items %}{{ item }} {% endfor %}");
-        let output = template.render([("items".to_string(), vec!["foo".to_string(), "bar".to_string(), "baz".to_string()].into())]);
+        let output = template.render([("items".to_string(), vec!["foo".to_string(), "bar".to_string(), "baz".to_string()].into())]).unwrap();
         assert_eq!(output, "foo bar baz ");
     }
 
@@ -129,9 +126,7 @@ mod tests {
     fn test_render_to_file() {
         let (template, dir) = make_template("Hello, {{ name }}!");
         let output_path = dir.path().join("output.txt");
-
-        template.render_to_file([("name".to_string(), "world".into())], output_path.clone());
-
+        template.render_to_file([("name".to_string(), "world".into())], output_path.clone()).unwrap();
         let content = std::fs::read_to_string(&output_path).unwrap();
         assert_eq!(content, "Hello, world!");
     }
@@ -141,9 +136,7 @@ mod tests {
         let (template, _dir) = make_template("Hello, {{ name }}!");
         let dir = tempfile::tempdir().unwrap();
         let output_path = dir.path().join("nested/dirs/output.txt");
-
-        template.render_to_file([("name".to_string(), "world".into())], output_path.clone());
-
+        template.render_to_file([("name".to_string(), "world".into())], output_path.clone()).unwrap();
         let content = std::fs::read_to_string(&output_path).unwrap();
         assert_eq!(content, "Hello, world!");
     }
@@ -151,21 +144,14 @@ mod tests {
     #[test]
     fn test_render_unknown_variable_falls_back_to_empty_string() {
         let (template, _dir) = make_template("Hello, {{ name }}! Extra: {{ CMAKE_EXTRA_CLI }}");
-        let output = template.render([("name".to_string(), "world".into())]);
-        assert_eq!(output, "Hello, world! Extra: ");
-    }
-
-    #[test]
-    fn test_render_unknown_variable_guarded_by_id() {
-        let (template, _dir) = make_template("Hello, {{ name }}! Extra: {% if CMAKE_EXTRA_CLI %}{{ CMAKE_EXTRA_CLI }}{% endif %}");
-        let output = template.render([("name".to_string(), "world".into())]);
+        let output = template.render([("name".to_string(), "world".into())]).unwrap();
         assert_eq!(output, "Hello, world! Extra: ");
     }
 
     #[test]
     fn test_render_undefined_variable_in_if() {
         let (template, _dir) = make_template("{% if LDFLAGS %}{{ LDFLAGS }}{% endif %}");
-        let output = template.render([]);
+        let output = template.render([]).unwrap();
         assert_eq!(output, "");
     }
 }

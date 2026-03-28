@@ -2,20 +2,21 @@ use crate::build::BuildContext;
 use crate::build::package::Package;
 use crate::template::{Template, Var};
 use std::collections::HashMap;
+use std::error::Error;
 use std::path::PathBuf;
 
 impl BuildContext {
-    pub fn setup_deb(&self) -> Package {
-        let debian_folder_template_path = self.config.deb.clone().unwrap().debian_templates;
+    pub fn setup_deb(&self) -> Result<Package, Box<dyn Error>> {
+        let debian_folder_template_path = self.config.deb.clone().ok_or("deb config is missing")?.debian_templates;
 
         let build_path = self.distro_build_dir().join("build");
         let output_path = self.distro_build_dir().join("output");
-        std::fs::create_dir_all(&build_path).unwrap_or_else(|e| panic!("cannot create directory {}: {}", build_path.display(), e));
-        std::fs::create_dir_all(&output_path).unwrap_or_else(|e| panic!("cannot create directory {}: {}", output_path.display(), e));
+        std::fs::create_dir_all(&build_path).map_err(|e| format!("cannot create directory {}: {}", build_path.display(), e))?;
+        std::fs::create_dir_all(&output_path).map_err(|e| format!("cannot create directory {}: {}", output_path.display(), e))?;
 
         let mut template_vars: HashMap<String, Var> = self.job_variables.to_template_vars();
         template_vars.extend(self.config.to_template_vars());
-        self.render_templates(template_vars, self.source_dir.join(&debian_folder_template_path), build_path.join("debian"));
+        self.render_templates(template_vars, self.source_dir.join(&debian_folder_template_path), build_path.join("debian"))?;
 
         let mut mounts: HashMap<String, String> = HashMap::new();
         mounts.insert(self.source_dir.to_string_lossy().to_string(), "/source".to_string());
@@ -32,30 +33,32 @@ impl BuildContext {
             "DEB_BUILD_OPTIONS=noddebs dpkg-buildpackage -b -tc".to_string(),
         ]);
 
-        Package {
+        Ok(Package {
             distro: self.distro,
             mounts,
             commands,
             output_path,
-        }
+        })
     }
 
-    fn render_templates(&self, vars: HashMap<String, Var>, from: PathBuf, to: PathBuf) {
-        std::fs::create_dir_all(&to).unwrap_or_else(|e| panic!("cannot create directory {}: {}", to.display(), e));
-        std::fs::read_dir(&from)
-            .unwrap_or_else(|e| panic!("cannot read dir {}: {}", from.display(), e))
-            .filter_map(|entry| entry.ok())
-            .map(|entry| entry.path())
-            .for_each(|path| {
-                let dest = to.join(path.file_name().unwrap().to_string_lossy().as_ref());
+    fn render_templates(&self, vars: HashMap<String, Var>, from: PathBuf, to: PathBuf) -> Result<(), Box<dyn Error>> {
+        std::fs::create_dir_all(&to).map_err(|e| format!("cannot create directory {}: {}", to.display(), e))?;
 
-                if path.extension().and_then(|e| e.to_str()) == Some("liquid") {
-                    let dest_without_ext = to.join(path.file_stem().unwrap().to_string_lossy().as_ref());
-                    Template::from_file(path).render_to_file(vars.clone(), dest_without_ext);
-                } else {
-                    std::fs::copy(&path, &dest).unwrap_or_else(|e| panic!("cannot copy {} to {}: {}", path.display(), dest.display(), e));
-                }
-            });
+        for entry in std::fs::read_dir(&from).map_err(|e| format!("cannot read dir {}: {}", from.display(), e))? {
+            let path = entry?.path();
+            let file_name = path.file_name().ok_or_else(|| format!("cannot get file name for {}", path.display()))?.to_string_lossy().into_owned();
+            let dest = to.join(&file_name);
+
+            if path.extension().and_then(|e| e.to_str()) == Some("liquid") {
+                let stem = path.file_stem().ok_or_else(|| format!("cannot get file stem for {}", path.display()))?.to_string_lossy().into_owned();
+                let dest_without_ext = to.join(stem);
+                Template::from_file(&path)?.render_to_file(vars.clone(), dest_without_ext)?;
+            } else {
+                std::fs::copy(&path, &dest).map_err(|e| format!("cannot copy {} to {}: {}", path.display(), dest.display(), e))?;
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -126,7 +129,7 @@ mod tests {
             },
         };
 
-        let package = context.setup_deb();
+        let package = context.setup_deb().unwrap();
 
         // verify mounts
         assert!(package.mounts.values().any(|v| v == "/source"));

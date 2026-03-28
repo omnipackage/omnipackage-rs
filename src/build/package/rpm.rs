@@ -2,13 +2,14 @@ use crate::build::BuildContext;
 use crate::build::package::Package;
 use crate::template::{Template, Var};
 use std::collections::HashMap;
+use std::error::Error;
 
 impl BuildContext {
-    pub fn setup_rpm(&self) -> Package {
-        let specfile_path_template_path = self.config.rpm.clone().unwrap().spec_template;
+    pub fn setup_rpm(&self) -> Result<Package, Box<dyn Error>> {
+        let specfile_path_template_path = self.config.rpm.clone().ok_or("rpm config is missing")?.spec_template;
 
         let rpmbuild_path = self.distro_build_dir();
-        std::fs::create_dir_all(&rpmbuild_path).unwrap_or_else(|e| panic!("cannot create directory {}: {}", rpmbuild_path.display(), e));
+        std::fs::create_dir_all(&rpmbuild_path).map_err(|e| format!("cannot create directory {}: {}", rpmbuild_path.display(), e))?;
 
         let source_folder_name = format!("{}-{}", self.config.package_name, self.job_variables.version);
         let specfile_name = format!("{}-{}.spec", source_folder_name, self.distro.id);
@@ -16,8 +17,8 @@ impl BuildContext {
         let mut template_vars: HashMap<String, Var> = self.job_variables.to_template_vars();
         template_vars.extend(self.config.to_template_vars());
         template_vars.insert("source_folder_name".to_string(), source_folder_name.clone().into());
-        let template = Template::from_file(self.source_dir.join(&specfile_path_template_path));
-        template.render_to_file(template_vars, rpmbuild_path.join(&specfile_name));
+        let template = Template::from_file(self.source_dir.join(&specfile_path_template_path))?;
+        template.render_to_file(template_vars, rpmbuild_path.join(&specfile_name))?;
 
         let mut mounts: HashMap<String, String> = HashMap::new();
         mounts.insert(self.source_dir.to_string_lossy().to_string(), "/source".to_string());
@@ -37,12 +38,12 @@ impl BuildContext {
             format!("QA_RPATHS=$(( 0x0001|0x0010|0x0002|0x0004|0x0008|0x0020 )) rpmbuild --clean -bb /root/rpmbuild/{specfile_name}"),
         ]);
 
-        Package {
+        Ok(Package {
             distro: self.distro,
             mounts,
             commands,
             output_path: rpmbuild_path.clone(),
-        }
+        })
     }
 }
 
@@ -113,7 +114,7 @@ mod tests {
             },
         };
 
-        let package = context.setup_rpm();
+        let package = context.setup_rpm().unwrap();
 
         // verify mounts
         assert!(package.mounts.contains_key(&source_dir.to_string_lossy().to_string()));
