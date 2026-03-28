@@ -70,7 +70,7 @@ impl Template {
 
         // make it so liquid does not panic in case of missing variable
         for cap in Regex::new(r"\{\{-?\s*(\w+)").unwrap().captures_iter(&self.source_content) {
-            globals.entry(KString::from_ref(&cap[1])).or_insert_with(|| Value::scalar(""));
+            globals.entry(KString::from_ref(&cap[1])).or_insert_with(|| Value::Nil);
         }
 
         self.template.render(&globals).unwrap_or_else(|e| panic!("cannot render template: {}", e))
@@ -153,5 +153,19 @@ mod tests {
         let (template, _dir) = make_template("Hello, {{ name }}! Extra: {{ CMAKE_EXTRA_CLI }}");
         let output = template.render([("name".to_string(), "world".into())]);
         assert_eq!(output, "Hello, world! Extra: ");
+    }
+
+    #[test]
+    fn test_render_unknown_variable_guarded_by_id() {
+        let (template, _dir) = make_template("Hello, {{ name }}! Extra: {% if CMAKE_EXTRA_CLI %}{{ CMAKE_EXTRA_CLI }}{% endif %}");
+        let output = template.render([("name".to_string(), "world".into())]);
+        assert_eq!(output, "Hello, world! Extra: ");
+    }
+
+    #[test]
+    fn test_render_undefined_variable_in_if() {
+        let (template, _dir) = make_template("{% if LDFLAGS %}{{ LDFLAGS }}{% endif %}");
+        let output = template.render([]);
+        assert_eq!(output, "");
     }
 }
