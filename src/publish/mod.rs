@@ -1,11 +1,10 @@
+use crate::LoggingArgs;
 use crate::artefacts;
-use crate::config::{Config, Repository, S3Config};
-use crate::distros::{Distro, Distros};
+use crate::config::{Repository, S3Config};
+use crate::distros::Distro;
 use crate::gpg::{Gpg, Key};
-use crate::logger::{Color, LogOutput, Logger, colorize};
+use crate::logger::{Color, Logger, colorize};
 use crate::shell::Command;
-use crate::template::{Template, Var};
-use crate::{JobArgs, LoggingArgs, ProjectArgs, PublishArgs};
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};

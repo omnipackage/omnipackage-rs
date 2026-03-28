@@ -2,9 +2,8 @@ use crate::artefacts;
 use crate::build::{BuildContext, extract_version, job_variables};
 use crate::config::{Build, Config, Repository};
 use crate::distros::{Distro, Distros};
-use crate::logger::{Color, LogOutput, Logger, colorize};
 use crate::publish::PublishContext;
-use crate::{BuildArgs, JobArgs, LoggingArgs, ProjectArgs, PublishArgs, ReleaseArgs};
+use crate::{JobArgs, LoggingArgs, ProjectArgs};
 use std::error::Error;
 use std::path::PathBuf;
 

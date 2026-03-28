@@ -1,7 +1,7 @@
 use crate::gpg::{Gpg, Key};
 use crate::publish::PublishContext;
 use std::error::Error;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 impl PublishContext {
     pub fn setup_rpm_repo(&self, key: &Key, home_dir: &Path, work_dir: &Path) -> Result<(), Box<dyn Error>> {

@@ -1,10 +1,10 @@
 use crate::gpg::Key;
 use crate::publish::PublishContext;
 use std::error::Error;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 impl PublishContext {
-    pub fn setup_deb_repo(&self, key: &Key, home_dir: &Path, work_dir: &Path) -> Result<(), Box<dyn Error>> {
+    pub fn setup_deb_repo(&self, _key: &Key, home_dir: &Path, work_dir: &Path) -> Result<(), Box<dyn Error>> {
         self.write_releases_script(home_dir)?;
 
         let mut commands = self.import_gpg_keys_commands();

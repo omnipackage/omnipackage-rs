@@ -1,8 +1,8 @@
-use crate::config::{Build, Config};
-use crate::distros::{Distro, Distros};
-use crate::logger::{Color, LogOutput, Logger, colorize};
+use crate::LoggingArgs;
+use crate::config::Build;
+use crate::distros::Distro;
+use crate::logger::{Color, Logger, colorize};
 use crate::shell::Command;
-use crate::{BuildArgs, JobArgs, LoggingArgs, ProjectArgs};
 use std::error::Error;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -34,7 +34,7 @@ impl BuildContext {
         let result = self.execute(&package);
         let finished_at = started_at.elapsed().as_secs_f32();
         match result {
-            Ok((artefacts, build_log)) => {
+            Ok((artefacts, _build_log)) => {
                 Logger::new().info(format!(
                     "successfully finished build for {} in {:.1}s, artefacts: {}",
                     self.distro.id,
