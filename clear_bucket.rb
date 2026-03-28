@@ -2,6 +2,7 @@ require "dotenv/load"
 require "aws-sdk-s3"
 
 bucket = ARGV.fetch(0)
+prefix = ARGV[1]
 access_key_id = ENV.fetch("CLOUDFLARE_R2_ACCESS_KEY_ID")
 secret_access_key = ENV.fetch("CLOUDFLARE_R2_SECRET_ACCESS_KEY")
 endpoint = ENV.fetch('CLOUDFLARE_R2_ENDPOINT')
@@ -17,11 +18,14 @@ client = Aws::S3::Client.new(
 continuation_token = nil
 
 loop do
-  resp = client.list_objects_v2(
+  list_params = {
     bucket: bucket,
     continuation_token: continuation_token,
     max_keys: 1000
-  )
+  }
+  list_params[:prefix] = "#{prefix.chomp('/')}/" if prefix
+
+  resp = client.list_objects_v2(**list_params)
 
   break if resp.contents.empty?
 
