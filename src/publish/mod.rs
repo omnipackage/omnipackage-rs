@@ -176,7 +176,11 @@ impl PublishContext {
         let log_path = self.build_dir.join("publish.log");
         let _ = std::fs::remove_file(&log_path);
 
-        Command::container(args).stream_output_to(self.logging_args.container_logger()).log_to(&log_path).run()
+        Command::container(args)
+            .stream_output_to(self.logging_args.container_logger())
+            .log_to(&log_path)
+            .run()
+            .map_err(|e| format!("{}, log: {}", e, colorize(Color::Red, log_path.display())).into())
     }
 
     fn s3_in_bucket_distro_path(&self, s3_config: &S3Config) -> String {
