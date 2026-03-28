@@ -1,0 +1,35 @@
+name: Self-release master
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: omnipackage-master
+      cancel-in-progress: false
+
+    steps:
+      - name: Install dependencies
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq podman
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: actions/checkout@v4
+
+      - run: echo "${{ secrets.OMNIPACKAGE_DOTENV }}" > .env
+
+      - name: Build binary
+        run: |
+          cargo build --release
+          sudo install -m 755 target/release/omnipackage /usr/local/bin/omnipackage
+
+      - name: Release packages
+        run: omnipackage release . --repository "Cloudflare R2 master"

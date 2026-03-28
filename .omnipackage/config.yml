@@ -1,0 +1,191 @@
+extract_version:
+  provider: 'file'
+  file:
+    file: 'Cargo.toml'
+    regex: 'version = "(.+)"'
+
+common: &common
+  package_name: omnipackage
+  maintainer: 'Oleg Antonyan <oleg.b.antonyan@gmail.com>'
+  homepage: https://omnipackage.org/
+  description: Build and distribute RPM & DEB packages easily
+
+repositories:
+  - name: "Cloudflare R2 master"
+    provider: s3
+    gpg_private_key_base64: "${GPG_PRIVATE_KEY_BASE64}"
+    <<: *common
+    s3:
+      bucket: repositories
+      path_in_bucket: 'omnipackage-rs/master'
+      bucket_public_url: 'https://repositories.omnipackage.org'
+      endpoint: '${CLOUDFLARE_R2_ENDPOINT}'
+      access_key_id: '${CLOUDFLARE_R2_ACCESS_KEY_ID}'
+      secret_access_key: '${CLOUDFLARE_R2_SECRET_ACCESS_KEY}'
+      region: auto
+      force_path_style: true
+  - name: "Cloudflare R2 stable"
+    provider: s3
+    gpg_private_key_base64: "${GPG_PRIVATE_KEY_BASE64}"
+    <<: *common
+    s3:
+      bucket: repositories
+      path_in_bucket: 'omnipackage-rs/stable'
+      bucket_public_url: 'https://repositories.omnipackage.org'
+      endpoint: '${CLOUDFLARE_R2_ENDPOINT}'
+      access_key_id: '${CLOUDFLARE_R2_ACCESS_KEY_ID}'
+      secret_access_key: '${CLOUDFLARE_R2_SECRET_ACCESS_KEY}'
+      region: auto
+      force_path_style: true
+
+rpm: &rpm
+  <<: *common
+  rpm:
+    spec_template: '.omnipackage/specfile.spec.liquid'
+
+deb: &deb
+  <<: *common
+  deb:
+    debian_templates: '.omnipackage/deb'
+
+builds:
+- distro: 'opensuse_15.3'
+  build_dependencies: ['curl', 'gcc', 'make']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *rpm
+
+- distro: 'opensuse_15.4'
+  build_dependencies: ['curl', 'gcc', 'make']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *rpm
+
+- distro: 'opensuse_15.5'
+  build_dependencies: ['curl', 'gcc', 'make']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *rpm
+
+- distro: 'opensuse_15.6'
+  build_dependencies: ['curl', 'gcc', 'make']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *rpm
+
+- distro: 'opensuse_16.0'
+  build_dependencies: ['curl', 'gcc', 'make']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *rpm
+
+- distro: 'opensuse_tumbleweed'
+  build_dependencies: ['rust', 'cargo', 'make']
+  <<: *rpm
+
+- distro: 'fedora_38'
+  build_dependencies: ['curl', 'gcc', 'make']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *rpm
+
+- distro: 'fedora_39'
+  build_dependencies: ['curl', 'gcc', 'make']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *rpm
+
+- distro: 'fedora_40'
+  build_dependencies: ['curl', 'gcc', 'make']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *rpm
+
+- distro: 'fedora_41'
+  build_dependencies: ['rust', 'cargo', 'make']
+  <<: *rpm
+
+- distro: 'fedora_42'
+  build_dependencies: ['rust', 'cargo', 'make']
+  <<: *rpm
+
+- distro: 'fedora_43'
+  build_dependencies: ['rust', 'cargo', 'make']
+  <<: *rpm
+
+- distro: 'fedora_rawhide'
+  build_dependencies: ['rust', 'cargo', 'make']
+  <<: *rpm
+
+- distro: 'debian_11'
+  build_dependencies: ['curl', 'build-essential']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *deb
+
+- distro: 'debian_12'
+  build_dependencies: ['curl', 'build-essential']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *deb
+
+- distro: 'debian_13'
+  build_dependencies: ['curl', 'build-essential']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *deb
+
+- distro: 'debian_testing'
+  build_dependencies: ['curl', 'build-essential', 'ca-certificates']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *deb
+
+- distro: 'debian_unstable'
+  build_dependencies: ['curl', 'build-essential', 'ca-certificates']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *deb
+
+- distro: 'ubuntu_20.04'
+  build_dependencies: ['curl', 'make', 'gcc-10']
+  ENV_EXPORTS: 'export CC=gcc-10'
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *deb
+
+- distro: 'ubuntu_22.04'
+  build_dependencies: ['curl', 'build-essential']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *deb
+
+- distro: 'ubuntu_24.04'
+  build_dependencies: ['curl', 'build-essential']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *deb
+
+- distro: 'ubuntu_25.04'
+  build_dependencies: ['curl', 'build-essential']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *deb
+
+- distro: 'almalinux_8'
+  build_dependencies: ['curl', 'gcc', 'make']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *rpm
+
+- distro: 'almalinux_9'
+  build_dependencies: ['curl', 'gcc', 'make']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *rpm
+
+- distro: 'almalinux_10'
+  build_dependencies: ['curl', 'gcc', 'make']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *rpm
+
+- distro: 'rockylinux_8'
+  build_dependencies: ['curl', 'gcc', 'make']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *rpm
+
+- distro: 'rockylinux_9'
+  build_dependencies: ['curl', 'gcc', 'make']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *rpm
+
+- distro: 'mageia_9'
+  build_dependencies: ['curl', 'gcc', 'make']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *rpm
+
+- distro: 'mageia_cauldron'
+  build_dependencies: ['curl', 'gcc', 'make']
+  before_build_script: '.omnipackage/install_rust.sh'
+  <<: *rpm
