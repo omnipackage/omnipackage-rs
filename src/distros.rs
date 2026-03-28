@@ -23,6 +23,36 @@ impl Distro {
         let deps = build_dependencies.join(" ");
         self.setup.iter().map(|command| command.replace("%{build_dependencies}", &deps)).collect()
     }
+
+    pub fn family(&self) -> &'static str {
+        let id = self.id.to_lowercase();
+        let name = self.name.to_lowercase();
+        let matches = |s: &str| id.contains(s) || name.contains(s);
+
+        if matches("opensuse") {
+            return "openSUSE";
+        }
+        if matches("fedora") {
+            return "Fedora";
+        }
+        if matches("debian") {
+            return "Debian";
+        }
+        if matches("ubuntu") {
+            return "Ubuntu";
+        }
+        if matches("alma") {
+            return "AlmaLinux";
+        }
+        if matches("rocky") {
+            return "Rocky Linux";
+        }
+        if matches("mageia") {
+            return "Mageia";
+        }
+
+        "Other"
+    }
 }
 
 #[derive(Debug, Deserialize, Clone)]

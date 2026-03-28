@@ -260,21 +260,6 @@ const distros  = JSON.parse(document.getElementById('data').textContent);
 const template = document.getElementById('tpl-accordion');
 const root     = document.getElementById('root');
 
-function inferFamily(distro) {
-  const id = distro.distro_id.toLowerCase();
-  const name = distro.distro_name.toLowerCase();
-
-  if (id.includes('opensuse') || name.includes('opensuse')) return 'openSUSE';
-  if (id.includes('fedora') || name.includes('fedora')) return 'Fedora';
-  if (id.includes('debian') || name.includes('debian')) return 'Debian';
-  if (id.includes('ubuntu') || name.includes('ubuntu')) return 'Ubuntu';
-  if (id.includes('alma') || name.includes('alma')) return 'AlmaLinux';
-  if (id.includes('rocky') || name.includes('rocky')) return 'Rocky Linux';
-  if (id.includes('mageia') || name.includes('mageia')) return 'Mageia';
-
-  return 'Other';
-}
-
 function renderAccordion(distro) {
   const node = template.content.cloneNode(true);
   const acc  = node.querySelector('.accordion');
@@ -313,7 +298,7 @@ const familyOrder = [];
 const byFamily = {};
 
 distros.forEach(d => {
-  const family = inferFamily(d);
+  const family = d.distro_family;
   if (!byFamily[family]) {
     familyOrder.push(family);
     byFamily[family] = [];

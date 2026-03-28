@@ -216,6 +216,7 @@ impl PublishContext {
         let repo = install_page::Repository::from([
             ("distro_id".to_string(), self.distro.id.clone()),
             ("distro_name".to_string(), self.distro.name.clone()),
+            ("distro_family".to_string(), self.distro.family().to_string()),
             ("install_steps".to_string(), self.install_steps().join("\n")),
             ("gpg_key".to_string(), setup_repo_output.gpgkey.pub_key),
             ("download_url".to_string(), download_url),
@@ -233,12 +234,10 @@ impl PublishContext {
                 let existing_install_page = String::from_utf8_lossy(&existing_page_bytes).into_owned();
                 let output = install_page::upsert(&existing_install_page, &repositories, self.config.to_template_vars())?;
 
-                s3.upload_file(INSTALL_PAGE_NAME, output.install_page.as_bytes().to_vec(), Some("text/html"))
-                    .map_err(|e| format!("error uploading install page: {}", e))?;
+                s3.upload_file(INSTALL_PAGE_NAME, output.install_page.as_bytes().to_vec(), Some("text/html"))?;
 
                 let page_url = format!("{}/{}", s3_config.base_bucket_url(), INSTALL_PAGE_NAME);
-                s3.upload_file(BADGE_NAME, output.badge.as_bytes().to_vec(), Some("image/svg+xml"))
-                    .map_err(|e| format!("error uploading badge: {}", e))?;
+                s3.upload_file(BADGE_NAME, output.badge.as_bytes().to_vec(), Some("image/svg+xml"))?;
 
                 let badge_url = format!("{}/{}", s3_config.base_bucket_url(), BADGE_NAME);
                 let badge_md = format!("[![OmniPackage repositories badge]({badge_url})]({page_url})");
