@@ -7,6 +7,10 @@ branding:
   color: "orange"
 
 inputs:
+  version:
+    description: "omnipackage-rs branch, tag, or SHA to build"
+    required: false
+    default: "master"
   rust-toolchain:
     description: "Rust toolchain used to compile omnipackage"
     required: false
@@ -42,7 +46,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: /usr/local/bin/omnipackage
-        key: omnipackage-${{ runner.os }}-${{ github.action_ref }}
+        key: omnipackage-${{ runner.os }}-${{ inputs.version }}
 
     - name: Install Rust toolchain
       if: steps.cache.outputs.cache-hit != 'true'
@@ -59,15 +63,14 @@ runs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           /tmp/omnipackage-rs/target/
-        key: omnipackage-cargo-${{ runner.os }}-${{ github.action_ref }}
+        key: omnipackage-cargo-${{ runner.os }}-${{ inputs.version }}
         restore-keys: omnipackage-cargo-${{ runner.os }}-
 
     - name: Build and install omnipackage
       if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        git clone --depth 1 --branch "${{ github.action_ref }}" \
-          https://github.com/omnipackage/omnipackage-rs.git /tmp/omnipackage-rs
+        git clone --depth 1 --branch "${{ inputs.version }}" https://github.com/omnipackage/omnipackage-rs.git /tmp/omnipackage-rs
         cargo build --release --manifest-path /tmp/omnipackage-rs/Cargo.toml
         sudo install -m 755 /tmp/omnipackage-rs/target/release/omnipackage /usr/local/bin/omnipackage
         echo "✓ omnipackage installed: $(omnipackage --version)"
