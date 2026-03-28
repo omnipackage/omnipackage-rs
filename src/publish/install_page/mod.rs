@@ -3,8 +3,8 @@ use crate::template::{Template, Var};
 use std::collections::HashMap;
 use std::error::Error;
 
-const PAGE_TEMPLATE_HTML: &str = include_str!("install.html.liquid");
-const BADGE_TEMPLATE_SVG: &str = include_str!("badge.svg.liquid");
+const PAGE_TEMPLATE_HTML: &str = include_str!("install.html.tera");
+const BADGE_TEMPLATE_SVG: &str = include_str!("badge.svg.tera");
 
 pub type Repository = HashMap<String, String>;
 pub type Repositories = Vec<Repository>;

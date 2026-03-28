@@ -80,7 +80,7 @@ mod tests {
             runtime_dependencies: vec![],
             before_build_script: None,
             rpm: Some(RpmConfig {
-                spec_template: ".omnipackage/specfile.spec.liquid".to_string(),
+                spec_template: ".omnipackage/specfile.spec.tera".to_string(),
             }),
             deb: None,
             rest: HashMap::new(),
@@ -96,7 +96,7 @@ mod tests {
         // create spec template
         let spec_dir = source_dir.join(".omnipackage");
         std::fs::create_dir_all(&spec_dir).unwrap();
-        std::fs::write(spec_dir.join("specfile.spec.liquid"), "Name: {{ package_name }}\nVersion: {{ version }}").unwrap();
+        std::fs::write(spec_dir.join("specfile.spec.tera"), "Name: {{ package_name }}\nVersion: {{ version }}").unwrap();
 
         let distro = Box::new(make_distro());
         let distro_ref: &'static Distro = Box::leak(distro);

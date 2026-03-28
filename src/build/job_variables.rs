@@ -87,7 +87,7 @@ mod tests {
         };
 
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("template.liquid");
+        let path = dir.path().join("template.tera");
         std::fs::write(&path, "{{ version }} {{ secrets.api_key }}").unwrap();
 
         let template = crate::template::Template::from_file(path);

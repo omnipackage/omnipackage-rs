@@ -49,7 +49,7 @@ impl BuildContext {
             .for_each(|path| {
                 let dest = to.join(path.file_name().unwrap().to_string_lossy().as_ref());
 
-                if path.extension().and_then(|e| e.to_str()) == Some("liquid") {
+                if path.extension().and_then(|e| e.to_str()) == Some("tera") {
                     let dest_without_ext = to.join(path.file_stem().unwrap().to_string_lossy().as_ref());
                     Template::from_file(path).render_to_file(vars.clone(), dest_without_ext);
                 } else {
@@ -109,7 +109,7 @@ mod tests {
         // create debian templates
         let deb_dir = source_dir.join(".omnipackage/deb");
         std::fs::create_dir_all(&deb_dir).unwrap();
-        std::fs::write(deb_dir.join("control.liquid"), "Package: {{ package_name }}\nVersion: {{ version }}").unwrap();
+        std::fs::write(deb_dir.join("control.tera"), "Package: {{ package_name }}\nVersion: {{ version }}").unwrap();
         std::fs::write(deb_dir.join("rules"), "#!/usr/bin/make -f\n%:\n\tdh $@").unwrap();
 
         let distro = Box::leak(Box::new(make_distro()));
@@ -138,7 +138,7 @@ mod tests {
         assert!(cmds.contains("apt-get install"));
         assert!(cmds.contains("dpkg-buildpackage"));
 
-        // verify liquid template was rendered
+        // verify tera template was rendered
         let control = build_dir.path().join("myapp-debian_12/build/debian/control");
         assert!(control.exists());
         let content = std::fs::read_to_string(&control).unwrap();

@@ -1,88 +1,83 @@
-use liquid::ParserBuilder;
-use liquid::model::{Value, KString};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use regex::Regex;
+use tera::{Tera, Context};
 
 #[derive(Clone)]
-pub struct Var(Value);
+pub struct Var(tera::Value);
 
 impl From<String> for Var {
     fn from(s: String) -> Self {
-        Var(Value::scalar(s))
+        Var(tera::Value::String(s))
     }
 }
 
 impl From<&str> for Var {
     fn from(s: &str) -> Self {
-        Var(Value::scalar(s.to_string()))
+        Var(tera::Value::String(s.to_string()))
     }
 }
 
 impl From<i64> for Var {
     fn from(i: i64) -> Self {
-        Var(Value::scalar(i))
+        Var(tera::Value::Number(i.into()))
     }
 }
 
 impl From<bool> for Var {
     fn from(b: bool) -> Self {
-        Var(Value::scalar(b))
+        Var(tera::Value::Bool(b))
     }
 }
 
 impl From<Vec<String>> for Var {
     fn from(v: Vec<String>) -> Self {
-        Var(Value::Array(v.into_iter().map(Value::scalar).collect()))
+        Var(tera::Value::Array(v.into_iter().map(tera::Value::String).collect()))
     }
 }
 
 impl From<HashMap<String, String>> for Var {
     fn from(map: HashMap<String, String>) -> Self {
-        let obj: liquid::Object = map.into_iter().map(|(k, v)| (k.into(), Value::scalar(v))).collect();
-        Var(Value::Object(obj))
+        Var(tera::Value::Object(map.into_iter().map(|(k, v)| (k, tera::Value::String(v))).collect()))
     }
 }
 
 pub struct Template {
-    template: liquid::Template,
-    source_content: String,
+    name: String,
+    tera: Tera,
 }
 
 impl Template {
     pub fn from_content(content: impl Into<String>) -> Self {
-        let source_content = content.into();
-        let template = ParserBuilder::with_stdlib()
-            .build()
-            .unwrap()
-            .parse(&source_content.clone())
+        let name = "__template__".to_string();
+        let mut tera = Tera::default();
+        tera.add_raw_template(&name, &content.into())
             .unwrap_or_else(|e| panic!("cannot parse template: {}", e));
-        Self { source_content, template }
+        Self { name, tera }
     }
 
     pub fn from_file(path: impl AsRef<Path>) -> Self {
-        let content = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("cannot read template {}: {}", path.as_ref().display(), e));
+        let content = std::fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("cannot read template {}: {}", path.as_ref().display(), e));
         Self::from_content(content)
     }
 
     pub fn render(&self, vars: impl IntoIterator<Item = (String, Var)>) -> String {
-        let mut globals: liquid::Object = vars.into_iter().map(|(k, v)| (k.into(), v.0)).collect();
-
-        // make it so liquid does not panic in case of missing variable
-        for cap in Regex::new(r"\{\{-?\s*(\w+)").unwrap().captures_iter(&self.source_content) {
-            globals.entry(KString::from_ref(&cap[1])).or_insert_with(|| Value::scalar(""));
+        let mut context = Context::new();
+        for (k, v) in vars {
+            context.insert(k, &v.0);
         }
-
-        self.template.render(&globals).unwrap_or_else(|e| panic!("cannot render template: {}", e))
+        self.tera.render(&self.name, &context)
+            .unwrap_or_else(|e| panic!("cannot render template: {}", e))
     }
 
     pub fn render_to_file(&self, vars: impl IntoIterator<Item = (String, Var)>, output_path: PathBuf) {
         if let Some(parent) = output_path.parent() {
-            std::fs::create_dir_all(parent).unwrap_or_else(|e| panic!("cannot create directory {}: {}", parent.display(), e));
+            std::fs::create_dir_all(parent)
+                .unwrap_or_else(|e| panic!("cannot create directory {}: {}", parent.display(), e));
         }
-
         let output = self.render(vars);
-        std::fs::write(&output_path, output).unwrap_or_else(|e| panic!("cannot write to {}: {}", output_path.display(), e));
+        std::fs::write(&output_path, output)
+            .unwrap_or_else(|e| panic!("cannot write to {}: {}", output_path.display(), e));
     }
 }
 
@@ -92,7 +87,7 @@ mod tests {
 
     fn make_template(content: &str) -> (Template, tempfile::TempDir) {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("template.liquid");
+        let path = dir.path().join("template.tera");
         std::fs::write(&path, content).unwrap();
         (Template::from_file(path), dir)
     }
@@ -129,9 +124,7 @@ mod tests {
     fn test_render_to_file() {
         let (template, dir) = make_template("Hello, {{ name }}!");
         let output_path = dir.path().join("output.txt");
-
         template.render_to_file([("name".to_string(), "world".into())], output_path.clone());
-
         let content = std::fs::read_to_string(&output_path).unwrap();
         assert_eq!(content, "Hello, world!");
     }
@@ -141,9 +134,7 @@ mod tests {
         let (template, _dir) = make_template("Hello, {{ name }}!");
         let dir = tempfile::tempdir().unwrap();
         let output_path = dir.path().join("nested/dirs/output.txt");
-
         template.render_to_file([("name".to_string(), "world".into())], output_path.clone());
-
         let content = std::fs::read_to_string(&output_path).unwrap();
         assert_eq!(content, "Hello, world!");
     }
@@ -153,5 +144,12 @@ mod tests {
         let (template, _dir) = make_template("Hello, {{ name }}! Extra: {{ CMAKE_EXTRA_CLI }}");
         let output = template.render([("name".to_string(), "world".into())]);
         assert_eq!(output, "Hello, world! Extra: ");
+    }
+
+    #[test]
+    fn test_render_undefined_variable_in_if() {
+        let (template, _dir) = make_template("{% if LDFLAGS %}{{ LDFLAGS }}{% endif %}");
+        let output = template.render([]);
+        assert_eq!(output, "");
     }
 }

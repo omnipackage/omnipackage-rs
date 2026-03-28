@@ -38,7 +38,7 @@ rpm: &rpm
   <<: *common
   build_dependencies: ['gcc', 'make']
   rpm:
-    spec_template: '.omnipackage/specfile.spec.liquid'
+    spec_template: '.omnipackage/specfile.spec.tera'
 
 deb: &deb
   <<: *common

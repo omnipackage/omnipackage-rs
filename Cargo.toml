@@ -14,7 +14,7 @@ clap = { version = "*", features = ["derive"] }
 serde = { version = "*", features = ["derive"] }
 serde-saphyr = "*"
 serde_json = "*"
-liquid = "*"
+tera = "*"
 regex = "*"
 tempfile = "*"
 subprocess = "*"
