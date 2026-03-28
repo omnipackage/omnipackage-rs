@@ -1,7 +1,8 @@
 use liquid::ParserBuilder;
-use liquid::model::Value;
+use liquid::model::{Value, KString};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use regex::Regex;
 
 #[derive(Clone)]
 pub struct Var(Value);
@@ -45,16 +46,18 @@ impl From<HashMap<String, String>> for Var {
 
 pub struct Template {
     template: liquid::Template,
+    source_content: String,
 }
 
 impl Template {
     pub fn from_content(content: impl Into<String>) -> Self {
+        let source_content = content.into();
         let template = ParserBuilder::with_stdlib()
             .build()
             .unwrap()
-            .parse(&content.into())
+            .parse(&source_content.clone())
             .unwrap_or_else(|e| panic!("cannot parse template: {}", e));
-        Self { template }
+        Self { source_content, template }
     }
 
     pub fn from_file(path: impl AsRef<Path>) -> Self {
@@ -63,7 +66,13 @@ impl Template {
     }
 
     pub fn render(&self, vars: impl IntoIterator<Item = (String, Var)>) -> String {
-        let globals: liquid::Object = vars.into_iter().map(|(k, v)| (k.into(), v.0)).collect();
+        let mut globals: liquid::Object = vars.into_iter().map(|(k, v)| (k.into(), v.0)).collect();
+
+        // make it so liquid does not panic in case of missing variable
+        for cap in Regex::new(r"\{\{-?\s*(\w+)").unwrap().captures_iter(&self.source_content) {
+            globals.entry(KString::from_ref(&cap[1])).or_insert_with(|| Value::scalar(""));
+        }
+
         self.template.render(&globals).unwrap_or_else(|e| panic!("cannot render template: {}", e))
     }
 
@@ -137,5 +146,12 @@ mod tests {
 
         let content = std::fs::read_to_string(&output_path).unwrap();
         assert_eq!(content, "Hello, world!");
+    }
+
+    #[test]
+    fn test_render_unknown_variable_falls_back_to_empty_string() {
+        let (template, _dir) = make_template("Hello, {{ name }}! Extra: {{ CMAKE_EXTRA_CLI }}");
+        let output = template.render([("name".to_string(), "world".into())]);
+        assert_eq!(output, "Hello, world! Extra: ");
     }
 }
