@@ -63,22 +63,8 @@ impl Template {
     }
 
     pub fn render(&self, vars: impl IntoIterator<Item = (String, Var)>) -> String {
-        let mut globals: liquid::Object = vars.into_iter().map(|(k, v)| (k.into(), v.0)).collect();
-
-        // Retry until all unknown variables are resolved, filling each with "".
-        loop {
-            match self.template.render(&globals) {
-                Ok(output) => return output,
-                Err(e) => {
-                    let msg = e.to_string();
-                    if let Some(var_name) = msg.lines().find_map(|line| line.trim().strip_prefix("requested variable=")).map(|s| s.trim().to_owned()) {
-                        globals.insert(var_name.into(), Value::scalar(""));
-                    } else {
-                        panic!("cannot render template: {}", e);
-                    }
-                }
-            }
-        }
+        let globals: liquid::Object = vars.into_iter().map(|(k, v)| (k.into(), v.0)).collect();
+        self.template.render(&globals).unwrap_or_else(|e| panic!("cannot render template: {}", e))
     }
 
     pub fn render_to_file(&self, vars: impl IntoIterator<Item = (String, Var)>, output_path: PathBuf) {
@@ -151,12 +137,5 @@ mod tests {
 
         let content = std::fs::read_to_string(&output_path).unwrap();
         assert_eq!(content, "Hello, world!");
-    }
-
-    #[test]
-    fn test_render_unknown_variable_falls_back_to_empty_string() {
-        let (template, _dir) = make_template("Hello, {{ name }}! Extra: {{ CMAKE_EXTRA_CLI }}");
-        let output = template.render([("name".to_string(), "world".into())]);
-        assert_eq!(output, "Hello, world! Extra: ");
     }
 }
