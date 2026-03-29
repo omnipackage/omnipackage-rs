@@ -2,11 +2,14 @@ name: Self-release master
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ master ]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [master]
 
 jobs:
   run:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     concurrency:
       group: omnipackage-master

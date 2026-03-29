@@ -126,6 +126,7 @@ mod tests {
             logging_args: LoggingArgs {
                 container_output: "null".to_string(),
                 disable_container_echo: false,
+                fail_log_lines: 42,
             },
         };
 
