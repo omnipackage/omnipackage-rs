@@ -31,7 +31,8 @@ jobs:
       - name: Build binary
         run: |
           cargo build --release
-          sudo install -m 755 target/release/omnipackage /usr/local/bin/omnipackage
+          sudo install -m 755  /usr/local/bin/omnipackage
+          cargo clean
 
       - name: Release packages
         run: omnipackage release . --container-output null --repository "Cloudflare R2 master"
