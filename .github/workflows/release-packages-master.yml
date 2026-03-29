@@ -35,13 +35,13 @@ jobs:
       - run: echo "${{ secrets.OMNIPACKAGE_DOTENV }}" > .env
 
       - name: Release packages
-        run: omnipackage release . --container-output null --build-dir /tmp/omnipackage --repository "Cloudflare R2 master"
+        run: omnipackage release . --container-output null --build-dir $RUNNER_TEMP --repository "Cloudflare R2 master"
 
       - name: Upload logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: logs
           path: |
-            /tmp/omnipackage/**/build.log
-            /tmp/omnipackage/**/publish.log
+            ${{ runner.temp }}/**/build.log
+            ${{ runner.temp }}/**/publish.log
