@@ -119,6 +119,13 @@ distros:
   arch: x86_64
   image_info_url: 'https://hub.docker.com/_/fedora'
 
+- id: 'fedora_44'
+  name: 'Fedora 44'
+  image: 'fedora:44'
+  <<: *redhat
+  arch: x86_64
+  image_info_url: 'https://hub.docker.com/_/fedora'
+
 - id: 'fedora_rawhide'
   name: 'Fedora Rawhide'
   image: 'fedora:rawhide'
@@ -209,6 +216,20 @@ distros:
 - id: 'ubuntu_25.04'
   name: 'Ubuntu 25.04'
   image: 'ubuntu:25.04'
+  <<: *debian
+  arch: x86_64
+  image_info_url: 'https://hub.docker.com/_/ubuntu'
+
+- id: 'ubuntu_25.10'
+  name: 'Ubuntu 25.10'
+  image: 'ubuntu:25.10'
+  <<: *debian
+  arch: x86_64
+  image_info_url: 'https://hub.docker.com/_/ubuntu'
+
+- id: 'ubuntu_26.04'
+  name: 'Ubuntu 26.04'
+  image: 'ubuntu:26.04'
   <<: *debian
   arch: x86_64
   image_info_url: 'https://hub.docker.com/_/ubuntu'
