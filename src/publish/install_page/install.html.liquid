@@ -166,6 +166,13 @@
   footer { text-align: center; margin-top: 2.5rem; color: var(--footer); font-size: .8rem; }
   footer a { color: var(--footer); }
 
+  .acc-timestamp {
+    display: block;
+    font-size: .75rem;
+    color: var(--muted);
+    text-align: right;
+  }
+
   .no-js-warning {
       background: #ffdddd;
       color: #900;
@@ -228,6 +235,7 @@
         </div>
         <span class="download-label">Or download package directly:</span>
         <a class="download-link acc-download" href="#"></a>
+        <div class="acc-timestamp"></div>
       </div>
     </div>
   </div>
@@ -291,6 +299,12 @@ function renderAccordion(distro) {
     gpgBtn.classList.toggle('open', open);
   });
 
+  if (distro.timestamp) {
+    const el = acc.querySelector('.acc-timestamp');
+    el.textContent = 'Updated ' + timeAgo(distro.timestamp);
+    el.title = distro.timestamp;
+  }
+
   return acc;
 }
 
@@ -322,6 +336,21 @@ familyOrder.forEach(family => {
   group.appendChild(col);
   root.appendChild(group);
 });
+
+function timeAgo(iso) {
+  const secs = Math.floor((Date.now() - new Date(iso)) / 1000);
+  if (secs < 60) return 'just now';
+  const m = Math.floor(secs / 60);
+  if (m < 60) return m + ' minute' + (m > 1 ? 's' : '') + ' ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + ' hour' + (h > 1 ? 's' : '') + ' ago';
+  const d = Math.floor(h / 24);
+  if (d < 30) return d + ' day' + (d > 1 ? 's' : '') + ' ago';
+  const mo = Math.floor(d / 30);
+  if (mo < 12) return mo + ' month' + (mo > 1 ? 's' : '') + ' ago';
+  const y = Math.floor(mo / 12);
+  return y + ' year' + (y > 1 ? 's' : '') + ' ago';
+}
 </script>
 </body>
 </html>

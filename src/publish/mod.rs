@@ -254,6 +254,7 @@ impl PublishContext {
             ("gpg_key".to_string(), setup_repo_output.gpgkey.pub_key),
             ("download_url".to_string(), download_url),
             ("package_type".to_string(), self.distro.package_type.clone()),
+            ("timestamp".to_string(), chrono::Utc::now().to_rfc3339()),
         ]);
         let repositories: install_page::Repositories = vec![repo];
 
