@@ -40,11 +40,13 @@ repositories:
 
 rpm: &rpm
   <<: *common
+  runtime_dependencies: ['(podman or docker)', 'gpg']
   rpm:
     spec_template: '.omnipackage/specfile.spec.liquid'
 
 deb: &deb
   <<: *common
+  runtime_dependencies: ['podman | docker', 'gpg']
   deb:
     debian_templates: '.omnipackage/deb'
 
