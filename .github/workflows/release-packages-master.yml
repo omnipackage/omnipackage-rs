@@ -26,16 +26,16 @@ jobs:
 
       - uses: actions/checkout@v6
 
-      - run: echo "${{ secrets.OMNIPACKAGE_DOTENV }}" > .env
-
       - name: Build binary
         run: |
           cargo build --release
           sudo install -m 755 target/release/omnipackage /usr/local/bin/omnipackage
           cargo clean
 
+      - run: echo "${{ secrets.OMNIPACKAGE_DOTENV }}" > .env
+
       - name: Release packages
-        run: omnipackage release . --container-output null --build_dir /tmp/omnipackage --repository "Cloudflare R2 master"
+        run: omnipackage release . --container-output null --build-dir /tmp/omnipackage --repository "Cloudflare R2 master"
 
       - name: Upload logs
         if: always()
