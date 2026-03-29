@@ -21,8 +21,8 @@ debian: &debian
   install_steps:
   - "echo 'deb %{url} stable/' | sudo tee /etc/apt/sources.list.d/omnipackage_%{project_slug}.list"
   - "curl -fsSL %{url}/stable/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/omnipackage_%{project_slug}.gpg > /dev/null"
-  - "sudo apt update"
-  - "sudo apt install %{package_name}"
+  - "sudo apt-get update"
+  - "sudo apt-get install %{package_name}"
 
 redhat: &redhat
   package_type: 'rpm'
