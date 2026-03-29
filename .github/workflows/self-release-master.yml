@@ -31,4 +31,4 @@ jobs:
           sudo install -m 755 target/release/omnipackage /usr/local/bin/omnipackage
 
       - name: Release packages
-        run: omnipackage release . --repository "Cloudflare R2 master"
+        run: omnipackage release . --container-output null --repository "Cloudflare R2 master"

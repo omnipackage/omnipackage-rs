@@ -61,7 +61,13 @@ impl PublishContext {
 
         let output = self.run_publish().map_err(|e| {
             if let Some(e) = e.downcast_ref::<ErrorWithLog>() {
-                Logger::new().error(format!("failed publish for {} ({}), log: {}", self.distro.id, e.error, colorize(Color::Red, e.log_path.display())));
+                Logger::new().error(format!(
+                    "failed publish for {} ({}), log: {}{}",
+                    self.distro.id,
+                    e.error,
+                    colorize(Color::Red, e.log_path.display()),
+                    self.logging_args.tail_log(&e.log_path)
+                ));
             } else {
                 Logger::new().error(format!("failed publish for {} ({})", self.distro.id, e));
             }

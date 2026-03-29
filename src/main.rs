@@ -3,7 +3,7 @@
 use clap::builder::styling::{AnsiColor, Effects, Styles};
 use clap::{Args, Parser, Subcommand};
 use std::error::Error;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 mod artefacts;
 mod build;
@@ -77,6 +77,10 @@ pub struct LoggingArgs {
     /// Disable echo (set -x) of commands inside the container
     #[arg(long)]
     disable_container_echo: bool,
+
+    /// Number of lines to print from the log on failure (only when --container-output=null)
+    #[arg(long, default_value_t = 50)]
+    fail_log_lines: usize,
 }
 
 #[derive(Args, Clone, Debug)]
@@ -281,6 +285,20 @@ impl LoggingArgs {
             _ => LogOutput::Silent,
         };
         Logger::new().with_output(output)
+    }
+
+    pub fn tail_log(&self, log_path: &Path) -> String {
+        if self.container_output == "null" {
+            std::fs::read_to_string(log_path)
+                .map(|contents| {
+                    let lines: Vec<&str> = contents.lines().collect();
+                    let last = &lines[lines.len().saturating_sub(self.fail_log_lines)..];
+                    format!("\n{}", last.join("\n"))
+                })
+                .unwrap_or_default()
+        } else {
+            String::new()
+        }
     }
 }
 

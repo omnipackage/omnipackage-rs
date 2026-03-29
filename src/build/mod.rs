@@ -46,11 +46,12 @@ impl BuildContext {
             }
             Err((err, build_log)) => {
                 Logger::new().error(format!(
-                    "failed build for {} in {:.1}s ({}), log: {}",
+                    "failed build for {} in {:.1}s ({}), log: {}{}",
                     self.distro.id,
                     finished_at,
                     err,
-                    colorize(Color::Red, build_log.display())
+                    colorize(Color::Red, build_log.display()),
+                    self.logging_args.tail_log(&build_log),
                 ));
 
                 Err(err)
