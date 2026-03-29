@@ -166,11 +166,15 @@
   footer { text-align: center; margin-top: 2.5rem; color: var(--footer); font-size: .8rem; }
   footer a { color: var(--footer); }
 
+  .acc-footer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
   .acc-timestamp {
-    display: block;
     font-size: .75rem;
     color: var(--muted);
-    text-align: right;
   }
 
   .no-js-warning {
@@ -233,9 +237,12 @@
             <div class="gpg-block acc-gpg"></div>
           </div>
         </div>
+
         <span class="download-label">Or download package directly:</span>
-        <a class="download-link acc-download" href="#"></a>
-        <div class="acc-timestamp"></div>
+        <div class="acc-footer-row">
+          <a class="download-link acc-download" href="#"></a>
+          <span class="acc-timestamp"></span>
+        </div>
       </div>
     </div>
   </div>
