@@ -35,4 +35,13 @@ jobs:
           cargo clean
 
       - name: Release packages
-        run: omnipackage release . --container-output null --repository "Cloudflare R2 master"
+        run: omnipackage release . --container-output null --build_dir /tmp/omnipackage --repository "Cloudflare R2 master"
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: |
+            /tmp/omnipackage/**/build.log
+            /tmp/omnipackage/**/publish.log
