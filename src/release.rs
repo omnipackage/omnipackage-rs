@@ -50,7 +50,7 @@ impl JobSetup {
 }
 
 pub fn build(project: ProjectArgs, job: JobArgs, logging: LoggingArgs) -> Result<(), Box<dyn Error>> {
-    let config = project.load_config()?;
+    let config = project.load_config(false)?;
     let setup = JobSetup::new(&project, &job, &config)?;
 
     for build_config in detect_builds(job.clone(), config) {
@@ -62,7 +62,7 @@ pub fn build(project: ProjectArgs, job: JobArgs, logging: LoggingArgs) -> Result
 }
 
 pub fn publish(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, repository: Option<String>) -> Result<(), Box<dyn Error>> {
-    let config = project.load_config()?;
+    let config = project.load_config(false)?;
     let setup = JobSetup::new(&project, &job, &config)?;
     let repository_config = config.repositories.find_by_name_or_default(repository.as_deref())?.clone();
 
@@ -75,7 +75,7 @@ pub fn publish(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, reposit
 }
 
 pub fn release(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, repository: Option<String>) -> Result<(), Box<dyn Error>> {
-    let config = project.load_config()?;
+    let config = project.load_config(false)?;
     let setup = JobSetup::new(&project, &job, &config)?;
     let repository_config = config.repositories.find_by_name_or_default(repository.as_deref())?.clone();
 

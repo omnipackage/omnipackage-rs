@@ -127,6 +127,20 @@ pub struct ReleaseArgs {
     repository: Option<String>,
 }
 
+#[derive(Args, Clone, Debug)]
+pub struct InfoArgs {
+    #[command(flatten)]
+    project: ProjectArgs,
+
+    /// List all configured distros in project
+    #[arg(long)]
+    list_distros: bool,
+
+    /// Output format
+    #[arg(long, default_value = "plain", value_parser = ["plain", "json"])]
+    format: String,
+}
+
 #[derive(Subcommand)]
 enum GpgCommands {
     /// Generate a new GPG key
@@ -182,6 +196,9 @@ enum Commands {
         #[command(subcommand)]
         command: GpgCommands,
     },
+
+    /// Query various info about the project
+    Info(InfoArgs),
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -258,6 +275,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                 println!("converted key written to {}", colorize(Color::BoldYellow, output_path.display()));
             }
         },
+        Commands::Info(args) => {
+            let config = args.project.load_config(true)?;
+            let distros: Vec<&str> = config.builds.iter().map(|b| b.distro.as_str()).collect();
+
+            match args.format.as_str() {
+                "json" => println!("{}", serde_json::to_string(&distros)?),
+                _ => distros.iter().for_each(|d| println!("{}", d)),
+            }
+        }
     }
     Ok(())
 }
@@ -303,7 +329,7 @@ impl LoggingArgs {
 }
 
 impl ProjectArgs {
-    pub fn load_config(&self) -> Result<Config, String> {
-        Config::load_with_env(&self.source_dir.join(&self.config_path), &self.env_file)
+    pub fn load_config(&self, silent: bool) -> Result<Config, String> {
+        Config::load_with_env(&self.source_dir.join(&self.config_path), &self.env_file, silent)
     }
 }

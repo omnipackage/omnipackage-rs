@@ -167,23 +167,27 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn load(path: &Path) -> Result<Self, String> {
-        Self::load_with_env(path, Path::new(".env"))
+    pub fn load(path: &Path, silent: bool) -> Result<Self, String> {
+        Self::load_with_env(path, Path::new(".env"), silent)
     }
 
-    pub fn load_with_env(path: &Path, env_path: &Path) -> Result<Self, String> {
+    pub fn load_with_env(path: &Path, env_path: &Path, silent: bool) -> Result<Self, String> {
         let env_map: HashMap<String, String> = match dotenvy::from_path_iter(env_path) {
             Ok(iter) => {
                 let map: HashMap<String, String> = iter.filter_map(|e| e.ok()).collect();
-                Logger::new().info(format!(
-                    "env loaded from {}: {}",
-                    std::env::current_dir().unwrap_or_default().join(env_path).display(),
-                    map.keys().cloned().collect::<Vec<_>>().join(", ")
-                ));
+                if !silent {
+                    Logger::new().info(format!(
+                        "env loaded from {}: {}",
+                        std::env::current_dir().unwrap_or_default().join(env_path).display(),
+                        map.keys().cloned().collect::<Vec<_>>().join(", ")
+                    ));
+                }
                 map
             }
             Err(_) => {
-                Logger::new().warn(format!("no env in {}", std::env::current_dir().unwrap_or_default().join(env_path).display()));
+                if !silent {
+                    Logger::new().warn(format!("no env in {}", std::env::current_dir().unwrap_or_default().join(env_path).display()));
+                }
                 HashMap::new()
             }
         };
@@ -239,7 +243,7 @@ mod tests {
     #[test]
     fn test_load_config() {
         let path = Path::new("tests/fixtures/sample_project/.omnipackage/config.yml");
-        let config = Config::load_with_env(path, &Path::new("tests/fixtures/sample_project/.omnipackage/.env")).unwrap();
+        let config = Config::load_with_env(path, &Path::new("tests/fixtures/sample_project/.omnipackage/.env"), false).unwrap();
 
         assert_eq!(config.extract_version.provider, "file");
         let file = config.extract_version.file.as_ref().unwrap();
@@ -354,7 +358,7 @@ mod tests {
         )
         .unwrap();
 
-        let config = Config::load_with_env(&config_path, &env_path).unwrap();
+        let config = Config::load_with_env(&config_path, &env_path, false).unwrap();
         assert_eq!(config.extract_version.file.unwrap().file, "expanded_value");
     }
 
@@ -376,7 +380,7 @@ mod tests {
         )
         .unwrap();
 
-        let config = Config::load(&config_path).unwrap();
+        let config = Config::load(&config_path, false).unwrap();
         assert!(config.repositories.is_empty());
     }
 }
