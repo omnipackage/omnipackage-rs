@@ -8,40 +8,91 @@ on:
     branches: [master]
 
 jobs:
-  run:
+  build-binary:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    concurrency:
-      group: omnipackage-master
-      cancel-in-progress: false
-
     steps:
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@v6
+
+      - name: Build binary
+        run: cargo build --release
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v6
+        with:
+          name: omnipackage-binary
+          path: target/release/omnipackage
+          retention-days: 1
+
+  list-distros:
+    needs: build-binary
+    runs-on: ubuntu-latest
+    outputs:
+      distros: ${{ steps.get-distros.outputs.distros }}
+    steps:
+      - uses: actions/checkout@v6
+
       - name: Install dependencies
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq podman
 
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - name: Download binary
+        uses: actions/download-artifact@v8
+        with:
+          name: omnipackage-binary
+          path: /usr/local/bin
 
-      - uses: actions/checkout@v6
+      - run: chmod +x /usr/local/bin/omnipackage
 
-      - name: Build binary
+      - name: Get distro list
+        id: get-distros
         run: |
-          cargo build --release
-          sudo install -m 755 target/release/omnipackage /usr/local/bin/omnipackage
-          cargo clean
+          echo "distros=$(omnipackage info --list-distros . --format json)" >> "$GITHUB_OUTPUT"
+
+  release:
+    needs: [build-binary, list-distros]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: omnipackage-master-${{ matrix.distro }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      matrix:
+        distro: ${{ fromJson(needs.list-distros.outputs.distros) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq podman
+
+      - name: Download binary
+        uses: actions/download-artifact@v8
+        with:
+          name: omnipackage-binary
+          path: /usr/local/bin
+
+      - run: chmod +x /usr/local/bin/omnipackage
 
       - run: echo "${{ secrets.OMNIPACKAGE_DOTENV }}" > .env
 
-      - name: Release packages
-        run: omnipackage release . --container-output null --build-dir $RUNNER_TEMP --repository "Cloudflare R2 master"
+      - name: Release packages for ${{ matrix.distro }}
+        run: |
+          omnipackage release . \
+            --container-output null \
+            --build-dir $RUNNER_TEMP \
+            --repository "Cloudflare R2 master" \
+            --distros "${{ matrix.distro }}"
 
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: logs
+          name: logs-${{ matrix.distro }}
           path: |
             ${{ runner.temp }}/**/build.log
             ${{ runner.temp }}/**/publish.log
