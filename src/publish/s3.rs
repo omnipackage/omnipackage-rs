@@ -38,10 +38,11 @@ impl S3 {
             match self.client.head_bucket().bucket(&self.bucket).send().await {
                 Ok(_) => Ok(true),
                 Err(e) => {
-                    if e.into_service_error().is_not_found() {
+                    let ee = e.into_service_error();
+                    if ee.is_not_found() {
                         Ok(false)
                     } else {
-                        Err(format!("error checking bucket '{}'", self.bucket).into())
+                        Err(format!("error checking bucket '{}': {}", self.bucket, ee).into())
                     }
                 }
             }
