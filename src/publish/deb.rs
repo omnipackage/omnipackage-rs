@@ -13,7 +13,7 @@ impl PublishContext {
             "mkdir -p stable".to_string(),
             "mv *.deb stable/".to_string(),
             "dpkg-scanpackages stable/ > stable/Packages".to_string(),
-            "cat stable/Packages | gzip -9 > stable/Packages.gz".to_string(),
+            "cat stable/Packages | gzip -1 > stable/Packages.gz".to_string(),
             "cd stable/".to_string(),
             "/root/generate_releases_script.sh > Release".to_string(),
             "gpg --no-tty --batch --yes --armor --detach-sign -o Release.gpg Release".to_string(),
