@@ -75,13 +75,13 @@ jobs:
       - run: echo "${{ secrets.OMNIPACKAGE_DOTENV }}" > .env
 
       - name: Release packages for ${{ matrix.distro }}
-        run:  omnipackage release . --container-output null --build-dir $RUNNER_TEMP --repository "Cloudflare R2 master" --distros "${{ matrix.distro }}"
+        run:  omnipackage release . --repository "Cloudflare R2 master" --distros "${{ matrix.distro }}"
 
-      - name: Upload logs
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: logs-${{ matrix.distro }}
-          path: |
-            ${{ runner.temp }}/**/build.log
-            ${{ runner.temp }}/**/publish.log
+      #- name: Upload logs
+      #  if: always()
+      #  uses: actions/upload-artifact@v6
+      #  with:
+      #    name: logs-${{ matrix.distro }}
+      #    path: |
+      #      ${{ runner.temp }}/**/build.log
+      #      ${{ runner.temp }}/**/publish.log
