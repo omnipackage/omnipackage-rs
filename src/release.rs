@@ -52,43 +52,57 @@ impl JobSetup {
 pub fn build(project: ProjectArgs, job: JobArgs, logging: LoggingArgs) -> Result<(), Box<dyn Error>> {
     let config = project.load_config(false)?;
     let setup = JobSetup::new(&project, &job, &config)?;
+    let mut any_failed = false;
 
     for build_config in detect_builds(job.clone(), config) {
         let distro = Distros::get().by_id(&build_config.distro);
-        fail_fast_or_continue(setup.build_context(distro, &build_config, &logging).run(), job.fail_fast)?;
+        let build_ok = fail_fast_or_continue(setup.build_context(distro, &build_config, &logging).run(), job.fail_fast)?;
+
+        if !build_ok {
+            any_failed = true;
+        }
     }
 
-    Ok(())
+    if any_failed { Err("build one or more distros failed".into()) } else { Ok(()) }
 }
 
 pub fn publish(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, repository: Option<String>) -> Result<(), Box<dyn Error>> {
     let config = project.load_config(false)?;
     let setup = JobSetup::new(&project, &job, &config)?;
     let repository_config = config.repositories.find_by_name_or_default(repository.as_deref())?.clone();
+    let mut any_failed = false;
 
     for build_config in detect_builds(job.clone(), config) {
         let distro = Distros::get().by_id(&build_config.distro);
-        fail_fast_or_continue(setup.publish_context(distro, &build_config, &repository_config, &logging).run(), job.fail_fast)?;
+        let publish_ok = fail_fast_or_continue(setup.publish_context(distro, &build_config, &repository_config, &logging).run(), job.fail_fast)?;
+
+        if !publish_ok {
+            any_failed = true;
+        }
     }
 
-    Ok(())
+    if any_failed { Err("publish one or more distros failed".into()) } else { Ok(()) }
 }
 
 pub fn release(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, repository: Option<String>) -> Result<(), Box<dyn Error>> {
     let config = project.load_config(false)?;
     let setup = JobSetup::new(&project, &job, &config)?;
     let repository_config = config.repositories.find_by_name_or_default(repository.as_deref())?.clone();
+    let mut any_failed = false;
 
     for build_config in detect_builds(job.clone(), config) {
         let distro = Distros::get().by_id(&build_config.distro);
         let build_ok = fail_fast_or_continue(setup.build_context(distro, &build_config, &logging).run(), job.fail_fast)?;
 
         if build_ok {
-            fail_fast_or_continue(setup.publish_context(distro, &build_config, &repository_config, &logging).run(), job.fail_fast)?;
+            let publish_ok = fail_fast_or_continue(setup.publish_context(distro, &build_config, &repository_config, &logging).run(), job.fail_fast)?;
+            any_failed |= !publish_ok;
+        } else {
+            any_failed = true;
         }
     }
 
-    Ok(())
+    if any_failed { Err("release one or more distros failed".into()) } else { Ok(()) }
 }
 
 fn fail_fast_or_continue(result: Result<(), Box<dyn Error>>, fail_fast: bool) -> Result<bool, Box<dyn Error>> {
