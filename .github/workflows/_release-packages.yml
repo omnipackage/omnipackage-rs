@@ -7,7 +7,7 @@ on:
 
 jobs:
   bootstrap-binary:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'release' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: dtolnay/rust-toolchain@stable
