@@ -84,5 +84,7 @@ jobs:
 
   deploy_github_env:
     needs: release
+    runs-on: ubuntu-latest
     environment:
+      name: master
       url: ${{ needs.release.outputs.install-page-url }}
