@@ -88,3 +88,5 @@ jobs:
     environment:
       name: master
       url: ${{ needs.release.outputs.install-page-url }}
+    steps:
+      - run: echo "deployed github environment"
