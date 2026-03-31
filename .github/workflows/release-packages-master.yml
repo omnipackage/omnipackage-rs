@@ -45,8 +45,7 @@ jobs:
 
       - name: Get distro list
         id: get-distros
-        run: |
-          echo "distros=$(omnipackage info --list-distros . --format json)" >> "$GITHUB_OUTPUT"
+        run: echo "distros=$(omnipackage info --list-distros . --format json)" >> "$GITHUB_OUTPUT"
 
   release:
     needs: [bootstrap-binary, list-distros]
@@ -75,7 +74,7 @@ jobs:
       - run: echo "${{ secrets.OMNIPACKAGE_DOTENV }}" > .env
 
       - name: Release packages for ${{ matrix.distro }}
-        run:  omnipackage release . --repository "Cloudflare R2 master" --distros "${{ matrix.distro }}"
+        run:  omnipackage release . --build-dir $RUNNER_TEMP/_omp --repository "Cloudflare R2 master" --distros "${{ matrix.distro }}"
 
       #- name: Upload logs
       #  if: always()
@@ -83,5 +82,5 @@ jobs:
       #  with:
       #    name: logs-${{ matrix.distro }}
       #    path: |
-      #      ${{ runner.temp }}/**/build.log
-      #      ${{ runner.temp }}/**/publish.log
+      #      ${{ runner.temp }}/_omp/**/build.log
+      #      ${{ runner.temp }}/_omp/**/publish.log
