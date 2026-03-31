@@ -30,11 +30,6 @@ jobs:
     outputs:
       distros: ${{ steps.get-distros.outputs.distros }}
     steps:
-      - uses: actions/checkout@v6
-
-      - name: Install dependencies
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq podman gpg
-
       - name: Download binary
         uses: actions/download-artifact@v8
         with:
@@ -42,6 +37,8 @@ jobs:
           path: /usr/local/bin
 
       - run: chmod +x /usr/local/bin/omnipackage
+
+      - uses: actions/checkout@v6
 
       - name: Get distro list
         id: get-distros
