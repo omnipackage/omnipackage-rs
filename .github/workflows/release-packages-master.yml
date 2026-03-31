@@ -82,8 +82,9 @@ jobs:
     outputs:
       install-page-url: ${{ steps.install-page-url.outputs.url }}
 
-  deploy_github_env:
+  deploy-github-environment:
     needs: release
+    if: needs.release.result == 'success' || needs.release.result == 'partially_succeeded'
     runs-on: ubuntu-latest
     environment:
       name: master
