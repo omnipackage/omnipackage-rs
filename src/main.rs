@@ -136,7 +136,15 @@ pub struct InfoArgs {
     #[arg(long)]
     list_distros: bool,
 
-    /// Output format
+    /// Show install page url
+    #[arg(long)]
+    show_install_page_url: bool,
+
+    /// Repository name of the said install page, if blank the first repository from config will be used
+    #[arg(short, long)]
+    repository: Option<String>,
+
+    /// Output format (list_distros only)
     #[arg(long, default_value = "plain", value_parser = ["plain", "json"])]
     format: String,
 }
@@ -277,11 +285,16 @@ fn main() -> Result<(), Box<dyn Error>> {
         },
         Commands::Info(args) => {
             let config = args.project.load_config(true)?;
-            let distros: Vec<&str> = config.builds.iter().map(|b| b.distro.as_str()).collect();
-
-            match args.format.as_str() {
-                "json" => println!("{}", serde_json::to_string(&distros)?),
-                _ => distros.iter().for_each(|d| println!("{}", d)),
+            if args.show_install_page_url {
+                let repository_config = config.repositories.find_by_name_or_default(args.repository.as_deref())?.clone();
+                let page_url = publish::install_page_url(&repository_config).unwrap_or("".to_string());
+                println!("{}", page_url);
+            } else if args.list_distros {
+                let distros: Vec<&str> = config.builds.iter().map(|b| b.distro.as_str()).collect();
+                match args.format.as_str() {
+                    "json" => println!("{}", serde_json::to_string(&distros)?),
+                    _ => distros.iter().for_each(|d| println!("{}", d)),
+                }
             }
         }
     }

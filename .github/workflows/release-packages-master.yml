@@ -54,6 +54,8 @@ jobs:
       fail-fast: false
       matrix:
         distro: ${{ fromJson(needs.list-distros.outputs.distros) }}
+    env:
+      REPOSITORY_NAME: "Cloudflare R2 master"
     steps:
       - uses: actions/checkout@v6
 
@@ -71,7 +73,11 @@ jobs:
       - run: echo "${{ secrets.OMNIPACKAGE_DOTENV }}" > .env
 
       - name: Release packages for ${{ matrix.distro }}
-        run:  omnipackage release . --build-dir $RUNNER_TEMP/_omp --repository "Cloudflare R2 master" --distros "${{ matrix.distro }}"
+        run:  omnipackage release . --build-dir $RUNNER_TEMP/_omp --repository $REPOSITORY_NAME --distros "${{ matrix.distro }}"
+
+      - name: Get install page URL for deployment
+        id: install-page-url
+        run: echo "url=$(omnipackage info . --repository $REPOSITORY_NAME --show-install-page-url)" >> "$GITHUB_OUTPUT"
 
       #- name: Upload logs
       #  if: always()
@@ -81,3 +87,6 @@ jobs:
       #    path: |
       #      ${{ runner.temp }}/_omp/**/build.log
       #      ${{ runner.temp }}/_omp/**/publish.log
+    environment:
+      name: master
+      url: ${{ steps.install-page-url.outputs.url }}

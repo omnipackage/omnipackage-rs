@@ -14,6 +14,9 @@ mod install_page;
 mod rpm;
 mod s3;
 
+const INSTALL_PAGE_NAME: &str = "install.html";
+const BADGE_NAME: &str = "badge.svg";
+
 #[derive(Debug, Clone)]
 pub struct PublishContext {
     pub distro: &'static Distro,
@@ -52,6 +55,17 @@ impl std::fmt::Display for ErrorWithLog {
 impl ErrorWithLog {
     pub fn wrap(error: Box<dyn Error>, log_path: PathBuf) -> Box<dyn Error> {
         Box::new(Self { error, log_path })
+    }
+}
+
+pub fn install_page_url(repository: &Repository) -> Option<String> {
+    match repository.provider.as_str() {
+        "s3" => {
+            let s3_config = repository.s3();
+            let page_url = format!("{}/{}", s3_config.base_bucket_url(), INSTALL_PAGE_NAME);
+            Some(page_url)
+        }
+        &_ => None,
     }
 }
 
@@ -241,9 +255,6 @@ impl PublishContext {
     }
 
     fn update_install_page(&self, setup_repo_output: SetupRepoOutput) -> Result<InstallPageBadge, Box<dyn Error>> {
-        const INSTALL_PAGE_NAME: &str = "install.html";
-        const BADGE_NAME: &str = "badge.svg";
-
         let download_url = self.package_download_url(&setup_repo_output)?;
 
         let repo = install_page::Repository::from([
@@ -270,7 +281,7 @@ impl PublishContext {
 
                 s3.upload_file(INSTALL_PAGE_NAME, output.install_page.as_bytes().to_vec(), Some("text/html"))?;
 
-                let page_url = format!("{}/{}", s3_config.base_bucket_url(), INSTALL_PAGE_NAME);
+                let page_url = install_page_url(&self.config).ok_or("install page url cannot be generated")?;
                 s3.upload_file(BADGE_NAME, output.badge.as_bytes().to_vec(), Some("image/svg+xml"))?;
 
                 let badge_url = format!("{}/{}", s3_config.base_bucket_url(), BADGE_NAME);
