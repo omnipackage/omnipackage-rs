@@ -79,14 +79,10 @@ jobs:
         id: install-page-url
         run: echo "url=$(omnipackage info . --repository "$REPOSITORY_NAME" --show-install-page-url)" >> "$GITHUB_OUTPUT"
 
-      #- name: Upload logs
-      #  if: always()
-      #  uses: actions/upload-artifact@v6
-      #  with:
-      #    name: logs-${{ matrix.distro }}
-      #    path: |
-      #      ${{ runner.temp }}/_omp/**/build.log
-      #      ${{ runner.temp }}/_omp/**/publish.log
+    outputs:
+      install-page-url: ${{ steps.install-page-url.outputs.url }}
+
+  deploy_github_env:
+    needs: release
     environment:
-      name: master
-      url: ${{ steps.install-page-url.outputs.url }}
+      url: ${{ needs.release.outputs.install-page-url }}
