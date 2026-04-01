@@ -1,5 +1,6 @@
+use crate::config::Repository as RepoConfig;
 use crate::distros::Distros;
-use crate::template::{Template, Var};
+use crate::template::Template;
 use std::collections::HashMap;
 use std::error::Error;
 
@@ -15,7 +16,7 @@ pub struct Output {
     pub badge: String,
 }
 
-pub fn upsert(existing_page_html: &str, repositories: &Repositories, template_vars: HashMap<String, Var>) -> Result<Output, Box<dyn Error>> {
+pub fn upsert(existing_page_html: &str, repositories: &Repositories, config: &RepoConfig) -> Result<Output, Box<dyn Error>> {
     let mut repos = parse(existing_page_html).unwrap_or_else(|_| vec![]);
 
     repositories.iter().for_each(|repo| {
@@ -24,13 +25,13 @@ pub fn upsert(existing_page_html: &str, repositories: &Repositories, template_va
 
     let template_html = render(&repos)?;
 
-    let install_page = Template::from_content(&template_html)?.render(template_vars.clone())?;
-    let badge = render_badge(&repos, template_vars.clone()).unwrap_or("".to_string());
+    let install_page = Template::from_content(&template_html)?.render(config.to_template_vars())?;
+    let badge = render_badge(&repos, config).unwrap_or("".to_string());
     Ok(Output { install_page, badge })
 }
 
-fn render_badge(repositories: &Repositories, template_vars: HashMap<String, Var>) -> Result<String, Box<dyn Error>> {
-    let mut vars = template_vars.clone();
+fn render_badge(repositories: &Repositories, config: &RepoConfig) -> Result<String, Box<dyn Error>> {
+    let mut vars = config.to_template_vars();
 
     let (rpm_count, deb_count) = repositories.iter().fold((0, 0), |(rpm, deb), r| match r.get("package_type").map(|t| t.as_str()) {
         Some("rpm") => (rpm + 1, deb),
@@ -38,7 +39,7 @@ fn render_badge(repositories: &Repositories, template_vars: HashMap<String, Var>
         _ => (rpm, deb),
     });
 
-    vars.insert("title".to_string(), "OmniPackage repositories badge".into());
+    vars.insert("title".to_string(), config.name.clone().into());
     vars.insert("text".to_string(), format!("{rpm_count} RPM {deb_count} DEB").into());
 
     Template::from_content(BADGE_TEMPLATE_SVG)?.render(vars)
@@ -87,6 +88,7 @@ fn upsert_repository(repositories: &mut Repositories, data: Repository) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::AnyValue;
 
     fn fixture() -> String {
         std::fs::read_to_string("tests/fixtures/install.html").expect("cannot read tests/fixtures/install.html")
@@ -230,19 +232,27 @@ mod tests {
             ("package_type".to_string(), "deb".into()),
         ]);
 
-        let vars: HashMap<String, Var> = HashMap::from([
-            ("package_name".to_string(), "testpackage".to_string().into()),
-            ("description".to_string(), "testpackage description".to_string().into()),
-            ("homepage".to_string(), "http://testpacka.ge".to_string().into()),
-        ]);
+        let rest = HashMap::from([("homepage".to_string(), AnyValue::String("http://testpacka.ge".to_string()))]);
+        let repo_conf = RepoConfig {
+            name: "this is badge title".into(),
+            provider: "s3".into(),
+            gpg_private_key_base64: "".into(),
+            package_name: "test123".into(),
+            rest,
+            s3: None,
+            localfs: None,
+        };
         let new_repos: Repositories = vec![new_repo1, new_repo2];
-        let result = upsert(&html, &new_repos, vars).unwrap();
+        let result = upsert(&html, &new_repos, &repo_conf).unwrap();
 
         assert!(result.install_page.contains("Debian 14"));
         assert!(result.install_page.contains("Debian 15 LTS"));
         assert!(result.install_page.contains("http://testpacka.ge"));
 
         assert!(result.badge.contains("1 RPM 1 DEB"));
+        assert!(result.badge.contains("this is badge title"));
+
+        println!("{}", result.badge);
 
         let repos2 = parse(&result.install_page).unwrap();
         assert_eq!(repos2.len(), 24);

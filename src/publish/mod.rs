@@ -277,7 +277,7 @@ impl PublishContext {
 
                 let existing_page_bytes = s3.download_file(INSTALL_PAGE_NAME).unwrap_or(vec![]);
                 let existing_install_page = String::from_utf8_lossy(&existing_page_bytes).into_owned();
-                let output = install_page::upsert(&existing_install_page, &repositories, self.config.to_template_vars())?;
+                let output = install_page::upsert(&existing_install_page, &repositories, &self.config)?;
 
                 s3.upload_file(INSTALL_PAGE_NAME, output.install_page.as_bytes().to_vec(), Some("text/html"))?;
 
