@@ -1,6 +1,6 @@
 use crate::config::Repository as RepoConfig;
 use crate::distros::Distros;
-use crate::template::Template;
+use crate::template::{Template, Var};
 use std::collections::HashMap;
 use std::error::Error;
 
@@ -39,8 +39,7 @@ fn render_badge(repositories: &Repositories, config: &RepoConfig) -> Result<Stri
         _ => (rpm, deb),
     });
 
-    vars.insert("title".to_string(), config.name.clone().into());
-    vars.insert("text".to_string(), format!("{rpm_count} RPM {deb_count} DEB").into());
+    vars.extend(badge_vars(config.name.clone(), format!("{rpm_count} RPM {deb_count} DEB")));
 
     Template::from_content(BADGE_TEMPLATE_SVG)?.render(vars)
 }
@@ -83,6 +82,27 @@ fn upsert_repository(repositories: &mut Repositories, data: Repository) {
     } else {
         repositories.push(data);
     }
+}
+
+fn measure_text_width(text: &str) -> f64 {
+    text.len() as f64 * 7.5
+}
+
+pub fn badge_vars(title: String, aux: String) -> HashMap<String, Var> {
+    let left_w = (34.78 + measure_text_width(&title)).ceil() as u32;
+    let right_w = (18.0 + measure_text_width(&aux)).ceil() as u32;
+    let total_w = left_w + right_w;
+    let aux_cx = left_w as f64 + right_w as f64 / 2.0;
+
+    let mut map = HashMap::new();
+    map.insert("TITLE".to_string(), title.into());
+    map.insert("AUX".to_string(), aux.into());
+    map.insert("LEFT_W".to_string(), left_w.to_string().into());
+    map.insert("RIGHT_W".to_string(), right_w.to_string().into());
+    map.insert("TOTAL_W".to_string(), total_w.to_string().into());
+    map.insert("TOTAL_W_1".to_string(), (total_w - 1).to_string().into());
+    map.insert("AUX_CX".to_string(), format!("{:.1}", aux_cx).into());
+    map
 }
 
 #[cfg(test)]

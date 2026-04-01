@@ -270,7 +270,7 @@ mod tests {
         assert_eq!(config.repositories.len(), 2);
 
         let s3 = &config.repositories[0];
-        assert_eq!(s3.name, "CloudFlare R2");
+        assert_eq!(s3.name, "test repo on Cloudflare R2");
         assert_eq!(s3.provider, "s3");
         assert_eq!(s3.s3().bucket, "repositories-test");
         assert_eq!(<std::option::Option<std::string::String> as Clone>::clone(&s3.s3().region).unwrap(), "auto");
