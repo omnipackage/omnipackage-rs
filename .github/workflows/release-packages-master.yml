@@ -12,4 +12,4 @@ jobs:
     uses: ./.github/workflows/_release-packages.yml
     secrets: inherit
     with:
-      repository: "Cloudflare R2 master"
+      repository: "master"

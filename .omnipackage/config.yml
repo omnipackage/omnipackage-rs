@@ -11,7 +11,7 @@ common: &common
   description: Build and distribute RPM & DEB packages easily
 
 repositories:
-  - name: "Cloudflare R2 master"
+  - name: "master"
     provider: s3
     gpg_private_key_base64: "${GPG_PRIVATE_KEY_BASE64}"
     <<: *common
@@ -25,7 +25,7 @@ repositories:
       secret_access_key: '${CLOUDFLARE_R2_SECRET_ACCESS_KEY}'
       region: auto
       force_path_style: true
-  - name: "Cloudflare R2 stable"
+  - name: "stable"
     provider: s3
     gpg_private_key_base64: "${GPG_PRIVATE_KEY_BASE64}"
     <<: *common

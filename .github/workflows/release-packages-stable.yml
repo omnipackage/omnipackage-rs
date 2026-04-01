@@ -10,4 +10,4 @@ jobs:
     uses: ./.github/workflows/_release-packages.yml
     secrets: inherit
     with:
-      repository: "Cloudflare R2 stable"
+      repository: "stable"
