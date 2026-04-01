@@ -13,9 +13,15 @@ pub struct ExtractVersionFile {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct ExtractVersionShell {
+    pub command: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct ExtractVersion {
     pub provider: String,
     pub file: Option<ExtractVersionFile>,
+    pub shell: Option<ExtractVersionShell>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

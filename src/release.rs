@@ -15,7 +15,7 @@ struct JobSetup {
 
 impl JobSetup {
     fn new(project: &ProjectArgs, job: &JobArgs, config: &Config) -> Result<Self, Box<dyn Error>> {
-        let version = extract_version::extract_version(&project.source_dir, &config.extract_version);
+        let version = extract_version::extract_version(&project.source_dir, &config.extract_version)?;
         let job_variables = job_variables::JobVariables::build(version).with_secrets(config.secrets.clone().into_iter().collect());
 
         Ok(Self {

@@ -1,24 +1,27 @@
 use crate::config::ExtractVersion;
 use regex::Regex;
+use std::error::Error;
 use std::path::Path;
 
-pub fn extract_version(path: &Path, config: &ExtractVersion) -> String {
+pub fn extract_version(path: &Path, config: &ExtractVersion) -> Result<String, Box<dyn Error>> {
     match config.provider.as_str() {
         "file" => {
-            let file_config = &config.file.clone().unwrap_or_else(|| panic!("cannot read file config"));
+            let file_config = config.file.clone().ok_or("file config is missing")?;
 
             let file_path = path.join(&file_config.file);
-            let content = std::fs::read_to_string(&file_path).unwrap_or_else(|e| panic!("cannot read {}: {}", file_path.display(), e));
+            let content = std::fs::read_to_string(&file_path).map_err(|e| format!("cannot read {}: {}", file_path.display(), e))?;
 
             let regex = &file_config.regex;
-            let re = Regex::new(regex).unwrap_or_else(|e| panic!("invalid regex '{}': {}", regex, e));
+            let re = Regex::new(regex).map_err(|e| format!("invalid regex '{}': {}", regex, e))?;
 
-            re.captures(&content)
+            let result = re
+                .captures(&content)
                 .and_then(|c| c.get(1))
                 .map(|m| m.as_str().to_string())
-                .unwrap_or_else(|| panic!("regex '{}' did not match in {}", regex, file_path.display()))
+                .ok_or_else(|| format!("regex '{}' did not match in {}", regex, file_path.display()));
+            Ok(result?)
         }
-        _ => panic!("unknown version provider {}", config.provider),
+        _ => Err(format!("unknown version provider {}", config.provider).into()),
     }
 }
 
@@ -35,6 +38,7 @@ mod tests {
                 file: file.to_string(),
                 regex: regex.to_string(),
             }),
+            shell: None,
         }
     }
 
@@ -44,7 +48,7 @@ mod tests {
         std::fs::write(dir.path().join("version.rb"), "VERSION = '1.2.3'").unwrap();
 
         let config = make_config("version.rb", "VERSION = '(.+)'");
-        let version = extract_version(&dir.path().to_path_buf(), &config);
+        let version = extract_version(&dir.path().to_path_buf(), &config).unwrap();
         assert_eq!(version, "1.2.3");
     }
 
@@ -53,8 +57,9 @@ mod tests {
         let config = ExtractVersion {
             provider: "unknown".to_string(),
             file: None,
+            shell: None,
         };
-        let result = std::panic::catch_unwind(|| extract_version(&PathBuf::from("."), &config));
+        let result = extract_version(&PathBuf::from("."), &config);
         assert!(result.is_err());
     }
 }
