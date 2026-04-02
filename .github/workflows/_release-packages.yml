@@ -4,6 +4,9 @@ on:
       repository:
         required: true
         type: string
+      version_extractor:
+        required: true
+        type: string
 
 jobs:
   bootstrap-binary:
@@ -54,4 +57,4 @@ jobs:
           path: /usr/local/bin
       - run: chmod +x /usr/local/bin/omnipackage
       - run: echo "${{ secrets.OMNIPACKAGE_DOTENV }}" > .env
-      - run:  omnipackage release . --build-dir $RUNNER_TEMP/_omp --repository "${{ inputs.repository }}" --distros "${{ matrix.distro }}"
+      - run:  omnipackage release . --build-dir $RUNNER_TEMP/_omp --repository "${{ inputs.repository }}" --distros "${{ matrix.distro }}" --version-extractor "${{ inputs.version_extractor }}"

@@ -18,7 +18,8 @@ pub struct ExtractVersionShell {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct ExtractVersion {
+pub struct VersionExtractor {
+    pub name: String,
     pub provider: String,
     pub file: Option<ExtractVersionFile>,
     pub shell: Option<ExtractVersionShell>,
@@ -162,9 +163,29 @@ impl std::ops::Deref for Repositories {
     }
 }
 
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct VersionExtractors(Vec<VersionExtractor>);
+
+impl VersionExtractors {
+    pub fn find_by_name_or_default(&self, name: Option<&str>) -> Result<&VersionExtractor, Box<dyn Error>> {
+        match name {
+            Some(name) => self.0.iter().find(|r| r.name == name).ok_or_else(|| format!("version extractor '{}' not found", name).into()),
+            None => self.0.first().ok_or_else(|| "no version extractors configured".into()),
+        }
+    }
+}
+
+impl std::ops::Deref for VersionExtractors {
+    type Target = Vec<VersionExtractor>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
-    pub extract_version: ExtractVersion,
+    pub version_extractors: VersionExtractors,
     pub builds: Vec<Build>,
     #[serde(default)]
     pub repositories: Repositories,
@@ -251,8 +272,10 @@ mod tests {
         let path = Path::new("tests/fixtures/sample_project/.omnipackage/config.yml");
         let config = Config::load_with_env(path, &Path::new("tests/fixtures/sample_project/.omnipackage/.env"), false).unwrap();
 
-        assert_eq!(config.extract_version.provider, "file");
-        let file = config.extract_version.file.as_ref().unwrap();
+        assert!(!config.version_extractors.is_empty());
+        let ve = &config.version_extractors[1];
+        assert_eq!(ve.provider, "file");
+        let file = ve.file.as_ref().unwrap();
         assert_eq!(file.file, "version.h");
 
         assert!(!config.builds.is_empty());
@@ -354,18 +377,19 @@ mod tests {
         std::fs::write(
             &config_path,
             "
-    extract_version:
-      provider: file
-      file:
-        file: ${MY_VAR}
-        regex: VERSION
-    builds: []
-    ",
+        version_extractors:
+          - name: default
+            provider: file
+            file:
+              file: ${MY_VAR}
+              regex: VERSION
+        builds: []
+        ",
         )
         .unwrap();
 
         let config = Config::load_with_env(&config_path, &env_path, false).unwrap();
-        assert_eq!(config.extract_version.file.unwrap().file, "expanded_value");
+        assert_eq!(config.version_extractors[0].file.as_ref().unwrap().file, "expanded_value");
     }
 
     #[test]
@@ -376,17 +400,105 @@ mod tests {
         std::fs::write(
             &config_path,
             r#"
-    extract_version:
-      provider: file
-      file:
-        file: version.rb
-        regex: VERSION
-    builds: []
-    "#,
+        version_extractors:
+          - name: default
+            provider: file
+            file:
+              file: version.rb
+              regex: VERSION
+        builds: []
+        "#,
         )
         .unwrap();
 
         let config = Config::load(&config_path, false).unwrap();
         assert!(config.repositories.is_empty());
+    }
+
+    #[test]
+    fn test_version_extractors_find_by_name() {
+        let yaml = r#"
+version_extractors:
+  - name: from-file
+    provider: file
+    file:
+      file: version.h
+      regex: 'VERSION\s+"([^"]+)"'
+  - name: from-shell
+    provider: shell
+    shell:
+      command: ./get-version.sh
+builds: []
+"#;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.yml");
+        std::fs::write(&path, yaml).unwrap();
+
+        let config = Config::load(&path, true).unwrap();
+        assert_eq!(config.version_extractors.len(), 2);
+
+        let found = config.version_extractors.find_by_name_or_default(Some("from-shell")).unwrap();
+        assert_eq!(found.provider, "shell");
+        assert!(found.shell.is_some());
+        assert_eq!(found.shell.as_ref().unwrap().command, "./get-version.sh");
+    }
+
+    #[test]
+    fn test_version_extractors_find_default_is_first() {
+        let yaml = r#"
+version_extractors:
+  - name: primary
+    provider: file
+    file:
+      file: version.txt
+      regex: '.*'
+  - name: secondary
+    provider: shell
+    shell:
+      command: echo 1.0.0
+builds: []
+"#;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.yml");
+        std::fs::write(&path, yaml).unwrap();
+
+        let config = Config::load(&path, true).unwrap();
+        let default = config.version_extractors.find_by_name_or_default(None).unwrap();
+        assert_eq!(default.name, "primary");
+    }
+
+    #[test]
+    fn test_version_extractors_find_unknown_name_errors() {
+        let yaml = r#"
+version_extractors:
+  - name: only-one
+    provider: file
+    file:
+      file: version.h
+      regex: '.*'
+builds: []
+"#;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.yml");
+        std::fs::write(&path, yaml).unwrap();
+
+        let config = Config::load(&path, true).unwrap();
+        let result = config.version_extractors.find_by_name_or_default(Some("does-not-exist"));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_version_extractors_empty_errors_on_default() {
+        let yaml = r#"
+version_extractors: []
+builds: []
+"#;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.yml");
+        std::fs::write(&path, yaml).unwrap();
+
+        let config = Config::load(&path, true).unwrap();
+        let result = config.version_extractors.find_by_name_or_default(None);
+        assert!(result.is_err());
     }
 }

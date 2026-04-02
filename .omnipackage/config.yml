@@ -1,8 +1,14 @@
-extract_version:
-  provider: 'file'
-  file:
-    file: 'Cargo.toml'
-    regex: 'version = "(.+)"'
+version_extractors:
+  - name: git
+    provider: "shell"
+    shell:
+      command: printf '0~master.%s' $(git rev-list --count HEAD)
+
+  - name: cargotoml
+    provider: 'file'
+    file:
+      file: 'Cargo.toml'
+      regex: 'version = "(.+)"'
 
 common: &common
   package_name: omnipackage

@@ -1,9 +1,10 @@
-use crate::config::ExtractVersion;
+use crate::config::VersionExtractor;
+use crate::shell::Command;
 use regex::Regex;
 use std::error::Error;
 use std::path::Path;
 
-pub fn extract_version(path: &Path, config: &ExtractVersion) -> Result<String, Box<dyn Error>> {
+pub fn extract_version(path: &Path, config: &VersionExtractor) -> Result<String, Box<dyn Error>> {
     match config.provider.as_str() {
         "file" => {
             let file_config = config.file.clone().ok_or("file config is missing")?;
@@ -21,19 +22,25 @@ pub fn extract_version(path: &Path, config: &ExtractVersion) -> Result<String, B
                 .ok_or_else(|| format!("regex '{}' did not match in {}", regex, file_path.display()));
             Ok(result?)
         }
-        _ => Err(format!("unknown version provider {}", config.provider).into()),
+        "shell" => {
+            let shell_config = config.shell.clone().ok_or("shell config is missing")?;
+            let output = Command::new("sh").args(["-c", &shell_config.command]).capture()?.trim_end().to_string();
+            Ok(output)
+        }
+        _ => Err(format!("unknown version provider '{}'", config.provider).into()),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ExtractVersion, ExtractVersionFile};
+    use crate::config::{ExtractVersionFile, VersionExtractor};
     use std::path::PathBuf;
 
-    fn make_config(file: &str, regex: &str) -> ExtractVersion {
-        ExtractVersion {
+    fn make_config(file: &str, regex: &str) -> VersionExtractor {
+        VersionExtractor {
             provider: "file".to_string(),
+            name: "testtest".to_string(),
             file: Some(ExtractVersionFile {
                 file: file.to_string(),
                 regex: regex.to_string(),
@@ -54,8 +61,9 @@ mod tests {
 
     #[test]
     fn test_extract_version_unknown_provider() {
-        let config = ExtractVersion {
+        let config = VersionExtractor {
             provider: "unknown".to_string(),
+            name: "onono".to_string(),
             file: None,
             shell: None,
         };

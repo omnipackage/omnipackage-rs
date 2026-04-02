@@ -1,8 +1,14 @@
-extract_version:
-  provider: 'file'
-  file:
-    file: 'version.h'
-    regex: 'VERSION "(.+)"'
+version_extractors:
+  - name: "git"
+    provider: "shell"
+    shell:
+      command: printf '0~master.%s' $(git rev-list --count HEAD)
+
+  - name: "stable"
+    provider: 'file'
+    file:
+      file: 'version.h'
+      regex: 'VERSION "(.+)"'
 
 secrets:
   TOP_SECRET_KEY: "${TOP_SECRET_KEY}"

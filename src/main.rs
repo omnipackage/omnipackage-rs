@@ -93,6 +93,10 @@ pub struct BuildArgs {
 
     #[command(flatten)]
     job: JobArgs,
+
+    /// Version extractor name, if blank the first version extractor from config will be used
+    #[arg(short, long)]
+    version_extractor: Option<String>,
 }
 
 #[derive(Args, Clone, Debug)]
@@ -125,6 +129,10 @@ pub struct ReleaseArgs {
     /// Repository name to publish to, if blank the first repository from config will be used
     #[arg(short, long)]
     repository: Option<String>,
+
+    /// Version extractor name, if blank the first version extractor from config will be used
+    #[arg(short, long)]
+    version_extractor: Option<String>,
 }
 
 #[derive(Args, Clone, Debug)]
@@ -218,13 +226,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match cli.command {
         Commands::Build(args) => {
-            release::build(args.project, args.job, args.logging)?;
+            release::build(args.project, args.job, args.logging, args.version_extractor)?;
         }
         Commands::Publish(args) => {
             release::publish(args.project, args.job, args.logging, args.repository)?;
         }
         Commands::Release(args) => {
-            release::release(args.project, args.job, args.logging, args.repository)?;
+            release::release(args.project, args.job, args.logging, args.repository, args.version_extractor)?;
         }
         Commands::Gpg { command } => match command {
             GpgCommands::Generate { output_dir, name, email, format } => {

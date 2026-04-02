@@ -14,8 +14,9 @@ struct JobSetup {
 }
 
 impl JobSetup {
-    fn new(project: &ProjectArgs, job: &JobArgs, config: &Config) -> Result<Self, Box<dyn Error>> {
-        let version = extract_version::extract_version(&project.source_dir, &config.extract_version)?;
+    fn new(project: &ProjectArgs, job: &JobArgs, config: &Config, version_extractor: &Option<String>) -> Result<Self, Box<dyn Error>> {
+        let version_config = config.version_extractors.find_by_name_or_default(version_extractor.as_deref())?.clone();
+        let version = extract_version::extract_version(&project.source_dir, &version_config)?;
         let job_variables = job_variables::JobVariables::build(version).with_secrets(config.secrets.clone().into_iter().collect());
 
         Ok(Self {
@@ -49,9 +50,9 @@ impl JobSetup {
     }
 }
 
-pub fn build(project: ProjectArgs, job: JobArgs, logging: LoggingArgs) -> Result<(), Box<dyn Error>> {
+pub fn build(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, version_extractor: Option<String>) -> Result<(), Box<dyn Error>> {
     let config = project.load_config(false)?;
-    let setup = JobSetup::new(&project, &job, &config)?;
+    let setup = JobSetup::new(&project, &job, &config, &version_extractor)?;
     let mut any_failed = false;
 
     for build_config in detect_builds(job.clone(), config) {
@@ -68,7 +69,7 @@ pub fn build(project: ProjectArgs, job: JobArgs, logging: LoggingArgs) -> Result
 
 pub fn publish(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, repository: Option<String>) -> Result<(), Box<dyn Error>> {
     let config = project.load_config(false)?;
-    let setup = JobSetup::new(&project, &job, &config)?;
+    let setup = JobSetup::new(&project, &job, &config, &None)?;
     let repository_config = config.repositories.find_by_name_or_default(repository.as_deref())?.clone();
     let mut any_failed = false;
 
@@ -84,9 +85,9 @@ pub fn publish(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, reposit
     if any_failed { Err("publish one or more distros failed".into()) } else { Ok(()) }
 }
 
-pub fn release(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, repository: Option<String>) -> Result<(), Box<dyn Error>> {
+pub fn release(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, repository: Option<String>, version_extractor: Option<String>) -> Result<(), Box<dyn Error>> {
     let config = project.load_config(false)?;
-    let setup = JobSetup::new(&project, &job, &config)?;
+    let setup = JobSetup::new(&project, &job, &config, &version_extractor)?;
     let repository_config = config.repositories.find_by_name_or_default(repository.as_deref())?.clone();
     let mut any_failed = false;
 
