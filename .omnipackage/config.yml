@@ -2,7 +2,7 @@ version_extractors:
   - name: git
     provider: "shell"
     shell:
-      command: printf '0~master.%s.%s' $(git log -1 --format='%cd %h' --date=format:'%Y%m%d%H%M%S') # printf '0~master.%s' $(git rev-list --count HEAD)
+      command: printf '0.99~master.%s.%s' $(git log -1 --format='%cd %h' --date=format:'%Y%m%d%H%M%S') # printf '0~master.%s' $(git rev-list --count HEAD)
 
   - name: cargotoml
     provider: 'file'
