@@ -13,4 +13,4 @@ jobs:
     secrets: inherit
     with:
       repository: "master"
-      version_extractor: "cargotoml"
+      version_extractor: "git"
