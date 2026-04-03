@@ -10,24 +10,28 @@ pub struct S3 {
     path: String,
 }
 
-fn block<F: std::future::Future>(f: F) -> F::Output {
+pub fn build_client(config: &S3Config) -> Client {
+    let credentials = Credentials::new(&config.access_key_id, &config.secret_access_key, None, None, "static");
+
+    let s3_config = aws_sdk_s3::Config::builder()
+        .endpoint_url(&config.endpoint)
+        .credentials_provider(credentials)
+        .region(Region::new(config.region.as_deref().unwrap_or("auto").to_string()))
+        .force_path_style(config.force_path_style)
+        .behavior_version(BehaviorVersion::latest())
+        .build();
+
+    Client::from_conf(s3_config)
+}
+
+pub fn block<F: std::future::Future>(f: F) -> F::Output {
     tokio::runtime::Runtime::new().expect("cannot create tokio runtime").block_on(f)
 }
 
 impl S3 {
     pub fn new(config: &S3Config, path: impl Into<String>) -> Self {
-        let credentials = Credentials::new(&config.access_key_id, &config.secret_access_key, None, None, "static");
-
-        let s3_config = aws_sdk_s3::Config::builder()
-            .endpoint_url(&config.endpoint)
-            .credentials_provider(credentials)
-            .region(Region::new(config.region.as_deref().unwrap_or("auto").to_string()))
-            .force_path_style(config.force_path_style)
-            .behavior_version(BehaviorVersion::latest())
-            .build();
-
         Self {
-            client: Client::from_conf(s3_config),
+            client: build_client(config),
             bucket: config.bucket.clone(),
             path: path.into(),
         }

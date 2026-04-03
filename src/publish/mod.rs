@@ -11,9 +11,12 @@ use std::path::{Path, PathBuf};
 
 mod cloudflare;
 mod deb;
+mod distributed_lock;
 mod install_page;
 mod rpm;
 mod s3;
+
+use distributed_lock::{DistributedLock, LockGuard};
 
 const INSTALL_PAGE_NAME: &str = "install.html";
 const BADGE_NAME: &str = "badge.svg";
@@ -127,6 +130,8 @@ impl PublishContext {
                     return Err(format!("bucket '{}' does not exist", s3_config.bucket).into());
                 }
                 let output = self.setup_repo(dir)?;
+
+                let _lock = LockGuard::new(DistributedLock::new(self.config.clone(), 3600, self.distro.id.clone()));
                 s3.upload_all(dir)?;
                 s3.delete_deleted_files(dir)?;
                 Ok(output)
@@ -279,6 +284,8 @@ impl PublishContext {
                 let s3_config = self.config.s3();
                 let path = PathBuf::new().join(s3_config.path_in_bucket.as_deref().unwrap_or(""));
                 let s3 = s3::S3::new(s3_config, path.to_string_lossy().to_string());
+
+                let _lock = LockGuard::new(DistributedLock::new(self.config.clone(), 3600, "install_and_badge".to_string()));
 
                 let existing_page_bytes = s3.download_file(INSTALL_PAGE_NAME).unwrap_or(vec![]);
                 let existing_install_page = String::from_utf8_lossy(&existing_page_bytes).into_owned();
