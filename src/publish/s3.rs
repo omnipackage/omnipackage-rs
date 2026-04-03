@@ -1,6 +1,6 @@
 use crate::config::S3Config;
-use aws_sdk_s3::Client;
 use aws_sdk_s3::config::{BehaviorVersion, Credentials, Region};
+use aws_sdk_s3::{Client, Config};
 use std::error::Error;
 use std::path::Path;
 
@@ -26,6 +26,20 @@ pub fn build_client(config: &S3Config) -> Client {
 
 pub fn block<F: std::future::Future>(f: F) -> F::Output {
     tokio::runtime::Runtime::new().expect("cannot create tokio runtime").block_on(f)
+}
+
+fn build_client(config: &S3Config) -> Client {
+    let credentials = Credentials::new(&config.access_key_id, &config.secret_access_key, None, None, "static");
+
+    let s3_config = Config::builder()
+        .endpoint_url(&config.endpoint)
+        .credentials_provider(credentials)
+        .region(Region::new(config.region.as_deref().unwrap_or("auto").to_string()))
+        .force_path_style(config.force_path_style)
+        .behavior_version(BehaviorVersion::latest())
+        .build();
+
+    Client::from_conf(s3_config)
 }
 
 impl S3 {
