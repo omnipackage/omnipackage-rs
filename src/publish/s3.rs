@@ -1,5 +1,6 @@
 use crate::config::S3Config;
 use aws_sdk_s3::config::{BehaviorVersion, Credentials, Region};
+use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::{Client, Config};
 use std::error::Error;
 use std::path::Path;
@@ -97,9 +98,7 @@ impl S3 {
                 let relative = path.strip_prefix(from).map_err(|e| format!("cannot strip prefix: {}", e))?;
                 let key = format!("{}/{}", self.path.trim_end_matches('/'), relative.to_string_lossy());
 
-                let body = aws_sdk_s3::primitives::ByteStream::from_path(&path)
-                    .await
-                    .map_err(|e| format!("cannot read {}: {}", path.display(), e))?;
+                let body = ByteStream::from_path(&path).await.map_err(|e| format!("cannot read {}: {}", path.display(), e))?;
 
                 self.client
                     .put_object()
@@ -160,7 +159,7 @@ impl S3 {
         block(async {
             let full_key = format!("{}/{}", self.path.trim_end_matches('/'), key.trim_start_matches('/'));
 
-            let body = aws_sdk_s3::primitives::ByteStream::from(data);
+            let body = ByteStream::from(data);
             let mut req = self.client.put_object().bucket(&self.bucket).key(&full_key).body(body);
             if let Some(ct) = content_type {
                 req = req.content_type(ct);
