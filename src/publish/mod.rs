@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
 
+mod cloudflare;
 mod deb;
 mod install_page;
 mod rpm;
@@ -87,6 +88,10 @@ impl PublishContext {
             }
             e
         })?;
+
+        if let Err(e) = self.purge_cache() {
+            Logger::new().warn(format!("cannot purge cache: {}", e));
+        }
 
         Logger::new().info(format!("done repository publish for {}", self.distro.id));
 
@@ -291,6 +296,22 @@ impl PublishContext {
             }
             &_ => todo!(),
         }
+    }
+
+    fn purge_cache(&self) -> Result<(), Box<dyn Error>> {
+        if self.config.provider.as_str() != "s3" {
+            return Ok(());
+        }
+        let s3_config = self.config.s3();
+
+        let binding = s3_config.base_bucket_url();
+        let prefix = binding.trim_start_matches("https://").trim_start_matches("http://");
+
+        if let (Some(zone_id), Some(api_token)) = (&s3_config.cloudflare_zone_id, &s3_config.cloudflare_api_token) {
+            Logger::new().info(format!("purging Cloudflare CDN cache at {}", prefix));
+            cloudflare::CloudflareApi::new(zone_id.clone(), api_token.clone()).purge_by_prefix(prefix)?;
+        }
+        Ok(())
     }
 
     fn package_download_url(&self, setup_repo_output: &SetupRepoOutput) -> Result<String, Box<dyn Error>> {

@@ -78,6 +78,8 @@ pub struct S3Config {
     pub region: Option<String>,
     #[serde(default)]
     pub force_path_style: bool,
+    pub cloudflare_zone_id: Option<String>,
+    pub cloudflare_api_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

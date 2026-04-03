@@ -33,6 +33,8 @@ repositories:
       secret_access_key: '${CLOUDFLARE_R2_SECRET_ACCESS_KEY}'
       region: auto
       force_path_style: true
+      cloudflare_zone_id: '${CLOUDFLARE_ZONE_ID}'
+      cloudflare_api_token: '${CLOUDFLARE_API_TOKEN}'
   - name: Local test
     <<: *common
     gpg_private_key_base64: "${GPG_PRIVATE_KEY_BASE64}"
