@@ -94,18 +94,21 @@ pub fn release(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, reposit
     for build_config in detect_builds(job.clone(), config) {
         let distro = Distros::get().by_id(&build_config.distro);
 
+
+
+        let distro_build_dir = setup.build_dir.join(format!("{}-{}", build_config.package_name, distro.id));
         let mut p = crate::package::rpm::Rpm::new(
             distro,
             setup.source_dir.clone(),
-            build_config.clone(),
-            repository_config.clone(),
             setup.job_variables.clone(),
-            setup.build_dir.clone(),
+            distro_build_dir,
         );
-        p.build();
-        p.publish();
-        println!("COMMANDS:\n{:?}\n", p.commands());
-        println!("MOUNTS:\n{:?}", p.mounts());
+        p.setup_build(build_config.clone());
+        p.setup_repository(repository_config.clone());
+        crate::runner::Runner::new(Box::new(p), logging.clone(), setup.job_variables.clone()).run().unwrap();
+
+
+
 
 
         /*let build_ok = fail_fast_or_continue(setup.build_context(distro, &build_config, &logging).run(), job.fail_fast)?;

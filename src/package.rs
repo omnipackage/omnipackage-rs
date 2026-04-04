@@ -10,21 +10,45 @@ pub mod rpm;
 pub mod deb;
 
 pub trait Package {
-    fn build(&mut self) -> Result<(), Box<dyn Error>>;
-    fn publish(&mut self) -> Result<(), Box<dyn Error>>;
+    fn setup_build(&mut self, config: Build) -> Result<(), Box<dyn Error>>;
+    fn setup_repository(&mut self, config: Repository) -> Result<(), Box<dyn Error>>;
 
     fn mounts(&self) -> HashMap<String, String>;
     fn commands(&self) -> Vec<String>;
 
     fn source_dir(&self) -> PathBuf;
-    fn build_config(&self) -> Build;
-    fn repository_config(&self) -> Repository;
-    fn build_dir(&self) -> PathBuf;
+    fn distro_build_dir(&self) -> PathBuf;
     fn distro(&self) -> &'static Distro;
 
-    fn before_build_script(&self, relative_to: &str) -> Option<String> {
-        let cfg = self.build_config();
-        let bbs = cfg.before_build_script.as_ref()?;
+    fn build_output_dir(&self) -> PathBuf;
+
+    fn setup_stages(&self) -> Vec<String>;
+
+    fn setup_stage_name(&self) -> String {
+        let s = self.setup_stages();
+        if s.contains(&"build".to_string()) && s.contains(&"repository".to_string()) {
+            "build & respository setup".to_string()
+        } else if s.contains(&"build".to_string()) {
+            "build".to_string()
+        } else if s.contains(&"repository".to_string()) {
+            "respository setup".to_string()
+        } else {
+            "<empty package preparation stage>".to_string()
+        }
+    }
+
+    fn artefacts(&self) -> Vec<PathBuf> {
+        let pattern = match self.distro().package_type.as_str() {
+            "rpm" => self.build_output_dir().join("**/*.rpm"),
+            "deb" => self.build_output_dir().join("**/*.deb"),
+            _ => panic!("unknown package type {}", self.distro().package_type),
+        };
+
+        glob::glob(pattern.to_str().unwrap()).unwrap().filter_map(|e| e.ok()).collect()
+    }
+
+    fn before_build_script(&self, relative_to: &str, config: &Build) -> Option<String> {
+        let bbs = config.before_build_script.as_ref()?;
 
         let path = if self.source_dir().join(bbs).exists() {
             PathBuf::from(relative_to).join(bbs).to_string_lossy().to_string()
@@ -35,12 +59,8 @@ pub trait Package {
         Some(path)
     }
 
-    fn distro_build_dir(&self) -> PathBuf {
-        self.build_dir().join(self.build_config().build_folder_name())
-    }
-
     fn import_gpg_keys_commands(&self) -> Vec<String> {
-        vec!["gpg --no-tty --batch --import /root/key.priv".to_string(), "gpg --no-tty --batch --import public.key".to_string()]
+        vec!["gpg --no-tty --batch --import /root/key.priv".to_string(), "gpg --no-tty --batch --import /repo/public.key".to_string()]
     }
 
     fn write_gpg_keys(&self, key: &Key, home_dir: &Path, repo_dir: &Path) -> Result<(), Box<dyn Error>> {
@@ -49,36 +69,25 @@ pub trait Package {
         Ok(())
     }
 
-    fn publish_prepare(&self) -> Result<(), Box<dyn Error>> {
+    fn prepare_repository(&self, config: &Repository) -> Result<(PathBuf, PathBuf), Box<dyn Error>> {
         let home_dir = self.setup_home_dir()?;
         let repo_dir = self.setup_repo_dir()?;
 
-        let key = self.repository_config().gpg_private_key()?;
+        let key = config.gpg_private_key()?;
         let gpg = Gpg::new();
         gpg.test_private_key(&key).map_err(|e| format!("GPG key test failed: {}", e))?;
         let gpgkey = gpg.key_from_private(&key).map_err(|e| e.to_string())?;
         self.write_gpg_keys(&gpgkey, &home_dir, &repo_dir)?;
 
-        Ok(())
+        Ok((home_dir, repo_dir))
     }
 
-    fn publish_mounts(&self) -> HashMap<String, String> {
-        [
-            (self.repo_dir().to_string_lossy().to_string(), "/repo".to_string()),
-            (self.home_dir().to_string_lossy().to_string(), "/root".to_string()),
-        ].into()
-    }
-
-    fn repo_dir(&self) -> PathBuf {
+    fn repository_output_dir(&self) -> PathBuf {
         self.distro_build_dir().join("repository")
     }
 
-    fn home_dir(&self) -> PathBuf {
-        self.distro_build_dir().join("home")
-    }
-
     fn setup_repo_dir(&self) -> Result<PathBuf, Box<dyn Error>> {
-        let dir = self.repo_dir();
+        let dir = self.repository_output_dir();
         if dir.exists() {
             std::fs::remove_dir_all(&dir)?;
         }
@@ -87,7 +96,7 @@ pub trait Package {
     }
 
     fn setup_home_dir(&self) -> Result<PathBuf, Box<dyn Error>> {
-        let dir = self.home_dir();
+        let dir = self.distro_build_dir().join("home");
         if dir.exists() {
             std::fs::remove_dir_all(&dir)?;
         }
@@ -95,11 +104,10 @@ pub trait Package {
         Ok(dir)
     }
 
-    fn distro_url(&self) -> String {
-        let repo = self.repository_config();
-        match repo.provider.as_str() {
+    fn distro_url(&self, config: &Repository) -> String {
+        match config.provider.as_str() {
             "s3" => {
-                let s3_config = repo.s3();
+                let s3_config = config.s3();
                 format!("{}/{}", s3_config.base_url(), self.s3_in_bucket_distro_path(s3_config))
             }
             &_ => todo!(),
