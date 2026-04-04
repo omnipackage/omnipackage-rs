@@ -11,6 +11,7 @@ mod config;
 mod distros;
 mod gpg;
 mod logger;
+mod package;
 mod publish;
 mod release;
 mod shell;

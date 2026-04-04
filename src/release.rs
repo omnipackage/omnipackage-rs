@@ -84,7 +84,7 @@ pub fn publish(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, reposit
 
     if any_failed { Err("publish one or more distros failed".into()) } else { Ok(()) }
 }
-
+use crate::package::Package;
 pub fn release(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, repository: Option<String>, version_extractor: Option<String>) -> Result<(), Box<dyn Error>> {
     let config = project.load_config(false)?;
     let setup = JobSetup::new(&project, &job, &config, &version_extractor)?;
@@ -93,14 +93,29 @@ pub fn release(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, reposit
 
     for build_config in detect_builds(job.clone(), config) {
         let distro = Distros::get().by_id(&build_config.distro);
-        let build_ok = fail_fast_or_continue(setup.build_context(distro, &build_config, &logging).run(), job.fail_fast)?;
+
+        let mut p = crate::package::rpm::Rpm::new(
+            distro,
+            setup.source_dir.clone(),
+            build_config.clone(),
+            repository_config.clone(),
+            setup.job_variables.clone(),
+            setup.build_dir.clone(),
+        );
+        p.build();
+        p.publish();
+        println!("COMMANDS:\n{:?}\n", p.commands());
+        println!("MOUNTS:\n{:?}", p.mounts());
+
+
+        /*let build_ok = fail_fast_or_continue(setup.build_context(distro, &build_config, &logging).run(), job.fail_fast)?;
 
         if build_ok {
             let publish_ok = fail_fast_or_continue(setup.publish_context(distro, &build_config, &repository_config, &logging).run(), job.fail_fast)?;
             any_failed |= !publish_ok;
         } else {
             any_failed = true;
-        }
+        }*/
     }
 
     if any_failed { Err("release one or more distros failed".into()) } else { Ok(()) }
