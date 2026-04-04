@@ -16,7 +16,8 @@ mod publish;
 mod release;
 mod shell;
 mod template;
-mod runner;
+mod builder;
+mod publisher;
 
 use config::Config;
 use gpg::Gpg;

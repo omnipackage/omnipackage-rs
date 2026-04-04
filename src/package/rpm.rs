@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::error::Error;
 use crate::gpg::{Key, Gpg};
 
+#[derive(Debug, Clone)]
 pub struct Rpm {
     pub distro: &'static Distro,
     pub source_dir: PathBuf,

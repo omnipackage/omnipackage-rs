@@ -105,8 +105,9 @@ pub fn release(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, reposit
         );
         p.setup_build(build_config.clone());
         p.setup_repository(repository_config.clone());
-        crate::runner::Runner::new(Box::new(p), logging.clone(), setup.job_variables.clone()).run().unwrap();
-
+        let pkg = Box::new(p);
+        crate::builder::Builder::new(pkg.clone(), logging.clone(), setup.job_variables.clone()).run().unwrap();
+        crate::publisher::Publisher::new(pkg.clone(), logging.clone(), repository_config.clone()).run().unwrap();
 
 
 

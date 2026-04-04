@@ -8,7 +8,7 @@ use crate::build::job_variables::JobVariables;
 use crate::logger::{Color, Logger, colorize};
 use std::collections::HashMap;
 
-pub struct Runner {
+pub struct Builder {
     pub logging: LoggingArgs,
     pub package: Box<dyn Package>,
     pub job_variables: JobVariables,
@@ -16,7 +16,7 @@ pub struct Runner {
 
 type ExecuteError = (Box<dyn Error>, PathBuf);
 
-impl Runner {
+impl Builder {
     pub fn new(package: Box<dyn Package>, logging: LoggingArgs, job_variables: JobVariables) -> Self {
         Self { package, logging, job_variables }
     }

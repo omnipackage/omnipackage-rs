@@ -9,11 +9,11 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
 
-mod cloudflare;
+pub mod cloudflare;
 mod deb;
-mod install_page;
+pub mod install_page;
 mod rpm;
-mod s3;
+pub mod s3;
 
 const INSTALL_PAGE_NAME: &str = "install.html";
 const BADGE_NAME: &str = "badge.svg";
