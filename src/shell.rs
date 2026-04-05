@@ -205,18 +205,16 @@ mod tests {
 
     #[test]
     fn test_with_env_passes_env_var() {
-        let output = Command::new("sh")
-            .args(["-c", "echo $MY_VAR"])
-            .with_env("MY_VAR", "hello")
-            .capture()
-            .unwrap();
+        let output = Command::new("sh").args(["-c", "echo $MY_VAR"]).with_env("MY_VAR", "hello").capture().unwrap();
         assert_eq!(output.trim(), "hello");
     }
 
     #[test]
     fn test_with_stdin_passes_input() {
         let output = Command::new("cat")
-            .with_stdin(|stdin| { stdin.write_all(b"hello").unwrap(); })
+            .with_stdin(|stdin| {
+                stdin.write_all(b"hello").unwrap();
+            })
             .capture()
             .unwrap();
         assert_eq!(output.trim(), "hello");
