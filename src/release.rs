@@ -6,6 +6,9 @@ use crate::publish::PublishContext;
 use crate::{JobArgs, LoggingArgs, ProjectArgs};
 use std::error::Error;
 use std::path::PathBuf;
+use crate::package::{Package, make_package};
+use crate::builder::Builder;
+use crate::publisher::Publisher;
 
 struct JobSetup {
     job_variables: job_variables::JobVariables,
@@ -24,6 +27,17 @@ impl JobSetup {
             build_dir: PathBuf::from(&job.build_dir),
             source_dir: project.source_dir.clone(),
         })
+    }
+
+    pub fn make_package(&self, distro_id: &str, package_name: &str) -> Result<Box<dyn Package>, Box<dyn Error>>  {
+        let distro = Distros::get().by_id(distro_id);
+
+        make_package(
+            distro,
+            self.source_dir.clone(),
+            self.job_variables.clone(),
+            self.build_dir.join(format!("{}-{}", package_name, distro.id)),
+        )
     }
 
     fn build_context(&self, distro: &'static Distro, build_config: &Build, logging: &LoggingArgs) -> BuildContext {
@@ -56,8 +70,11 @@ pub fn build(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, version_e
     let mut any_failed = false;
 
     for build_config in detect_builds(job.clone(), config) {
-        let distro = Distros::get().by_id(&build_config.distro);
-        let build_ok = fail_fast_or_continue(setup.build_context(distro, &build_config, &logging).run(), job.fail_fast)?;
+        let mut pkg = setup.make_package(&build_config.distro, &build_config.package_name)?;
+        pkg.setup_build(build_config.clone())?;
+
+        let builder = Builder::new(pkg.clone(), logging.clone(), setup.job_variables.clone());
+        let build_ok = fail_fast_or_continue(builder.run(), job.fail_fast)?;
 
         if !build_ok {
             any_failed = true;
@@ -74,10 +91,16 @@ pub fn publish(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, reposit
     let mut any_failed = false;
 
     for build_config in detect_builds(job.clone(), config) {
-        let distro = Distros::get().by_id(&build_config.distro);
-        let publish_ok = fail_fast_or_continue(setup.publish_context(distro, &build_config, &repository_config, &logging).run(), job.fail_fast)?;
+        let mut pkg = setup.make_package(&build_config.distro, &build_config.package_name)?;
+        pkg.setup_repository(repository_config.clone())?;
 
-        if !publish_ok {
+        let builder = Builder::new(pkg.clone(), logging.clone(), setup.job_variables.clone());
+        let build_ok = fail_fast_or_continue(builder.run(), job.fail_fast)?;
+        if build_ok {
+            let publisher = Publisher::new(pkg.clone(), logging.clone(), repository_config.clone());
+            let publish_ok = fail_fast_or_continue(publisher.run(), job.fail_fast)?;
+            any_failed |= !publish_ok;
+        } else {
             any_failed = true;
         }
     }
@@ -89,30 +112,22 @@ pub fn release(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, reposit
     let config = project.load_config(false)?;
     let setup = JobSetup::new(&project, &job, &config, &version_extractor)?;
     let repository_config = config.repositories.find_by_name_or_default(repository.as_deref())?.clone();
-    let any_failed = false;
+    let mut any_failed = false;
 
     for build_config in detect_builds(job.clone(), config) {
-        let distro = Distros::get().by_id(&build_config.distro);
+        let mut pkg = setup.make_package(&build_config.distro, &build_config.package_name)?;
+        pkg.setup_build(build_config.clone())?;
+        pkg.setup_repository(repository_config.clone())?;
 
-        let mut p = crate::package::make_package(
-            distro,
-            setup.source_dir.clone(),
-            setup.job_variables.clone(),
-            setup.build_dir.join(format!("{}-{}", build_config.package_name, distro.id)),
-        )?;
-        p.setup_build(build_config.clone())?;
-        p.setup_repository(repository_config.clone())?;
-        crate::builder::Builder::new(p.clone(), logging.clone(), setup.job_variables.clone()).run().unwrap();
-        crate::publisher::Publisher::new(p.clone(), logging.clone(), repository_config.clone()).run().unwrap();
-
-        /*let build_ok = fail_fast_or_continue(setup.build_context(distro, &build_config, &logging).run(), job.fail_fast)?;
-
+        let builder = Builder::new(pkg.clone(), logging.clone(), setup.job_variables.clone());
+        let build_ok = fail_fast_or_continue(builder.run(), job.fail_fast)?;
         if build_ok {
-            let publish_ok = fail_fast_or_continue(setup.publish_context(distro, &build_config, &repository_config, &logging).run(), job.fail_fast)?;
+            let publisher = Publisher::new(pkg.clone(), logging.clone(), repository_config.clone());
+            let publish_ok = fail_fast_or_continue(publisher.run(), job.fail_fast)?;
             any_failed |= !publish_ok;
         } else {
             any_failed = true;
-        }*/
+        }
     }
 
     if any_failed { Err("release one or more distros failed".into()) } else { Ok(()) }
