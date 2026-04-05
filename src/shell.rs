@@ -181,3 +181,64 @@ impl Command {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_run_real_command_succeeds() {
+        Command::new("echo").args(["hello"]).run().unwrap();
+    }
+
+    #[test]
+    fn test_run_real_command_fails() {
+        let result = Command::new("false").run();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_capture_returns_stdout() {
+        let output = Command::new("echo").args(["hello"]).capture().unwrap();
+        assert_eq!(output.trim(), "hello");
+    }
+
+    #[test]
+    fn test_with_env_passes_env_var() {
+        let output = Command::new("sh")
+            .args(["-c", "echo $MY_VAR"])
+            .with_env("MY_VAR", "hello")
+            .capture()
+            .unwrap();
+        assert_eq!(output.trim(), "hello");
+    }
+
+    #[test]
+    fn test_with_stdin_passes_input() {
+        let output = Command::new("cat")
+            .with_stdin(|stdin| { stdin.write_all(b"hello").unwrap(); })
+            .capture()
+            .unwrap();
+        assert_eq!(output.trim(), "hello");
+    }
+
+    #[test]
+    fn test_log_to_writes_output() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = dir.path().join("test.log");
+
+        Command::new("echo").args(["logged"]).log_to(&log).run().unwrap();
+
+        let content = std::fs::read_to_string(&log).unwrap();
+        assert!(content.contains("logged"));
+    }
+
+    #[test]
+    fn test_container_succeeds() {
+        let dir = tempfile::tempdir().unwrap();
+        let script = dir.path().join("fake-runtime");
+        std::fs::write(&script, "#!/bin/sh\nexit 0\n").unwrap();
+        std::fs::set_permissions(&script, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+        let _ = set_container_runtime(script.to_string_lossy().to_string());
+    }
+}
