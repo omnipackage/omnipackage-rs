@@ -45,8 +45,6 @@ impl Publisher {
             Logger::new().warn(format!("cannot purge cache: {}", e));
         }
 
-        Logger::new().info(format!("done repository publish for {}", self.package.distro().id));
-
         let res = self.update_install_page().map_err(|e| {
             Logger::new().error(format!("failed deploy install page for {} ({})", self.package.distro().id, e));
             e
@@ -59,6 +57,7 @@ impl Publisher {
             Logger::new().info(format!("badge markdown: {}", colorize(Color::Yellow, res.badge_md)));
         }
 
+        Logger::new().info(format!("done repository publish for {}", self.package.distro().id));
         Ok(())
     }
 
@@ -139,7 +138,7 @@ impl Publisher {
             ("distro_name".to_string(), self.package.distro().name.clone()),
             ("distro_family".to_string(), self.package.distro().family().to_string()),
             ("install_steps".to_string(), self.install_steps().join("\n")),
-            ("gpg_key".to_string(), "TODO".to_string()),
+            ("gpg_key".to_string(), self.package.gpgkey().ok_or("no gpg key")?.pub_key),
             ("download_url".to_string(), download_url),
             ("package_type".to_string(), self.package.distro().package_type.clone()),
             ("timestamp".to_string(), chrono::Utc::now().to_rfc3339()),

@@ -15,14 +15,12 @@ pub trait Package {
 
     fn mounts(&self) -> HashMap<String, String>;
     fn commands(&self) -> Vec<String>;
-
     fn source_dir(&self) -> PathBuf;
     fn distro_build_dir(&self) -> PathBuf;
     fn distro(&self) -> &'static Distro;
-
     fn build_output_dir(&self) -> PathBuf;
-
     fn setup_stages(&self) -> Vec<String>;
+    fn gpgkey(&self) -> Option<Key>;
 
     fn setup_stage_name(&self) -> String {
         let s = self.setup_stages();
@@ -69,17 +67,20 @@ pub trait Package {
         Ok(())
     }
 
-    fn prepare_repository(&self, config: &Repository) -> Result<(PathBuf, PathBuf), Box<dyn Error>> {
+    fn prepare_repository(&self, gpgkey: &Key) -> Result<(PathBuf, PathBuf), Box<dyn Error>> {
         let home_dir = self.setup_home_dir()?;
         let repo_dir = self.setup_repo_dir()?;
 
-        let key = config.gpg_private_key()?;
-        let gpg = Gpg::new();
-        gpg.test_private_key(&key).map_err(|e| format!("GPG key test failed: {}", e))?;
-        let gpgkey = gpg.key_from_private(&key).map_err(|e| e.to_string())?;
-        self.write_gpg_keys(&gpgkey, &home_dir, &repo_dir)?;
+        self.write_gpg_keys(gpgkey, &home_dir, &repo_dir)?;
 
         Ok((home_dir, repo_dir))
+    }
+
+    fn prepare_gpgkey(&self, config: &Repository) -> Result<Key, Box<dyn Error>> {
+        let gpg = Gpg::new();
+        let key = &config.gpg_private_key()?;
+        gpg.test_private_key(&key).map_err(|e| format!("GPG key test failed: {}", e))?;
+        gpg.key_from_private(&key)
     }
 
     fn repository_output_dir(&self) -> PathBuf {

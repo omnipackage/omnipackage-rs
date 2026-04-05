@@ -19,6 +19,7 @@ pub struct Rpm {
     commands: Vec<String>,
     build_output_dir: PathBuf,
     setup_stages: Vec<String>,
+    gpgkey: Option<Key>,
 }
 
 impl Rpm {
@@ -32,6 +33,7 @@ impl Rpm {
             commands: Vec::new(),
             build_output_dir: distro_build_dir.clone(),
             setup_stages: Vec::new(),
+            gpgkey: None,
         }
     }
 
@@ -88,6 +90,10 @@ impl Package for Rpm {
         self.setup_stages.clone()
     }
 
+    fn gpgkey(&self) -> Option<Key> {
+        self.gpgkey.clone()
+    }
+
     fn setup_build(&mut self, config: Build) -> Result<(), Box<dyn Error>> {
         let specfile_path_template_path = config.rpm.clone().ok_or("rpm config is missing")?.spec_template;
 
@@ -127,9 +133,10 @@ impl Package for Rpm {
     }
 
     fn setup_repository(&mut self, config: Repository) -> Result<(), Box<dyn Error>> {
-        let (home_dir, repo_dir) = self.prepare_repository(&config)?;
-        let key = config.gpg_private_key()?;
-        let key_id = Gpg::new().key_id(&key)?;
+        let gpgkey = self.prepare_gpgkey(&config)?;
+        let (home_dir, repo_dir) = self.prepare_repository(&gpgkey)?;
+
+        let key_id = Gpg::new().key_id(&gpgkey.priv_key)?;
         self.write_rpmmacros(&home_dir, &key_id)?;
 
         self.mounts.insert(home_dir.to_string_lossy().to_string(), "/root".to_string());
@@ -149,6 +156,7 @@ impl Package for Rpm {
 
         self.build_output_dir = repo_dir.clone();
         self.setup_stages.push("repository".to_string());
+        self.gpgkey = Some(gpgkey);
 
         self.write_repo_file(&repo_dir, &config.project_slug(), &self.distro.name, &self.distro_url(&config))
     }
