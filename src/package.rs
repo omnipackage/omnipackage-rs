@@ -121,6 +121,15 @@ pub trait Package {
         Ok(dir)
     }
 
+    fn prepare_build_dir(&self) -> Result<PathBuf, Box<dyn Error>> {
+        let dir = self.distro_build_dir();
+        if dir.exists() {
+            std::fs::remove_dir_all(&dir)?;
+        }
+        std::fs::create_dir_all(&dir)?;
+        Ok(dir)
+    }
+
     fn distro_url(&self, config: &Repository) -> String {
         match config.provider.as_str() {
             "s3" => {

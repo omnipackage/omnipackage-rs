@@ -93,14 +93,19 @@ do_hash "SHA256" "sha256sum"
 
         Ok(std::fs::write(home_dir.join("generate_releases_script.sh"), script)?)
     }
+
+    fn output_path(&self) -> PathBuf {
+        self.distro_build_dir().join("output")
+    }
 }
 
 impl Package for Deb {
     fn setup_build(&mut self, config: Build) -> Result<(), Box<dyn Error>> {
+        self.prepare_build_dir()?;
         let debian_folder_template_path = config.deb.clone().ok_or("deb config is missing")?.debian_templates;
 
         let build_path = self.distro_build_dir().join("build");
-        let output_path = self.distro_build_dir().join("output");
+        let output_path = self.output_path();
         std::fs::create_dir_all(&build_path).map_err(|e| format!("cannot create directory {}: {}", build_path.display(), e))?;
         std::fs::create_dir_all(&output_path).map_err(|e| format!("cannot create directory {}: {}", output_path.display(), e))?;
 
@@ -110,7 +115,7 @@ impl Package for Deb {
 
         self.mounts.insert(self.source_dir.to_string_lossy().to_string(), "/source".to_string());
         self.mounts.insert(build_path.to_string_lossy().to_string(), "/output/build".to_string());
-        self.mounts.insert(output_path.to_string_lossy().to_string(), "/output/".to_string());
+        self.mounts.insert(self.output_path().to_string_lossy().to_string(), "/output/".to_string());
 
         self.commands.extend(self.distro.setup(&config.build_dependencies));
         if let Some(bbs) = self.before_build_script("/source", &config) {
@@ -136,6 +141,7 @@ impl Package for Deb {
 
         self.mounts.insert(home_dir.to_string_lossy().to_string(), "/root".to_string());
         self.mounts.insert(repo_dir.to_string_lossy().to_string(), "/repo".to_string());
+        self.mounts.insert(self.output_path().to_string_lossy().to_string(), "/output/".to_string());
 
         self.commands.extend(self.distro.setup_repo.clone());
         self.commands.extend(self.import_gpg_keys_commands());

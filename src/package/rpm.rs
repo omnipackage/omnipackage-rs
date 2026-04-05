@@ -59,13 +59,18 @@ impl Rpm {
 
         Ok(std::fs::write(home_dir.join(".rpmmacros"), content)?)
     }
+
+    fn output_path(&self) -> PathBuf {
+        self.distro_build_dir()
+    }
 }
 
 impl Package for Rpm {
     fn setup_build(&mut self, config: Build) -> Result<(), Box<dyn Error>> {
+        self.prepare_build_dir()?;
         let specfile_path_template_path = config.rpm.clone().ok_or("rpm config is missing")?.spec_template;
 
-        let rpmbuild_path = self.distro_build_dir();
+        let rpmbuild_path = self.output_path();
         std::fs::create_dir_all(&rpmbuild_path).map_err(|e| format!("cannot create directory {}: {}", rpmbuild_path.display(), e))?;
 
         let source_folder_name = format!("{}-{}", config.package_name, self.job_variables.version);
@@ -78,7 +83,7 @@ impl Package for Rpm {
         template.render_to_file(template_vars, rpmbuild_path.join(&specfile_name))?;
 
         self.mounts.insert(self.source_dir.to_string_lossy().to_string(), "/source".to_string());
-        self.mounts.insert(rpmbuild_path.to_string_lossy().to_string(), "/root/rpmbuild".to_string());
+        self.mounts.insert(self.output_path().to_string_lossy().to_string(), "/root/rpmbuild".to_string());
 
         self.commands.extend(self.distro.setup(&config.build_dependencies));
         if let Some(bbs) = self.before_build_script("/source", &config) {
@@ -109,6 +114,7 @@ impl Package for Rpm {
 
         self.mounts.insert(home_dir.to_string_lossy().to_string(), "/root".to_string());
         self.mounts.insert(repo_dir.to_string_lossy().to_string(), "/repo".to_string());
+        self.mounts.insert(self.output_path().to_string_lossy().to_string(), "/root/rpmbuild".to_string());
 
         self.commands.extend(self.distro.setup_repo.clone());
         self.commands.extend(self.import_gpg_keys_commands());
