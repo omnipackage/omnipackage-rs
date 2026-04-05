@@ -2,7 +2,7 @@ use crate::{extract_version, job_variables};
 use crate::config::{Build, Config};
 use crate::distros::Distros;
 use crate::package::{Package, make_package};
-use crate::publisher::Publisher;
+use crate::publish::Publisher;
 use crate::runner::Runner;
 use crate::{JobArgs, LoggingArgs, ProjectArgs};
 use std::error::Error;

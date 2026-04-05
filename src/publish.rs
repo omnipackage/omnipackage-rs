@@ -2,9 +2,16 @@ use crate::LoggingArgs;
 use crate::config::{Repository, S3Config};
 use crate::logger::{Color, Logger, colorize};
 use crate::package::Package;
-use crate::publish::{artefacts, cloudflare::CloudflareApi, install_page, s3::S3};
 use std::error::Error;
 use std::path::PathBuf;
+
+mod artefacts;
+mod cloudflare;
+mod install_page;
+mod s3;
+
+use cloudflare::CloudflareApi;
+use s3::S3;
 
 pub struct Publisher {
     pub logging: LoggingArgs,
@@ -151,7 +158,7 @@ impl Publisher {
 
                 s3.upload_file(INSTALL_PAGE_NAME, output.install_page.as_bytes().to_vec(), Some("text/html"))?;
 
-                let page_url = self.install_page_url().ok_or("install page url cannot be generated")?;
+                let page_url = install_page_url(&self.config).ok_or("install page url cannot be generated")?;
                 s3.upload_file(BADGE_NAME, output.badge.as_bytes().to_vec(), Some("image/svg+xml"))?;
 
                 let badge_url = format!("{}/{}", s3_config.base_bucket_url(), BADGE_NAME);
@@ -169,17 +176,6 @@ impl Publisher {
         let package_file = package_files.first().ok_or_else(|| "no packages found in repository dir".to_string())?;
 
         Ok(format!("{}/{}", self.distro_url().trim_end_matches('/'), package_file.relative_path.display()))
-    }
-
-    fn install_page_url(&self) -> Option<String> {
-        match self.config.provider.as_str() {
-            "s3" => {
-                let s3_config = self.config.s3();
-                let page_url = format!("{}/{}", s3_config.base_bucket_url(), INSTALL_PAGE_NAME);
-                Some(page_url)
-            }
-            &_ => None,
-        }
     }
 }
 

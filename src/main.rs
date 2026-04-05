@@ -13,7 +13,6 @@ mod gpg;
 mod logger;
 mod package;
 mod publish;
-mod publisher;
 mod release;
 mod runner;
 mod shell;
@@ -298,7 +297,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let config = args.project.load_config(true)?;
             if args.show_install_page_url {
                 let repository_config = config.repositories.find_by_name_or_default(args.repository.as_deref())?.clone();
-                let page_url = publisher::install_page_url(&repository_config).unwrap_or("".to_string());
+                let page_url = publish::install_page_url(&repository_config).unwrap_or("".to_string());
                 println!("{}", page_url);
             } else if args.list_distros {
                 let distros: Vec<&str> = config.builds.iter().map(|b| b.distro.as_str()).collect();
