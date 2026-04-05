@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-#![allow(unused)]
 
 use clap::builder::styling::{AnsiColor, Effects, Styles};
 use clap::{Args, Parser, Subcommand};

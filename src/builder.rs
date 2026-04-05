@@ -1,8 +1,8 @@
+use crate::LoggingArgs;
 use crate::build::job_variables::JobVariables;
 use crate::logger::{Color, Logger, colorize};
 use crate::package::Package;
 use crate::shell::Command;
-use crate::{JobArgs, LoggingArgs, ProjectArgs};
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::PathBuf;

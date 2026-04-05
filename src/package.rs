@@ -1,11 +1,10 @@
-use crate::LoggingArgs;
+use crate::build::job_variables::JobVariables;
 use crate::config::{Build, Repository, S3Config};
 use crate::distros::Distro;
 use crate::gpg::{Gpg, Key};
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
-use crate::build::job_variables::JobVariables;
 
 pub mod deb;
 pub mod rpm;

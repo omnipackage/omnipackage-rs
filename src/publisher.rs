@@ -1,17 +1,13 @@
 use crate::LoggingArgs;
 use crate::artefacts;
 use crate::config::{Repository, S3Config};
-use crate::distros::Distro;
-use crate::gpg::{Gpg, Key};
 use crate::logger::{Color, Logger, colorize};
 use crate::package::Package;
 use crate::publish::cloudflare::CloudflareApi;
 use crate::publish::install_page;
 use crate::publish::s3::S3;
-use crate::shell::Command;
-use std::collections::HashMap;
 use std::error::Error;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub struct Publisher {
     pub logging: LoggingArgs,

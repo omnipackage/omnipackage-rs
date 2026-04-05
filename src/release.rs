@@ -84,26 +84,24 @@ pub fn publish(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, reposit
 
     if any_failed { Err("publish one or more distros failed".into()) } else { Ok(()) }
 }
-use crate::package::Package;
+
 pub fn release(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, repository: Option<String>, version_extractor: Option<String>) -> Result<(), Box<dyn Error>> {
     let config = project.load_config(false)?;
     let setup = JobSetup::new(&project, &job, &config, &version_extractor)?;
     let repository_config = config.repositories.find_by_name_or_default(repository.as_deref())?.clone();
-    let mut any_failed = false;
+    let any_failed = false;
 
     for build_config in detect_builds(job.clone(), config) {
         let distro = Distros::get().by_id(&build_config.distro);
-
-
 
         let mut p = crate::package::make_package(
             distro,
             setup.source_dir.clone(),
             setup.job_variables.clone(),
-            setup.build_dir.join(format!("{}-{}", build_config.package_name, distro.id))
+            setup.build_dir.join(format!("{}-{}", build_config.package_name, distro.id)),
         )?;
-        p.setup_build(build_config.clone());
-        p.setup_repository(repository_config.clone());
+        p.setup_build(build_config.clone())?;
+        p.setup_repository(repository_config.clone())?;
         crate::builder::Builder::new(p.clone(), logging.clone(), setup.job_variables.clone()).run().unwrap();
         crate::publisher::Publisher::new(p.clone(), logging.clone(), repository_config.clone()).run().unwrap();
 
