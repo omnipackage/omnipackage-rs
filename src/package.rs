@@ -52,6 +52,7 @@ pub trait Package {
     }
 
     fn artefacts(&self) -> Vec<PathBuf> {
+        // TODO check setup stage, search in repo dir if stage repo setup, search in build dir otherwise
         let pattern = match self.distro().package_type.as_str() {
             "rpm" => self.build_output_dir().join("**/*.rpm"),
             "deb" => self.build_output_dir().join("**/*.deb"),

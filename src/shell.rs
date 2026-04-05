@@ -8,6 +8,10 @@ use subprocess::{Exec, Redirection};
 static CONTAINER_RUNTIME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
 fn detect_container_runtime() -> String {
+    if let Ok(runtime) = std::env::var("OMNIPACKAGE_CONTAINER_RUNTIME") {
+        return runtime;
+    }
+
     let is_available = |program| {
         std::process::Command::new(program)
             .arg("info")
