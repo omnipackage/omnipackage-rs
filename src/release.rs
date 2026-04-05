@@ -1,9 +1,10 @@
-use crate::artefacts;
-use crate::build::{BuildContext, extract_version, job_variables};
-use crate::config::{Build, Config, Repository};
-use crate::distros::{Distro, Distros};
-use crate::publish::PublishContext;
+use crate::config::{Build, Config};
+use crate::distros::Distros;
+use crate::package::{Package, make_package};
+use crate::publish::Publish;
+use crate::runner::Runner;
 use crate::{JobArgs, LoggingArgs, ProjectArgs};
+use crate::{extract_version, job_variables};
 use std::error::Error;
 use std::path::PathBuf;
 
@@ -17,7 +18,7 @@ impl JobSetup {
     fn new(project: &ProjectArgs, job: &JobArgs, config: &Config, version_extractor: &Option<String>) -> Result<Self, Box<dyn Error>> {
         let version_config = config.version_extractors.find_by_name_or_default(version_extractor.as_deref())?.clone();
         let version = extract_version::extract_version(&project.source_dir, &version_config)?;
-        let job_variables = job_variables::JobVariables::build(version).with_secrets(config.secrets.clone().into_iter().collect());
+        let job_variables = job_variables::JobVariables::new(version).with_secrets(config.secrets.clone().into_iter().collect());
 
         Ok(Self {
             job_variables,
@@ -26,27 +27,15 @@ impl JobSetup {
         })
     }
 
-    fn build_context(&self, distro: &'static Distro, build_config: &Build, logging: &LoggingArgs) -> BuildContext {
-        BuildContext {
-            distro,
-            source_dir: self.source_dir.clone(),
-            config: build_config.clone(),
-            job_variables: self.job_variables.clone(),
-            build_dir: self.build_dir.clone(),
-            logging_args: logging.clone(),
-        }
-    }
+    pub fn make_package(&self, distro_id: &str, package_name: &str) -> Result<Box<dyn Package>, Box<dyn Error>> {
+        let distro = Distros::get().by_id(distro_id);
 
-    fn publish_context(&self, distro: &'static Distro, build_config: &Build, repository_config: &Repository, logging: &LoggingArgs) -> PublishContext {
-        let distro_build_dir = self.build_dir.join(build_config.build_folder_name());
-        let artefacts = artefacts::find_artefacts_in_build_dir(distro, &distro_build_dir);
-        PublishContext {
+        make_package(
             distro,
-            logging_args: logging.clone(),
-            config: repository_config.clone(),
-            artefacts,
-            build_dir: distro_build_dir,
-        }
+            self.source_dir.clone(),
+            self.job_variables.clone(),
+            self.build_dir.join(format!("{}-{}", package_name, distro.id)),
+        )
     }
 }
 
@@ -56,8 +45,11 @@ pub fn build(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, version_e
     let mut any_failed = false;
 
     for build_config in detect_builds(job.clone(), config) {
-        let distro = Distros::get().by_id(&build_config.distro);
-        let build_ok = fail_fast_or_continue(setup.build_context(distro, &build_config, &logging).run(), job.fail_fast)?;
+        let mut pkg = setup.make_package(&build_config.distro, &build_config.package_name)?;
+        pkg.setup_build(build_config.clone())?;
+
+        let builder = Runner::new(pkg.clone(), logging.clone(), setup.job_variables.clone());
+        let build_ok = fail_fast_or_continue(builder.run(), job.fail_fast)?;
 
         if !build_ok {
             any_failed = true;
@@ -74,10 +66,16 @@ pub fn publish(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, reposit
     let mut any_failed = false;
 
     for build_config in detect_builds(job.clone(), config) {
-        let distro = Distros::get().by_id(&build_config.distro);
-        let publish_ok = fail_fast_or_continue(setup.publish_context(distro, &build_config, &repository_config, &logging).run(), job.fail_fast)?;
+        let mut pkg = setup.make_package(&build_config.distro, &build_config.package_name)?;
+        pkg.setup_repository(repository_config.clone())?;
 
-        if !publish_ok {
+        let runner = Runner::new(pkg.clone(), logging.clone(), setup.job_variables.clone());
+        let build_ok = fail_fast_or_continue(runner.run(), job.fail_fast)?;
+        if build_ok {
+            let publisher = Publish::new(pkg.clone(), logging.clone(), repository_config.clone());
+            let publish_ok = fail_fast_or_continue(publisher.run(), job.fail_fast)?;
+            any_failed |= !publish_ok;
+        } else {
             any_failed = true;
         }
     }
@@ -92,11 +90,15 @@ pub fn release(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, reposit
     let mut any_failed = false;
 
     for build_config in detect_builds(job.clone(), config) {
-        let distro = Distros::get().by_id(&build_config.distro);
-        let build_ok = fail_fast_or_continue(setup.build_context(distro, &build_config, &logging).run(), job.fail_fast)?;
+        let mut pkg = setup.make_package(&build_config.distro, &build_config.package_name)?;
+        pkg.setup_build(build_config.clone())?;
+        pkg.setup_repository(repository_config.clone())?;
 
+        let runner = Runner::new(pkg.clone(), logging.clone(), setup.job_variables.clone());
+        let build_ok = fail_fast_or_continue(runner.run(), job.fail_fast)?;
         if build_ok {
-            let publish_ok = fail_fast_or_continue(setup.publish_context(distro, &build_config, &repository_config, &logging).run(), job.fail_fast)?;
+            let publisher = Publish::new(pkg.clone(), logging.clone(), repository_config.clone());
+            let publish_ok = fail_fast_or_continue(publisher.run(), job.fail_fast)?;
             any_failed |= !publish_ok;
         } else {
             any_failed = true;

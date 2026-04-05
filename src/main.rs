@@ -5,14 +5,16 @@ use clap::{Args, Parser, Subcommand};
 use std::error::Error;
 use std::path::{Path, PathBuf};
 
-mod artefacts;
-mod build;
 mod config;
 mod distros;
+mod extract_version;
 mod gpg;
+mod job_variables;
 mod logger;
+mod package;
 mod publish;
 mod release;
+mod runner;
 mod shell;
 mod template;
 
