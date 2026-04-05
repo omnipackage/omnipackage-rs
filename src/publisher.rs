@@ -1,11 +1,8 @@
 use crate::LoggingArgs;
-use crate::artefacts;
 use crate::config::{Repository, S3Config};
 use crate::logger::{Color, Logger, colorize};
 use crate::package::Package;
-use crate::publish::cloudflare::CloudflareApi;
-use crate::publish::install_page;
-use crate::publish::s3::S3;
+use crate::publish::{artefacts, cloudflare::CloudflareApi, install_page, s3::S3};
 use std::error::Error;
 use std::path::PathBuf;
 
