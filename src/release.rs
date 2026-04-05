@@ -1,7 +1,7 @@
 use crate::config::{Build, Config};
 use crate::distros::Distros;
 use crate::package::{Package, make_package};
-use crate::publish::Publisher;
+use crate::publish::Publish;
 use crate::runner::Runner;
 use crate::{JobArgs, LoggingArgs, ProjectArgs};
 use crate::{extract_version, job_variables};
@@ -72,7 +72,7 @@ pub fn publish(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, reposit
         let runner = Runner::new(pkg.clone(), logging.clone(), setup.job_variables.clone());
         let build_ok = fail_fast_or_continue(runner.run(), job.fail_fast)?;
         if build_ok {
-            let publisher = Publisher::new(pkg.clone(), logging.clone(), repository_config.clone());
+            let publisher = Publish::new(pkg.clone(), logging.clone(), repository_config.clone());
             let publish_ok = fail_fast_or_continue(publisher.run(), job.fail_fast)?;
             any_failed |= !publish_ok;
         } else {
@@ -97,7 +97,7 @@ pub fn release(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, reposit
         let runner = Runner::new(pkg.clone(), logging.clone(), setup.job_variables.clone());
         let build_ok = fail_fast_or_continue(runner.run(), job.fail_fast)?;
         if build_ok {
-            let publisher = Publisher::new(pkg.clone(), logging.clone(), repository_config.clone());
+            let publisher = Publish::new(pkg.clone(), logging.clone(), repository_config.clone());
             let publish_ok = fail_fast_or_continue(publisher.run(), job.fail_fast)?;
             any_failed |= !publish_ok;
         } else {

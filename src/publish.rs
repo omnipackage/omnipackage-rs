@@ -13,7 +13,7 @@ mod s3;
 use cloudflare::CloudflareApi;
 use s3::S3;
 
-pub struct Publisher {
+pub struct Publish {
     pub logging: LoggingArgs,
     pub config: Repository,
     pub package: Box<dyn Package>,
@@ -28,7 +28,7 @@ struct InstallPageBadge {
     pub badge_md: String,
 }
 
-impl Publisher {
+impl Publish {
     pub fn new(package: Box<dyn Package>, logging: LoggingArgs, config: Repository) -> Self {
         Self { package, logging, config }
     }
