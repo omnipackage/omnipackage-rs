@@ -111,13 +111,7 @@ impl Publish {
     }
 
     fn distro_url(&self) -> String {
-        match self.config.provider.as_str() {
-            "s3" => {
-                let s3_config = self.config.s3();
-                format!("{}/{}", s3_config.base_url(), self.s3_in_bucket_distro_path(s3_config))
-            }
-            &_ => todo!(),
-        }
+        self.package.distro_url(&self.config)
     }
 
     fn install_steps(&self) -> Vec<String> {
