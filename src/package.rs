@@ -1,7 +1,7 @@
-use crate::job_variables::JobVariables;
 use crate::config::{Build, Repository, S3Config};
 use crate::distros::Distro;
 use crate::gpg::{Gpg, Key};
+use crate::job_variables::JobVariables;
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};

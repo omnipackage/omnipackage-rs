@@ -1,7 +1,7 @@
-use crate::job_variables::JobVariables;
 use crate::config::{Build, Repository};
 use crate::distros::Distro;
 use crate::gpg::Key;
+use crate::job_variables::JobVariables;
 use crate::package::Package;
 use crate::template::{Template, Var};
 use std::collections::HashMap;
@@ -207,10 +207,10 @@ impl Package for Deb {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::job_variables::JobVariables;
     use crate::config::{Build, DebConfig, Repository, S3Config};
     use crate::distros::Distros;
     use crate::gpg::Gpg;
+    use crate::job_variables::JobVariables;
     use crate::package::Package;
     use std::collections::HashMap;
 
