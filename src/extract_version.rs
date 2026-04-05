@@ -27,6 +27,10 @@ pub fn extract_version(path: &Path, config: &VersionExtractor) -> Result<String,
             let output = Command::new("sh").args(["-c", &shell_config.command]).capture()?.trim_end().to_string();
             Ok(output)
         }
+        "constant" => {
+            let constant_config = config.constant.clone().ok_or("constant config is missing")?;
+            Ok(constant_config.version)
+        }
         _ => Err(format!("unknown version provider '{}'", config.provider).into()),
     }
 }
@@ -34,7 +38,7 @@ pub fn extract_version(path: &Path, config: &VersionExtractor) -> Result<String,
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ExtractVersionFile, VersionExtractor};
+    use crate::config::{ExtractVersionConstant, ExtractVersionFile, VersionExtractor};
     use std::path::PathBuf;
 
     fn make_config(file: &str, regex: &str) -> VersionExtractor {
@@ -46,6 +50,7 @@ mod tests {
                 regex: regex.to_string(),
             }),
             shell: None,
+            constant: None,
         }
     }
 
@@ -60,14 +65,27 @@ mod tests {
     }
 
     #[test]
+    fn test_extract_version_constant() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("version.rb"), "VERSION = '1.2.3'").unwrap();
+
+        let config = make_config("version.rb", "VERSION = '(.+)'");
+        let version = extract_version(&dir.path().to_path_buf(), &config).unwrap();
+        assert_eq!(version, "1.2.3");
+    }
+
+    #[test]
     fn test_extract_version_unknown_provider() {
         let config = VersionExtractor {
-            provider: "unknown".to_string(),
+            provider: "constant".to_string(),
             name: "onono".to_string(),
             file: None,
             shell: None,
+            constant: Some(ExtractVersionConstant {
+                version: "some static string".to_string(),
+            }),
         };
-        let result = extract_version(&PathBuf::from("."), &config);
-        assert!(result.is_err());
+        let version = extract_version(&PathBuf::from("."), &config).unwrap();
+        assert_eq!(version, "some static string");
     }
 }

@@ -18,11 +18,17 @@ pub struct ExtractVersionShell {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct ExtractVersionConstant {
+    pub version: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct VersionExtractor {
     pub name: String,
     pub provider: String,
     pub file: Option<ExtractVersionFile>,
     pub shell: Option<ExtractVersionShell>,
+    pub constant: Option<ExtractVersionConstant>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
