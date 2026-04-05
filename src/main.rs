@@ -30,7 +30,7 @@ struct GlobalOpts {
 }
 
 #[derive(Parser)]
-#[command(version, about)]
+#[command(version = version(), about)]
 #[command(styles = styles())]
 struct Cli {
     #[command(flatten)]
@@ -324,6 +324,14 @@ fn styles() -> Styles {
         .error(AnsiColor::Red.on_default() | Effects::BOLD)
         .valid(AnsiColor::Green.on_default() | Effects::BOLD)
         .invalid(AnsiColor::Yellow.on_default() | Effects::BOLD)
+}
+
+fn version() -> &'static str {
+    let v = env!("CARGO_PKG_VERSION");
+    match option_env!("PACKAGE_VERSION") {
+        Some(pkg) if pkg != v => Box::leak(format!("{v} [{pkg}]").into_boxed_str()),
+        _ => v,
+    }
 }
 
 impl LoggingArgs {

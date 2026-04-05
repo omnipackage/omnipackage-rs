@@ -23,7 +23,7 @@ Requires: {{ runtime_dependencies | join: ', ' }}
 
 
 %build
-cargo build --release
+PACKAGE_VERSION="{{ version }}" cargo build --release
 
 
 %install

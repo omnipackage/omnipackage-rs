@@ -11,7 +11,7 @@ export DESTROOT=$(CURDIR)/debian/{{ package_name }}
 	dh $@ --parallel
 
 override_dh_auto_build:
-	cargo build --release
+	PACKAGE_VERSION="{{ version }}" cargo build --release
 
 override_dh_auto_install:
 	install -d -m755 $(DESTROOT)/usr/bin/
