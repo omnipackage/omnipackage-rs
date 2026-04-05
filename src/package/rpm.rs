@@ -62,42 +62,6 @@ impl Rpm {
 }
 
 impl Package for Rpm {
-    fn clone_box(&self) -> Box<dyn Package> {
-        Box::new(self.clone())
-    }
-
-    fn source_dir(&self) -> PathBuf {
-        self.source_dir.clone()
-    }
-
-    fn distro_build_dir(&self) -> PathBuf {
-        self.distro_build_dir.clone()
-    }
-
-    fn distro(&self) -> &'static Distro {
-        self.distro
-    }
-
-    fn mounts(&self) -> HashMap<String, String> {
-        self.mounts.clone()
-    }
-
-    fn commands(&self) -> Vec<String> {
-        self.commands.clone()
-    }
-
-    fn build_output_dir(&self) -> PathBuf {
-        self.build_output_dir.clone()
-    }
-
-    fn setup_stages(&self) -> Vec<String> {
-        self.setup_stages.clone()
-    }
-
-    fn gpgkey(&self) -> Option<Key> {
-        self.gpgkey.clone()
-    }
-
     fn setup_build(&mut self, config: Build) -> Result<(), Box<dyn Error>> {
         let specfile_path_template_path = config.rpm.clone().ok_or("rpm config is missing")?.spec_template;
 
@@ -163,5 +127,41 @@ impl Package for Rpm {
         self.gpgkey = Some(gpgkey);
 
         self.write_repo_file(&repo_dir, &config.project_slug(), &self.distro.name, &self.distro_url(&config))
+    }
+
+    fn clone_box(&self) -> Box<dyn Package> {
+        Box::new(self.clone())
+    }
+
+    fn source_dir(&self) -> PathBuf {
+        self.source_dir.clone()
+    }
+
+    fn distro_build_dir(&self) -> PathBuf {
+        self.distro_build_dir.clone()
+    }
+
+    fn distro(&self) -> &'static Distro {
+        self.distro
+    }
+
+    fn mounts(&self) -> HashMap<String, String> {
+        self.mounts.clone()
+    }
+
+    fn commands(&self) -> Vec<String> {
+        self.commands.clone()
+    }
+
+    fn build_output_dir(&self) -> PathBuf {
+        self.build_output_dir.clone()
+    }
+
+    fn setup_stages(&self) -> Vec<String> {
+        self.setup_stages.clone()
+    }
+
+    fn gpgkey(&self) -> Option<Key> {
+        self.gpgkey.clone()
     }
 }
