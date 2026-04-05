@@ -1,4 +1,4 @@
-use crate::build::job_variables::JobVariables;
+use crate::job_variables::JobVariables;
 use crate::config::{Build, Repository, S3Config};
 use crate::distros::Distro;
 use crate::gpg::{Gpg, Key};

@@ -1,5 +1,5 @@
 use crate::LoggingArgs;
-use crate::build::job_variables::JobVariables;
+use crate::job_variables::JobVariables;
 use crate::logger::{Color, Logger, colorize};
 use crate::package::Package;
 use crate::shell::Command;

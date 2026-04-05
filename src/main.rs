@@ -5,7 +5,8 @@ use clap::{Args, Parser, Subcommand};
 use std::error::Error;
 use std::path::{Path, PathBuf};
 
-mod build;
+mod extract_version;
+mod job_variables;
 mod config;
 mod distros;
 mod gpg;
