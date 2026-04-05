@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![allow(unused)]
 
 use clap::builder::styling::{AnsiColor, Effects, Styles};
 use clap::{Args, Parser, Subcommand};
@@ -7,17 +8,17 @@ use std::path::{Path, PathBuf};
 
 mod artefacts;
 mod build;
+mod builder;
 mod config;
 mod distros;
 mod gpg;
 mod logger;
 mod package;
 mod publish;
+mod publisher;
 mod release;
 mod shell;
 mod template;
-mod builder;
-mod publisher;
 
 use config::Config;
 use gpg::Gpg;

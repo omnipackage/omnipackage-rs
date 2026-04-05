@@ -4,14 +4,14 @@ use crate::config::{Repository, S3Config};
 use crate::distros::Distro;
 use crate::gpg::{Gpg, Key};
 use crate::logger::{Color, Logger, colorize};
+use crate::package::Package;
+use crate::publish::cloudflare::CloudflareApi;
+use crate::publish::install_page;
+use crate::publish::s3::S3;
 use crate::shell::Command;
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
-use crate::publish::s3::S3;
-use crate::publish::cloudflare::CloudflareApi;
-use crate::package::Package;
-use crate::publish::install_page;
 
 pub struct Publisher {
     pub logging: LoggingArgs,
@@ -70,7 +70,7 @@ impl Publisher {
             return Err(format!("no artefacts in {}", self.package.build_output_dir().display()).into());
         }
 
-         match self.config.provider.as_str() {
+        match self.config.provider.as_str() {
             "s3" => {
                 let s3_config = self.config.s3();
                 let s3 = S3::new(s3_config, self.s3_in_bucket_distro_path(s3_config));
@@ -121,7 +121,8 @@ impl Publisher {
     }
 
     fn install_steps(&self) -> Vec<String> {
-        self.package.distro()
+        self.package
+            .distro()
             .install_steps
             .iter()
             .map(|command| command.replace("%{package_name}", &self.config.package_name))
@@ -170,7 +171,8 @@ impl Publisher {
     }
 
     fn package_download_url(&self) -> Result<String, Box<dyn Error>> {
-        let package_files = artefacts::find_artefacts_in_repository_dir(&self.package.artefacts(), &self.package.repository_output_dir()).map_err(|e| format!("cannot find packages in repository dir: {e}"))?;
+        let package_files =
+            artefacts::find_artefacts_in_repository_dir(&self.package.artefacts(), &self.package.repository_output_dir()).map_err(|e| format!("cannot find packages in repository dir: {e}"))?;
         let package_file = package_files.first().ok_or_else(|| "no packages found in repository dir".to_string())?;
 
         Ok(format!("{}/{}", self.distro_url().trim_end_matches('/'), package_file.relative_path.display()))

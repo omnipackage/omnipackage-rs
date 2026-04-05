@@ -96,21 +96,16 @@ pub fn release(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, reposit
 
 
 
-        let distro_build_dir = setup.build_dir.join(format!("{}-{}", build_config.package_name, distro.id));
-        let mut p = crate::package::rpm::Rpm::new(
+        let mut p = crate::package::make_package(
             distro,
             setup.source_dir.clone(),
             setup.job_variables.clone(),
-            distro_build_dir,
-        );
+            setup.build_dir.join(format!("{}-{}", build_config.package_name, distro.id))
+        )?;
         p.setup_build(build_config.clone());
         p.setup_repository(repository_config.clone());
-        let pkg = Box::new(p);
-        crate::builder::Builder::new(pkg.clone(), logging.clone(), setup.job_variables.clone()).run().unwrap();
-        crate::publisher::Publisher::new(pkg.clone(), logging.clone(), repository_config.clone()).run().unwrap();
-
-
-
+        crate::builder::Builder::new(p.clone(), logging.clone(), setup.job_variables.clone()).run().unwrap();
+        crate::publisher::Publisher::new(p.clone(), logging.clone(), repository_config.clone()).run().unwrap();
 
         /*let build_ok = fail_fast_or_continue(setup.build_context(distro, &build_config, &logging).run(), job.fail_fast)?;
 

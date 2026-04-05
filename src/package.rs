@@ -1,15 +1,32 @@
 use crate::LoggingArgs;
+use crate::config::{Build, Repository, S3Config};
 use crate::distros::Distro;
+use crate::gpg::{Gpg, Key};
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
-use crate::config::{Build, Repository, S3Config};
-use crate::gpg::{Key, Gpg};
+use crate::build::job_variables::JobVariables;
 
-pub mod rpm;
 pub mod deb;
+pub mod rpm;
+
+impl Clone for Box<dyn Package> {
+    fn clone(&self) -> Box<dyn Package> {
+        self.as_ref().clone_box()
+    }
+}
+
+pub fn make_package(distro: &'static Distro, source_dir: PathBuf, job_variables: JobVariables, distro_build_dir: PathBuf) -> Result<Box<dyn Package>, Box<dyn Error>> {
+    match distro.package_type.as_str() {
+        "deb" => Ok(Box::new(deb::Deb::new(distro, source_dir, job_variables, distro_build_dir))),
+        "rpm" => Ok(Box::new(rpm::Rpm::new(distro, source_dir, job_variables, distro_build_dir))),
+        other => Err(format!("unknown package type: {other}").into()),
+    }
+}
 
 pub trait Package {
+    fn clone_box(&self) -> Box<dyn Package>;
+
     fn setup_build(&mut self, config: Build) -> Result<(), Box<dyn Error>>;
     fn setup_repository(&mut self, config: Repository) -> Result<(), Box<dyn Error>>;
 
@@ -79,8 +96,8 @@ pub trait Package {
     fn prepare_gpgkey(&self, config: &Repository) -> Result<Key, Box<dyn Error>> {
         let gpg = Gpg::new();
         let key = &config.gpg_private_key()?;
-        gpg.test_private_key(&key).map_err(|e| format!("GPG key test failed: {}", e))?;
-        gpg.key_from_private(&key)
+        gpg.test_private_key(key).map_err(|e| format!("GPG key test failed: {}", e))?;
+        gpg.key_from_private(key)
     }
 
     fn repository_output_dir(&self) -> PathBuf {

@@ -1,12 +1,12 @@
 use crate::build::job_variables::JobVariables;
 use crate::config::{Build, Repository};
 use crate::distros::Distro;
+use crate::gpg::{Gpg, Key};
 use crate::package::Package;
-use std::collections::HashMap;
 use crate::template::{Template, Var};
-use std::path::{Path, PathBuf};
+use std::collections::HashMap;
 use std::error::Error;
-use crate::gpg::{Key, Gpg};
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
 pub struct Rpm {
@@ -62,6 +62,10 @@ impl Rpm {
 }
 
 impl Package for Rpm {
+    fn clone_box(&self) -> Box<dyn Package> {
+        Box::new(self.clone())
+    }
+
     fn source_dir(&self) -> PathBuf {
         self.source_dir.clone()
     }

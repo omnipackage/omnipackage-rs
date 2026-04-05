@@ -1,12 +1,12 @@
-use crate::package::Package;
-use crate::{JobArgs, LoggingArgs, ProjectArgs};
-use std::error::Error;
-use crate::shell::Command;
-use std::path::PathBuf;
-use std::time::Instant;
 use crate::build::job_variables::JobVariables;
 use crate::logger::{Color, Logger, colorize};
+use crate::package::Package;
+use crate::shell::Command;
+use crate::{JobArgs, LoggingArgs, ProjectArgs};
 use std::collections::HashMap;
+use std::error::Error;
+use std::path::PathBuf;
+use std::time::Instant;
 
 pub struct Builder {
     pub logging: LoggingArgs,
@@ -22,7 +22,12 @@ impl Builder {
     }
 
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
-        Logger::new().info(format!("starting {} for {}, variables: {}", self.package.setup_stage_name(), self.package.distro().id, self.job_variables));
+        Logger::new().info(format!(
+            "starting {} for {}, variables: {}",
+            self.package.setup_stage_name(),
+            self.package.distro().id,
+            self.job_variables
+        ));
         let started_at = Instant::now();
         let result = self.execute();
         let finished_at = started_at.elapsed().as_secs_f32();
@@ -65,7 +70,8 @@ impl Builder {
             commands.insert(0, "set -euxo pipefail".to_string());
         }
 
-        let mount_args: Vec<String> = self.package
+        let mount_args: Vec<String> = self
+            .package
             .mounts()
             .iter()
             .flat_map(|(from, to)| ["--mount".to_string(), format!("type=bind,source={from},target={to}")])
