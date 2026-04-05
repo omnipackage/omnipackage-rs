@@ -185,3 +185,14 @@ impl Publisher {
         }
     }
 }
+
+pub fn install_page_url(repository: &Repository) -> Option<String> {
+    match repository.provider.as_str() {
+        "s3" => {
+            let s3_config = repository.s3();
+            let page_url = format!("{}/{}", s3_config.base_bucket_url(), INSTALL_PAGE_NAME);
+            Some(page_url)
+        }
+        &_ => None,
+    }
+}

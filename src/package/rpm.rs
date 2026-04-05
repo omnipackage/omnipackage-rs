@@ -171,3 +171,378 @@ impl Package for Rpm {
         self.gpgkey.clone()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::build::job_variables::JobVariables;
+    use crate::config::{Build, Repository, RpmConfig, S3Config};
+    use crate::distros::Distros;
+    use crate::gpg::Gpg;
+    use std::collections::HashMap;
+
+    fn gpg_available() -> bool {
+        std::process::Command::new("gpg")
+            .arg("--version")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+    }
+
+    fn make_distro() -> &'static Distro {
+        Distros::get().by_id("fedora_38")
+    }
+
+    fn make_job_variables() -> JobVariables {
+        JobVariables::build("1.2.3".to_string())
+    }
+
+    fn make_rpm(dir: &tempfile::TempDir) -> Rpm {
+        let source_dir = dir.path().join("source");
+        let build_dir = dir.path().join("build");
+        std::fs::create_dir_all(&source_dir).unwrap();
+        std::fs::create_dir_all(&build_dir).unwrap();
+        Rpm::new(make_distro(), source_dir, make_job_variables(), build_dir)
+    }
+
+    fn make_build_config(dir: &tempfile::TempDir) -> Build {
+        let spec_template = "myapp.spec.liquid";
+        std::fs::write(dir.path().join("source").join(spec_template), "Name: {{ package_name }}\nVersion: {{ version }}\n").unwrap();
+
+        Build {
+            distro: "fedora_38".to_string(),
+            package_name: "myapp".to_string(),
+            maintainer: "Test <test@test.com>".to_string(),
+            homepage: "https://example.com".to_string(),
+            description: "Test package".to_string(),
+            build_dependencies: vec!["gcc".to_string(), "make".to_string()],
+            runtime_dependencies: vec![],
+            before_build_script: None,
+            rpm: Some(RpmConfig {
+                spec_template: spec_template.to_string(),
+            }),
+            deb: None,
+            rest: HashMap::new(),
+        }
+    }
+
+    fn make_repository_config(gpg_private_key: &str) -> Repository {
+        use base64::{Engine, engine::general_purpose};
+        let encoded = general_purpose::STANDARD.encode(gpg_private_key);
+        Repository {
+            name: "test-repo".to_string(),
+            provider: "s3".to_string(),
+            localfs: None,
+            s3: Some(S3Config {
+                bucket: "test-bucket".to_string(),
+                path_in_bucket: Some("packages".to_string()),
+                bucket_public_url: Some("https://cdn.example.com".to_string()),
+                endpoint: "https://s3.example.com".to_string(),
+                access_key_id: "keyid".to_string(),
+                secret_access_key: "secret".to_string(),
+                region: Some("us-east-1".to_string()),
+                force_path_style: false,
+                cloudflare_zone_id: None,
+                cloudflare_api_token: None,
+            }),
+            gpg_private_key_base64: encoded,
+            package_name: "myapp".to_string(),
+            rest: HashMap::new(),
+        }
+    }
+
+    // ── new() ────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_new_initializes_fields() {
+        let dir = tempfile::tempdir().unwrap();
+        let rpm = make_rpm(&dir);
+
+        assert_eq!(rpm.distro().id, "fedora_38");
+        assert_eq!(rpm.job_variables.version, "1.2.3");
+        assert!(rpm.mounts().is_empty());
+        assert!(rpm.commands().is_empty());
+        assert!(rpm.setup_stages().is_empty());
+        assert!(rpm.gpgkey().is_none());
+        assert_eq!(rpm.build_output_dir(), rpm.distro_build_dir());
+    }
+
+    // ── setup_build() ────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_setup_build_creates_output_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut rpm = make_rpm(&dir);
+        let config = make_build_config(&dir);
+
+        rpm.setup_build(config).unwrap();
+
+        // build_output_dir points to RPMS/ which is created by rpmbuild at runtime,
+        // but the parent rpmbuild dir is created by setup_build
+        assert!(rpm.build_output_dir().parent().unwrap().exists());
+    }
+
+    #[test]
+    fn test_setup_build_renders_spec_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut rpm = make_rpm(&dir);
+        let config = make_build_config(&dir);
+
+        rpm.setup_build(config).unwrap();
+
+        let spec_files: Vec<_> = std::fs::read_dir(rpm.distro_build_dir())
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().extension().map(|x| x == "spec").unwrap_or(false))
+            .collect();
+
+        assert_eq!(spec_files.len(), 1);
+        let content = std::fs::read_to_string(spec_files[0].path()).unwrap();
+        assert!(content.contains("Name: myapp"));
+        assert!(content.contains("Version: 1.2.3"));
+    }
+
+    #[test]
+    fn test_setup_build_adds_mounts() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut rpm = make_rpm(&dir);
+        let config = make_build_config(&dir);
+
+        rpm.setup_build(config).unwrap();
+
+        let mounts = rpm.mounts();
+        assert!(mounts.values().any(|v| v == "/source"));
+        assert!(mounts.values().any(|v| v == "/root/rpmbuild"));
+    }
+
+    #[test]
+    fn test_setup_build_adds_commands() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut rpm = make_rpm(&dir);
+        let config = make_build_config(&dir);
+
+        rpm.setup_build(config).unwrap();
+
+        let commands = rpm.commands();
+        assert!(!commands.is_empty());
+        assert!(commands.iter().any(|c| c.contains("rpmbuild")));
+        assert!(commands.iter().any(|c| c.contains("rpmdev-setuptree")));
+    }
+
+    #[test]
+    fn test_setup_build_adds_distro_setup_commands() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut rpm = make_rpm(&dir);
+        let config = make_build_config(&dir);
+        let distro_setup = make_distro().setup(&config.build_dependencies.clone());
+
+        rpm.setup_build(config).unwrap();
+
+        let commands = rpm.commands();
+        for expected in &distro_setup {
+            assert!(commands.contains(expected), "missing distro setup command: {}", expected);
+        }
+    }
+
+    #[test]
+    fn test_setup_build_adds_build_to_stages() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut rpm = make_rpm(&dir);
+
+        rpm.setup_build(make_build_config(&dir)).unwrap();
+
+        assert!(rpm.setup_stages().contains(&"build".to_string()));
+    }
+
+    #[test]
+    fn test_setup_build_sets_build_output_dir_to_rpms() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut rpm = make_rpm(&dir);
+
+        rpm.setup_build(make_build_config(&dir)).unwrap();
+
+        assert!(rpm.build_output_dir().ends_with("RPMS"));
+    }
+
+    #[test]
+    fn test_setup_build_fails_without_rpm_config() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut rpm = make_rpm(&dir);
+        let mut config = make_build_config(&dir);
+        config.rpm = None;
+
+        assert!(rpm.setup_build(config).is_err());
+    }
+
+    #[test]
+    fn test_setup_build_with_before_build_script() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut rpm = make_rpm(&dir);
+        let mut config = make_build_config(&dir);
+        config.before_build_script = Some("build.sh".to_string());
+
+        rpm.setup_build(config).unwrap();
+
+        assert!(rpm.commands().iter().any(|c| c.contains("build.sh")));
+    }
+
+    // ── setup_repository() ───────────────────────────────────────────────────
+
+    #[test]
+    fn test_setup_repository_adds_repository_to_stages() {
+        if !gpg_available() {
+            return;
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let mut rpm = make_rpm(&dir);
+        let gpg_key = Gpg::new().generate_keys("Test", "test@example.com").unwrap();
+
+        rpm.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
+
+        assert!(rpm.setup_stages().contains(&"repository".to_string()));
+    }
+
+    #[test]
+    fn test_setup_repository_stores_gpg_key() {
+        if !gpg_available() {
+            return;
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let mut rpm = make_rpm(&dir);
+        let gpg_key = Gpg::new().generate_keys("Test", "test@example.com").unwrap();
+
+        rpm.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
+
+        assert!(rpm.gpgkey().is_some());
+    }
+
+    #[test]
+    fn test_setup_repository_adds_mounts() {
+        if !gpg_available() {
+            return;
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let mut rpm = make_rpm(&dir);
+        let gpg_key = Gpg::new().generate_keys("Test", "test@example.com").unwrap();
+
+        rpm.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
+
+        let mounts = rpm.mounts();
+        assert!(mounts.values().any(|v| v == "/root"));
+        assert!(mounts.values().any(|v| v == "/repo"));
+    }
+
+    #[test]
+    fn test_setup_repository_adds_commands() {
+        if !gpg_available() {
+            return;
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let mut rpm = make_rpm(&dir);
+        let gpg_key = Gpg::new().generate_keys("Test", "test@example.com").unwrap();
+
+        rpm.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
+
+        let commands = rpm.commands();
+        assert!(commands.iter().any(|c| c.contains("createrepo")));
+        assert!(commands.iter().any(|c| c.contains("rpm --addsign")));
+        assert!(commands.iter().any(|c| c.contains("gpg")));
+    }
+
+    #[test]
+    fn test_setup_repository_writes_repo_file() {
+        if !gpg_available() {
+            return;
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let mut rpm = make_rpm(&dir);
+        let gpg_key = Gpg::new().generate_keys("Test", "test@example.com").unwrap();
+
+        rpm.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
+
+        let repo_file = rpm.build_output_dir().join("myapp.repo");
+        assert!(repo_file.exists());
+        let content = std::fs::read_to_string(repo_file).unwrap();
+        assert!(content.contains("[myapp]"));
+        assert!(content.contains("gpgcheck=1"));
+    }
+
+    #[test]
+    fn test_setup_repository_writes_gpg_keys_to_disk() {
+        if !gpg_available() {
+            return;
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let mut rpm = make_rpm(&dir);
+        let gpg_key = Gpg::new().generate_keys("Test", "test@example.com").unwrap();
+
+        rpm.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
+
+        let home_dir = rpm.distro_build_dir().join("home");
+        let repo_dir = rpm.build_output_dir();
+        assert!(home_dir.join("key.priv").exists());
+        assert!(repo_dir.join("public.key").exists());
+    }
+
+    #[test]
+    fn test_setup_repository_fails_with_invalid_gpg_key() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut rpm = make_rpm(&dir);
+
+        use base64::{Engine, engine::general_purpose};
+        let mut config = make_repository_config("dummy");
+        config.gpg_private_key_base64 = general_purpose::STANDARD.encode("not a real key");
+
+        assert!(rpm.setup_repository(config).is_err());
+    }
+
+    // ── clone_box() ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_clone_box() {
+        let dir = tempfile::tempdir().unwrap();
+        let rpm = make_rpm(&dir);
+        let boxed: Box<dyn Package> = Box::new(rpm);
+        let cloned = boxed.clone();
+
+        assert_eq!(cloned.distro().id, boxed.distro().id);
+        assert_eq!(cloned.source_dir(), boxed.source_dir());
+        assert_eq!(cloned.build_output_dir(), boxed.build_output_dir());
+    }
+
+    // ── write_repo_file() ────────────────────────────────────────────────────
+
+    #[test]
+    fn test_write_repo_file_content() {
+        let dir = tempfile::tempdir().unwrap();
+        let rpm = make_rpm(&dir);
+        let repo_dir = dir.path().join("repo");
+        std::fs::create_dir_all(&repo_dir).unwrap();
+
+        rpm.write_repo_file(&repo_dir, "myapp", "Fedora 38", "https://cdn.example.com/fedora_38").unwrap();
+
+        let content = std::fs::read_to_string(repo_dir.join("myapp.repo")).unwrap();
+        assert!(content.contains("[myapp]"));
+        assert!(content.contains("name=myapp (Fedora 38)"));
+        assert!(content.contains("baseurl=https://cdn.example.com/fedora_38"));
+        assert!(content.contains("gpgcheck=1"));
+        assert!(content.contains("enabled=1"));
+        assert!(content.contains("type=rpm-md"));
+    }
+
+    // ── write_rpmmacros() ────────────────────────────────────────────────────
+
+    #[test]
+    fn test_write_rpmmacros_content() {
+        let dir = tempfile::tempdir().unwrap();
+        let rpm = make_rpm(&dir);
+
+        rpm.write_rpmmacros(dir.path(), "ABCD1234").unwrap();
+
+        let content = std::fs::read_to_string(dir.path().join(".rpmmacros")).unwrap();
+        assert!(content.contains("%_signature gpg"));
+        assert!(content.contains("%_gpg_name ABCD1234"));
+    }
+}

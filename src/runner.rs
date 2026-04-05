@@ -8,7 +8,7 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::time::Instant;
 
-pub struct Builder {
+pub struct Runner {
     pub logging: LoggingArgs,
     pub package: Box<dyn Package>,
     pub job_variables: JobVariables,
@@ -16,7 +16,7 @@ pub struct Builder {
 
 type ExecuteError = (Box<dyn Error>, PathBuf);
 
-impl Builder {
+impl Runner {
     pub fn new(package: Box<dyn Package>, logging: LoggingArgs, job_variables: JobVariables) -> Self {
         Self { package, logging, job_variables }
     }
