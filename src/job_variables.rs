@@ -10,7 +10,7 @@ pub struct JobVariables {
 }
 
 impl JobVariables {
-    pub fn build(version: String) -> Self {
+    pub fn new(version: String) -> Self {
         JobVariables {
             version,
             current_time_rfc2822: Utc::now().to_rfc2822(),
@@ -45,7 +45,7 @@ mod tests {
 
     #[test]
     fn test_job_variables_build() {
-        let vars = JobVariables::build("1.2.3".to_string());
+        let vars = JobVariables::new("1.2.3".to_string());
 
         assert_eq!(vars.version, "1.2.3");
         assert!(!vars.current_time_rfc2822.is_empty());

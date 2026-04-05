@@ -18,7 +18,7 @@ impl JobSetup {
     fn new(project: &ProjectArgs, job: &JobArgs, config: &Config, version_extractor: &Option<String>) -> Result<Self, Box<dyn Error>> {
         let version_config = config.version_extractors.find_by_name_or_default(version_extractor.as_deref())?.clone();
         let version = extract_version::extract_version(&project.source_dir, &version_config)?;
-        let job_variables = job_variables::JobVariables::build(version).with_secrets(config.secrets.clone().into_iter().collect());
+        let job_variables = job_variables::JobVariables::new(version).with_secrets(config.secrets.clone().into_iter().collect());
 
         Ok(Self {
             job_variables,

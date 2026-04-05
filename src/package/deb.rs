@@ -229,7 +229,7 @@ mod tests {
     }
 
     fn make_job_variables() -> JobVariables {
-        JobVariables::build("1.2.3".to_string())
+        JobVariables::new("1.2.3".to_string())
     }
 
     fn make_deb(dir: &tempfile::TempDir) -> Deb {
