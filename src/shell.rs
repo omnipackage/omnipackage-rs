@@ -1,4 +1,5 @@
 use crate::logger::Logger;
+use anyhow::Result;
 use std::error::Error;
 use std::fs::OpenOptions;
 use std::io::BufReader;
@@ -134,7 +135,7 @@ impl Command {
         }
     }
 
-    pub fn run(self) -> Result<(), Box<dyn Error>> {
+    pub fn run(self) -> Result<(), anyhow::Error> {
         self.logger.cmd(&self.program, &self.args, &self.env_vars);
 
         let mut log_file = self.log_file.as_ref().map(|path| {
@@ -159,10 +160,14 @@ impl Command {
         }
 
         let status = job.wait()?;
-        if status.success() { Ok(()) } else { Err(Box::new(ExitError(status.code().unwrap_or(1) as i32))) }
+        if status.success() {
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!(ExitError(status.code().unwrap_or(1) as i32)))
+        }
     }
 
-    pub fn capture(self) -> Result<String, Box<dyn Error>> {
+    pub fn capture(self) -> Result<String, anyhow::Error> {
         self.logger.cmd(&self.program, &self.args, &self.env_vars);
 
         let mut job = self.build_exec().start()?;
@@ -181,7 +186,7 @@ impl Command {
         if status.success() {
             Ok(output)
         } else {
-            Err(Box::new(ExitError(status.code().unwrap_or(1) as i32)))
+            Err(anyhow::anyhow!(ExitError(status.code().unwrap_or(1) as i32)))
         }
     }
 }

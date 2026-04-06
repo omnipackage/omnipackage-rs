@@ -2,8 +2,8 @@ use crate::config::{Build, Repository, S3Config};
 use crate::distros::Distro;
 use crate::gpg::{Gpg, Key};
 use crate::job_variables::JobVariables;
+use anyhow::{Context, Result};
 use std::collections::HashMap;
-use std::error::Error;
 use std::path::{Path, PathBuf};
 
 pub mod deb;
@@ -15,11 +15,11 @@ impl Clone for Box<dyn Package> {
     }
 }
 
-pub fn make_package(distro: &'static Distro, source_dir: PathBuf, job_variables: JobVariables, distro_build_dir: PathBuf) -> Result<Box<dyn Package>, Box<dyn Error>> {
+pub fn make_package(distro: &'static Distro, source_dir: PathBuf, job_variables: JobVariables, distro_build_dir: PathBuf) -> Result<Box<dyn Package>, anyhow::Error> {
     match distro.package_type.as_str() {
         "deb" => Ok(Box::new(deb::Deb::new(distro, source_dir, job_variables, distro_build_dir))),
         "rpm" => Ok(Box::new(rpm::Rpm::new(distro, source_dir, job_variables, distro_build_dir))),
-        other => Err(format!("unknown package type: {other}").into()),
+        other => Err(anyhow::anyhow!("unknown package type: {other}")),
     }
 }
 
@@ -32,8 +32,8 @@ pub enum SetupStage {
 pub trait Package {
     fn clone_box(&self) -> Box<dyn Package>;
 
-    fn setup_build(&mut self, config: Build) -> Result<(), Box<dyn Error>>;
-    fn setup_repository(&mut self, config: Repository) -> Result<(), Box<dyn Error>>;
+    fn setup_build(&mut self, config: Build) -> Result<(), anyhow::Error>;
+    fn setup_repository(&mut self, config: Repository) -> Result<(), anyhow::Error>;
 
     fn mounts(&self) -> HashMap<String, String>;
     fn commands(&self) -> Vec<String>;
@@ -94,13 +94,13 @@ pub trait Package {
         vec!["gpg --no-tty --batch --import /root/key.priv".to_string(), "gpg --no-tty --batch --import /repo/public.key".to_string()]
     }
 
-    fn write_gpg_keys(&self, key: &Key, home_dir: &Path, repo_dir: &Path) -> Result<(), Box<dyn Error>> {
+    fn write_gpg_keys(&self, key: &Key, home_dir: &Path, repo_dir: &Path) -> Result<(), anyhow::Error> {
         std::fs::write(repo_dir.join("public.key"), &key.pub_key)?;
         std::fs::write(home_dir.join("key.priv"), &key.priv_key)?;
         Ok(())
     }
 
-    fn prepare_repository(&self, gpgkey: &Key) -> Result<(PathBuf, PathBuf), Box<dyn Error>> {
+    fn prepare_repository(&self, gpgkey: &Key) -> Result<(PathBuf, PathBuf), anyhow::Error> {
         let home_dir = self.setup_home_dir()?;
         let repo_dir = self.setup_repo_dir()?;
 
@@ -109,10 +109,10 @@ pub trait Package {
         Ok((home_dir, repo_dir))
     }
 
-    fn prepare_gpgkey(&self, config: &Repository) -> Result<Key, Box<dyn Error>> {
+    fn prepare_gpgkey(&self, config: &Repository) -> Result<Key, anyhow::Error> {
         let gpg = Gpg::new();
         let key = &config.gpg_private_key()?;
-        gpg.test_private_key(key).map_err(|e| format!("GPG key test failed: {}", e))?;
+        gpg.test_private_key(key).with_context(|| "GPG key test failed".to_string())?;
         gpg.key_from_private(key)
     }
 
@@ -120,7 +120,7 @@ pub trait Package {
         self.distro_build_dir().join("repository")
     }
 
-    fn setup_repo_dir(&self) -> Result<PathBuf, Box<dyn Error>> {
+    fn setup_repo_dir(&self) -> Result<PathBuf, anyhow::Error> {
         let dir = self.repository_output_dir();
         if dir.exists() {
             std::fs::remove_dir_all(&dir)?;
@@ -129,7 +129,7 @@ pub trait Package {
         Ok(dir)
     }
 
-    fn setup_home_dir(&self) -> Result<PathBuf, Box<dyn Error>> {
+    fn setup_home_dir(&self) -> Result<PathBuf, anyhow::Error> {
         let dir = self.distro_build_dir().join("home");
         if dir.exists() {
             std::fs::remove_dir_all(&dir)?;
@@ -138,7 +138,7 @@ pub trait Package {
         Ok(dir)
     }
 
-    fn prepare_build_dir(&self) -> Result<PathBuf, Box<dyn Error>> {
+    fn prepare_build_dir(&self) -> Result<PathBuf, anyhow::Error> {
         let dir = self.distro_build_dir();
         if dir.exists() {
             std::fs::remove_dir_all(&dir)?;

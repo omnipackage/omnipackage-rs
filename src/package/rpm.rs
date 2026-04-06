@@ -4,8 +4,8 @@ use crate::gpg::{Gpg, Key};
 use crate::job_variables::JobVariables;
 use crate::package::{Package, SetupStage};
 use crate::template::{Template, Var};
+use anyhow::{Context, Result};
 use std::collections::HashMap;
-use std::error::Error;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
@@ -37,7 +37,7 @@ impl Rpm {
         }
     }
 
-    fn write_repo_file(&self, repo_dir: &Path, project_slug: &str, distro_name: &str, distro_url: &str) -> Result<(), Box<dyn Error>> {
+    fn write_repo_file(&self, repo_dir: &Path, project_slug: &str, distro_name: &str, distro_url: &str) -> Result<(), anyhow::Error> {
         let content = format!(
             "[{project_slug}]\n\
              name={project_slug} ({distro_name})\n\
@@ -51,7 +51,7 @@ impl Rpm {
         Ok(std::fs::write(repo_dir.join(format!("{}.repo", project_slug)), content)?)
     }
 
-    fn write_rpmmacros(&self, home_dir: &Path, gpg_key_id: &str) -> Result<(), Box<dyn Error>> {
+    fn write_rpmmacros(&self, home_dir: &Path, gpg_key_id: &str) -> Result<(), anyhow::Error> {
         let content = format!(
             "%_signature gpg\n\
              %_gpg_name {gpg_key_id}\n"
@@ -66,12 +66,12 @@ impl Rpm {
 }
 
 impl Package for Rpm {
-    fn setup_build(&mut self, config: Build) -> Result<(), Box<dyn Error>> {
+    fn setup_build(&mut self, config: Build) -> Result<(), anyhow::Error> {
         self.prepare_build_dir()?;
-        let specfile_path_template_path = config.rpm.clone().ok_or("rpm config is missing")?.spec_template;
+        let specfile_path_template_path = config.rpm.clone().ok_or(anyhow::anyhow!("rpm config is missing"))?.spec_template;
 
         let rpmbuild_path = self.output_path();
-        std::fs::create_dir_all(&rpmbuild_path).map_err(|e| format!("cannot create directory {}: {}", rpmbuild_path.display(), e))?;
+        std::fs::create_dir_all(&rpmbuild_path).with_context(|| format!("cannot create directory {}", rpmbuild_path.display()))?;
 
         let source_folder_name = format!("{}-{}", config.package_name, self.job_variables.version);
         let specfile_name = format!("{}-{}.spec", source_folder_name, self.distro.id);
@@ -105,7 +105,7 @@ impl Package for Rpm {
         Ok(())
     }
 
-    fn setup_repository(&mut self, config: Repository) -> Result<(), Box<dyn Error>> {
+    fn setup_repository(&mut self, config: Repository) -> Result<(), anyhow::Error> {
         let gpgkey = self.prepare_gpgkey(&config)?;
         let (home_dir, repo_dir) = self.prepare_repository(&gpgkey)?;
 

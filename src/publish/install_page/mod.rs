@@ -2,7 +2,6 @@ use crate::config::Repository as RepoConfig;
 use crate::distros::Distros;
 use crate::template::{Template, Var};
 use std::collections::HashMap;
-use std::error::Error;
 
 const PAGE_TEMPLATE_HTML: &str = include_str!("install.html.liquid");
 const BADGE_TEMPLATE_SVG: &str = include_str!("badge.svg.liquid");
@@ -16,7 +15,7 @@ pub struct Output {
     pub badge: String,
 }
 
-pub fn upsert(existing_page_html: &str, repositories: &Repositories, config: &RepoConfig) -> Result<Output, Box<dyn Error>> {
+pub fn upsert(existing_page_html: &str, repositories: &Repositories, config: &RepoConfig) -> Result<Output, anyhow::Error> {
     let mut repos = parse(existing_page_html).unwrap_or_else(|_| vec![]);
 
     repositories.iter().for_each(|repo| {
@@ -30,7 +29,7 @@ pub fn upsert(existing_page_html: &str, repositories: &Repositories, config: &Re
     Ok(Output { install_page, badge })
 }
 
-fn render_badge(repositories: &Repositories, config: &RepoConfig) -> Result<String, Box<dyn Error>> {
+fn render_badge(repositories: &Repositories, config: &RepoConfig) -> Result<String, anyhow::Error> {
     let mut vars = config.to_template_vars();
 
     let (rpm_count, deb_count) = repositories.iter().fold((0, 0), |(rpm, deb), r| match r.get("package_type").map(|t| t.as_str()) {
@@ -44,13 +43,13 @@ fn render_badge(repositories: &Repositories, config: &RepoConfig) -> Result<Stri
     Template::from_content(BADGE_TEMPLATE_SVG)?.render(vars)
 }
 
-fn parse(html: &str) -> Result<Repositories, Box<dyn Error>> {
+fn parse(html: &str) -> Result<Repositories, anyhow::Error> {
     let (start, end) = extract_json_bounds(html)?;
     let json = html[start..end].trim();
     Ok(serde_json::from_str(json)?)
 }
 
-fn render(repositories: &Repositories) -> Result<String, Box<dyn Error>> {
+fn render(repositories: &Repositories) -> Result<String, anyhow::Error> {
     let html = PAGE_TEMPLATE_HTML;
     let (start_pos, end_pos) = extract_json_bounds(html)?;
 
@@ -67,10 +66,10 @@ fn render(repositories: &Repositories) -> Result<String, Box<dyn Error>> {
     Ok(rendered)
 }
 
-fn extract_json_bounds(html: &str) -> Result<(usize, usize), Box<dyn Error>> {
+fn extract_json_bounds(html: &str) -> Result<(usize, usize), anyhow::Error> {
     let start_tag = r#"<script type="application/json" id="data">"#;
-    let start = html.find(start_tag).ok_or("cannot find data script tag")? + start_tag.len();
-    let end = html[start..].find("</script>").ok_or("cannot find closing script tag")? + start;
+    let start = html.find(start_tag).ok_or(anyhow::anyhow!("cannot find data script tag"))? + start_tag.len();
+    let end = html[start..].find("</script>").ok_or(anyhow::anyhow!("cannot find closing script tag"))? + start;
     Ok((start, end))
 }
 

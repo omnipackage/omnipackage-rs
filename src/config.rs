@@ -1,9 +1,9 @@
 use crate::logger::Logger;
 use crate::template::Var;
+use anyhow::{Context, Result};
 use base64::{Engine, engine::general_purpose};
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::error::Error;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Deserialize, Clone)]
@@ -109,10 +109,10 @@ impl Repository {
         self.s3.as_ref().unwrap_or_else(|| panic!("repository '{}' has no s3 config", self.name))
     }
 
-    pub fn gpg_private_key(&self) -> Result<String, Box<dyn Error>> {
+    pub fn gpg_private_key(&self) -> Result<String, anyhow::Error> {
         let decoded = general_purpose::STANDARD
             .decode(self.gpg_private_key_base64.clone())
-            .map_err(|e| format!("cannot decode GPG key: {}", e))?;
+            .with_context(|| "cannot decode GPG key".to_string())?;
         Ok(String::from_utf8(decoded)?)
     }
 
@@ -155,10 +155,10 @@ impl S3Config {
 pub struct Repositories(Vec<Repository>);
 
 impl Repositories {
-    pub fn find_by_name_or_default(&self, name: Option<&str>) -> Result<&Repository, Box<dyn Error>> {
+    pub fn find_by_name_or_default(&self, name: Option<&str>) -> Result<&Repository, anyhow::Error> {
         match name {
-            Some(name) => self.0.iter().find(|r| r.name == name).ok_or_else(|| format!("repository '{}' not found", name).into()),
-            None => self.0.first().ok_or_else(|| "no repositories configured".into()),
+            Some(name) => self.0.iter().find(|r| r.name == name).ok_or_else(|| anyhow::anyhow!("repository '{}' not found", name)),
+            None => self.0.first().ok_or_else(|| anyhow::anyhow!("no repositories configured")),
         }
     }
 }
@@ -175,10 +175,10 @@ impl std::ops::Deref for Repositories {
 pub struct VersionExtractors(Vec<VersionExtractor>);
 
 impl VersionExtractors {
-    pub fn find_by_name_or_default(&self, name: Option<&str>) -> Result<&VersionExtractor, Box<dyn Error>> {
+    pub fn find_by_name_or_default(&self, name: Option<&str>) -> Result<&VersionExtractor, anyhow::Error> {
         match name {
-            Some(name) => self.0.iter().find(|r| r.name == name).ok_or_else(|| format!("version extractor '{}' not found", name).into()),
-            None => self.0.first().ok_or_else(|| "no version extractors configured".into()),
+            Some(name) => self.0.iter().find(|r| r.name == name).ok_or_else(|| anyhow::anyhow!("version extractor '{}' not found", name)),
+            None => self.0.first().ok_or_else(|| anyhow::anyhow!("no version extractors configured")),
         }
     }
 }
@@ -202,11 +202,11 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn load(path: &Path, silent: bool) -> Result<Self, String> {
+    pub fn load(path: &Path, silent: bool) -> Result<Self, anyhow::Error> {
         Self::load_with_env(path, Path::new(".env"), silent)
     }
 
-    pub fn load_with_env(path: &Path, env_path: &Path, silent: bool) -> Result<Self, String> {
+    pub fn load_with_env(path: &Path, env_path: &Path, silent: bool) -> Result<Self, anyhow::Error> {
         let env_map: HashMap<String, String> = match dotenvy::from_path_iter(env_path) {
             Ok(iter) => {
                 let map: HashMap<String, String> = iter.filter_map(|e| e.ok()).collect();
@@ -227,11 +227,11 @@ impl Config {
             }
         };
 
-        let content = std::fs::read_to_string(path).map_err(|e| format!("cannot read {}: {}", path.display(), e))?;
+        let content = std::fs::read_to_string(path).with_context(|| format!("cannot read {}", path.display()))?;
 
         let content = Self::expand_env_vars_with(&content, |var| env_map.get(var).cloned().or_else(|| std::env::var(var).ok()).unwrap_or_default());
 
-        serde_saphyr::from_str(&content).map_err(|e| format!("cannot parse {}: {}", path.display(), e))
+        serde_saphyr::from_str(&content).with_context(|| format!("cannot parse {}", path.display()))
     }
 
     fn expand_env_vars_with<F>(content: &str, resolver: F) -> String

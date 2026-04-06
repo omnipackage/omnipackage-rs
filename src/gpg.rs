@@ -1,6 +1,6 @@
 use crate::logger::{LogOutput, Logger};
 use crate::shell::Command;
-use std::error::Error;
+use anyhow::Result;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -22,7 +22,7 @@ impl Gpg {
         }
     }
 
-    pub fn generate_keys(&self, name: &str, email: &str) -> Result<Key, Box<dyn Error>> {
+    pub fn generate_keys(&self, name: &str, email: &str) -> Result<Key, anyhow::Error> {
         self.within_tmp_dir(|gpg, dir| {
             let batchfile_path = dir.join("genkey.batch");
             std::fs::write(&batchfile_path, self.batch_generate_keys(name, email))?;
@@ -35,7 +35,7 @@ impl Gpg {
         })
     }
 
-    pub fn key_id(&self, key_string: &str) -> Result<String, Box<dyn Error>> {
+    pub fn key_id(&self, key_string: &str) -> Result<String, anyhow::Error> {
         self.within_tmp_dir(|gpg, _dir| {
             let key = key_string.to_string();
             let output = gpg
@@ -49,7 +49,7 @@ impl Gpg {
         })
     }
 
-    pub fn key_info(&self, key_string: &str) -> Result<String, Box<dyn Error>> {
+    pub fn key_info(&self, key_string: &str) -> Result<String, anyhow::Error> {
         self.within_tmp_dir(|gpg, _dir| {
             let key = key_string.to_string();
             gpg.cmd(["--quiet", "--no-tty", "--show-keys", "--with-fingerprint"])
@@ -60,7 +60,7 @@ impl Gpg {
         })
     }
 
-    pub fn test_private_key(&self, key_string: &str) -> Result<(), Box<dyn Error>> {
+    pub fn test_private_key(&self, key_string: &str) -> Result<(), anyhow::Error> {
         self.within_tmp_dir(|gpg, _dir| {
             let key = key_string.to_string();
             gpg.cmd(["--quiet", "--no-tty", "--import"])
@@ -78,7 +78,7 @@ impl Gpg {
         })
     }
 
-    pub fn key_from_private(&self, priv_key: &str) -> Result<Key, Box<dyn Error>> {
+    pub fn key_from_private(&self, priv_key: &str) -> Result<Key, anyhow::Error> {
         self.within_tmp_dir(|gpg, _dir| {
             let key = priv_key.to_string();
             gpg.cmd(["--quiet", "--no-tty", "--import"])
@@ -96,7 +96,7 @@ impl Gpg {
         })
     }
 
-    fn export_key(&self, name: &str, secret: bool) -> Result<String, Box<dyn Error>> {
+    fn export_key(&self, name: &str, secret: bool) -> Result<String, anyhow::Error> {
         let mut args = vec!["--armor".to_string()];
         if secret {
             args.push("--export-secret-keys".to_string())

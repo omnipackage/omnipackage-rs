@@ -2,7 +2,7 @@ use crate::LoggingArgs;
 use crate::config::{Repository, S3Config};
 use crate::logger::{Color, Logger, colorize};
 use crate::package::Package;
-use std::error::Error;
+use anyhow::{Context, Result};
 use std::path::PathBuf;
 
 mod artefacts;
@@ -33,7 +33,7 @@ impl Publish {
         Self { package, logging, config }
     }
 
-    pub fn run(&self) -> Result<(), Box<dyn Error>> {
+    pub fn run(&self) -> Result<(), anyhow::Error> {
         Logger::new().info(format!("starting repository publish for {}", self.package.distro().id));
 
         if let Err(e) = self.sync_repo_files() {
@@ -61,13 +61,13 @@ impl Publish {
         Ok(())
     }
 
-    fn sync_repo_files(&self) -> Result<(), Box<dyn Error>> {
+    fn sync_repo_files(&self) -> Result<(), anyhow::Error> {
         let dir = self.package.repository_output_dir();
         if !dir.exists() {
-            return Err(format!("repository dir does not exist: {}", self.package.repository_output_dir().display()).into());
+            return Err(anyhow::anyhow!("repository dir does not exist: {}", self.package.repository_output_dir().display()));
         }
         if self.package.artefacts().is_empty() {
-            return Err(format!("no artefacts in {}", self.package.build_output_dir().display()).into());
+            return Err(anyhow::anyhow!("no artefacts in {}", self.package.build_output_dir().display()));
         }
 
         match self.config.provider.as_str() {
@@ -76,7 +76,7 @@ impl Publish {
                 let s3 = S3::new(s3_config, self.s3_in_bucket_distro_path(s3_config));
 
                 if !s3.bucket_exists()? {
-                    return Err(format!("bucket '{}' does not exist", s3_config.bucket).into());
+                    return Err(anyhow::anyhow!("bucket '{}' does not exist", s3_config.bucket));
                 }
                 s3.upload_all(&dir)?;
                 s3.delete_deleted_files(&dir)?;
@@ -94,7 +94,7 @@ impl Publish {
             .to_string()
     }
 
-    fn purge_cache(&self) -> Result<(), Box<dyn Error>> {
+    fn purge_cache(&self) -> Result<(), anyhow::Error> {
         if self.config.provider.as_str() != "s3" {
             return Ok(());
         }
@@ -125,7 +125,7 @@ impl Publish {
             .collect()
     }
 
-    fn update_install_page(&self) -> Result<InstallPageBadge, Box<dyn Error>> {
+    fn update_install_page(&self) -> Result<InstallPageBadge, anyhow::Error> {
         let download_url = self.package_download_url()?;
 
         let repo = install_page::Repository::from([
@@ -133,7 +133,7 @@ impl Publish {
             ("distro_name".to_string(), self.package.distro().name.clone()),
             ("distro_family".to_string(), self.package.distro().family().to_string()),
             ("install_steps".to_string(), self.install_steps().join("\n")),
-            ("gpg_key".to_string(), self.package.gpgkey().ok_or("no gpg key")?.pub_key),
+            ("gpg_key".to_string(), self.package.gpgkey().ok_or(anyhow::anyhow!("no gpg key"))?.pub_key),
             ("download_url".to_string(), download_url),
             ("package_type".to_string(), self.package.distro().package_type.clone()),
             ("timestamp".to_string(), chrono::Utc::now().to_rfc3339()),
@@ -152,7 +152,7 @@ impl Publish {
 
                 s3.upload_file(INSTALL_PAGE_NAME, output.install_page.as_bytes().to_vec(), Some("text/html"))?;
 
-                let page_url = install_page_url(&self.config).ok_or("install page url cannot be generated")?;
+                let page_url = install_page_url(&self.config).ok_or(anyhow::anyhow!("install page url cannot be generated"))?;
                 s3.upload_file(BADGE_NAME, output.badge.as_bytes().to_vec(), Some("image/svg+xml"))?;
 
                 let badge_url = format!("{}/{}", s3_config.base_bucket_url(), BADGE_NAME);
@@ -164,10 +164,10 @@ impl Publish {
         }
     }
 
-    fn package_download_url(&self) -> Result<String, Box<dyn Error>> {
-        let package_files =
-            artefacts::find_artefacts_in_repository_dir(&self.package.artefacts(), &self.package.repository_output_dir()).map_err(|e| format!("cannot find packages in repository dir: {e}"))?;
-        let package_file = package_files.first().ok_or_else(|| "no packages found in repository dir".to_string())?;
+    fn package_download_url(&self) -> Result<String, anyhow::Error> {
+        let dir = self.package.repository_output_dir();
+        let package_files = artefacts::find_artefacts_in_repository_dir(&self.package.artefacts(), &dir).with_context(|| anyhow::anyhow!("cannot find packages in {}", dir.display()))?;
+        let package_file = package_files.first().ok_or_else(|| anyhow::anyhow!("no packages found in repository dir"))?;
 
         Ok(format!("{}/{}", self.distro_url().trim_end_matches('/'), package_file.relative_path.display()))
     }

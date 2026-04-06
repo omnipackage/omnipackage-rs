@@ -3,8 +3,8 @@ use crate::job_variables::JobVariables;
 use crate::logger::{Color, Logger, colorize};
 use crate::package::Package;
 use crate::shell::Command;
+use anyhow::Result;
 use std::collections::HashMap;
-use std::error::Error;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -14,14 +14,14 @@ pub struct Runner {
     pub job_variables: JobVariables,
 }
 
-type ExecuteError = (Box<dyn Error>, PathBuf);
+type ExecuteError = (anyhow::Error, PathBuf);
 
 impl Runner {
     pub fn new(package: Box<dyn Package>, logging: LoggingArgs, job_variables: JobVariables) -> Self {
         Self { package, logging, job_variables }
     }
 
-    pub fn run(&self) -> Result<(), Box<dyn Error>> {
+    pub fn run(&self) -> Result<(), anyhow::Error> {
         Logger::new().info(format!(
             "starting {} for {}, variables: {}",
             self.package.setup_stage_name(),

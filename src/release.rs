@@ -5,7 +5,7 @@ use crate::publish::Publish;
 use crate::runner::Runner;
 use crate::{JobArgs, LoggingArgs, ProjectArgs};
 use crate::{extract_version, job_variables};
-use std::error::Error;
+use anyhow::Result;
 use std::path::PathBuf;
 
 struct JobSetup {
@@ -15,7 +15,7 @@ struct JobSetup {
 }
 
 impl JobSetup {
-    fn new(project: &ProjectArgs, job: &JobArgs, config: &Config, version_extractor: &Option<String>) -> Result<Self, Box<dyn Error>> {
+    fn new(project: &ProjectArgs, job: &JobArgs, config: &Config, version_extractor: &Option<String>) -> Result<Self, anyhow::Error> {
         let version_config = config.version_extractors.find_by_name_or_default(version_extractor.as_deref())?.clone();
         let version = extract_version::extract_version(&project.source_dir, &version_config)?;
         let job_variables = job_variables::JobVariables::new(version).with_secrets(config.secrets.clone().into_iter().collect());
@@ -27,7 +27,7 @@ impl JobSetup {
         })
     }
 
-    pub fn make_package(&self, distro_id: &str, package_name: &str) -> Result<Box<dyn Package>, Box<dyn Error>> {
+    pub fn make_package(&self, distro_id: &str, package_name: &str) -> Result<Box<dyn Package>, anyhow::Error> {
         let distro = Distros::get().by_id(distro_id);
 
         make_package(
@@ -39,7 +39,7 @@ impl JobSetup {
     }
 }
 
-pub fn build(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, version_extractor: Option<String>) -> Result<(), Box<dyn Error>> {
+pub fn build(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, version_extractor: Option<String>) -> Result<(), anyhow::Error> {
     let config = project.load_config(false)?;
     let setup = JobSetup::new(&project, &job, &config, &version_extractor)?;
     let mut any_failed = false;
@@ -56,10 +56,10 @@ pub fn build(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, version_e
         }
     }
 
-    if any_failed { Err("build one or more distros failed".into()) } else { Ok(()) }
+    if any_failed { Err(anyhow::anyhow!("build one or more distros failed")) } else { Ok(()) }
 }
 
-pub fn publish(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, repository: Option<String>) -> Result<(), Box<dyn Error>> {
+pub fn publish(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, repository: Option<String>) -> Result<(), anyhow::Error> {
     let config = project.load_config(false)?;
     let setup = JobSetup::new(&project, &job, &config, &None)?;
     let repository_config = config.repositories.find_by_name_or_default(repository.as_deref())?.clone();
@@ -80,10 +80,10 @@ pub fn publish(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, reposit
         }
     }
 
-    if any_failed { Err("publish one or more distros failed".into()) } else { Ok(()) }
+    if any_failed { Err(anyhow::anyhow!("publish one or more distros failed")) } else { Ok(()) }
 }
 
-pub fn release(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, repository: Option<String>, version_extractor: Option<String>) -> Result<(), Box<dyn Error>> {
+pub fn release(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, repository: Option<String>, version_extractor: Option<String>) -> Result<(), anyhow::Error> {
     let config = project.load_config(false)?;
     let setup = JobSetup::new(&project, &job, &config, &version_extractor)?;
     let repository_config = config.repositories.find_by_name_or_default(repository.as_deref())?.clone();
@@ -105,10 +105,10 @@ pub fn release(project: ProjectArgs, job: JobArgs, logging: LoggingArgs, reposit
         }
     }
 
-    if any_failed { Err("release one or more distros failed".into()) } else { Ok(()) }
+    if any_failed { Err(anyhow::anyhow!("release one or more distros failed")) } else { Ok(()) }
 }
 
-fn fail_fast_or_continue(result: Result<(), Box<dyn Error>>, fail_fast: bool) -> Result<bool, Box<dyn Error>> {
+fn fail_fast_or_continue(result: Result<(), anyhow::Error>, fail_fast: bool) -> Result<bool, anyhow::Error> {
     match result {
         Ok(()) => Ok(true),
         Err(e) if fail_fast => Err(e),

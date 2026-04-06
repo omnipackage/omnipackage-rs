@@ -4,8 +4,8 @@ use crate::gpg::Key;
 use crate::job_variables::JobVariables;
 use crate::package::{Package, SetupStage};
 use crate::template::{Template, Var};
+use anyhow::{Context, Result};
 use std::collections::HashMap;
-use std::error::Error;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
@@ -37,27 +37,35 @@ impl Deb {
         }
     }
 
-    fn render_templates(&self, vars: HashMap<String, Var>, from: PathBuf, to: PathBuf) -> Result<(), Box<dyn Error>> {
-        std::fs::create_dir_all(&to).map_err(|e| format!("cannot create directory {}: {}", to.display(), e))?;
+    fn render_templates(&self, vars: HashMap<String, Var>, from: PathBuf, to: PathBuf) -> Result<(), anyhow::Error> {
+        std::fs::create_dir_all(&to).with_context(|| format!("cannot create directory {}", to.display()))?;
 
-        for entry in std::fs::read_dir(&from).map_err(|e| format!("cannot read dir {}: {}", from.display(), e))? {
+        for entry in std::fs::read_dir(&from).with_context(|| format!("cannot read dir {}", from.display()))? {
             let path = entry?.path();
-            let file_name = path.file_name().ok_or_else(|| format!("cannot get file name for {}", path.display()))?.to_string_lossy().into_owned();
+            let file_name = path
+                .file_name()
+                .ok_or_else(|| anyhow::anyhow!("cannot get file name for {}", path.display()))?
+                .to_string_lossy()
+                .into_owned();
             let dest = to.join(&file_name);
 
             if path.extension().and_then(|e| e.to_str()) == Some("liquid") {
-                let stem = path.file_stem().ok_or_else(|| format!("cannot get file stem for {}", path.display()))?.to_string_lossy().into_owned();
+                let stem = path
+                    .file_stem()
+                    .ok_or_else(|| anyhow::anyhow!("cannot get file stem for {}", path.display()))?
+                    .to_string_lossy()
+                    .into_owned();
                 let dest_without_ext = to.join(stem);
                 Template::from_file(&path)?.render_to_file(vars.clone(), dest_without_ext)?;
             } else {
-                std::fs::copy(&path, &dest).map_err(|e| format!("cannot copy {} to {}: {}", path.display(), dest.display(), e))?;
+                std::fs::copy(&path, &dest).with_context(|| format!("cannot copy {} to {}", path.display(), dest.display()))?;
             }
         }
 
         Ok(())
     }
 
-    fn write_releases_script(&self, home_dir: &Path) -> Result<(), Box<dyn Error>> {
+    fn write_releases_script(&self, home_dir: &Path) -> Result<(), anyhow::Error> {
         // credit: https://earthly.dev/blog/creating-and-hosting-your-own-deb-packages-and-apt-repo/
         let script = r#"#!/bin/sh
 set -e
@@ -100,14 +108,14 @@ do_hash "SHA256" "sha256sum"
 }
 
 impl Package for Deb {
-    fn setup_build(&mut self, config: Build) -> Result<(), Box<dyn Error>> {
+    fn setup_build(&mut self, config: Build) -> Result<(), anyhow::Error> {
         self.prepare_build_dir()?;
-        let debian_folder_template_path = config.deb.clone().ok_or("deb config is missing")?.debian_templates;
+        let debian_folder_template_path = config.deb.clone().ok_or(anyhow::anyhow!("deb config is missing"))?.debian_templates;
 
         let build_path = self.distro_build_dir().join("build");
         let output_path = self.output_path();
-        std::fs::create_dir_all(&build_path).map_err(|e| format!("cannot create directory {}: {}", build_path.display(), e))?;
-        std::fs::create_dir_all(&output_path).map_err(|e| format!("cannot create directory {}: {}", output_path.display(), e))?;
+        std::fs::create_dir_all(&build_path).with_context(|| format!("cannot create directory {}", build_path.display()))?;
+        std::fs::create_dir_all(&output_path).with_context(|| format!("cannot create directory {}", output_path.display()))?;
 
         let mut template_vars: HashMap<String, Var> = self.job_variables.to_template_vars();
         template_vars.extend(config.to_template_vars());
@@ -133,7 +141,7 @@ impl Package for Deb {
         Ok(())
     }
 
-    fn setup_repository(&mut self, config: Repository) -> Result<(), Box<dyn Error>> {
+    fn setup_repository(&mut self, config: Repository) -> Result<(), anyhow::Error> {
         let gpgkey = self.prepare_gpgkey(&config)?;
         let (home_dir, repo_dir) = self.prepare_repository(&gpgkey)?;
 

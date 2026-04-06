@@ -2,7 +2,6 @@
 
 use clap::builder::styling::{AnsiColor, Effects, Styles};
 use clap::{Args, Parser, Subcommand};
-use std::error::Error;
 use std::path::{Path, PathBuf};
 
 mod config;
@@ -18,6 +17,7 @@ mod runner;
 mod shell;
 mod template;
 
+use anyhow::{Context, Result};
 use config::Config;
 use gpg::Gpg;
 use logger::{Color, LogOutput, Logger, colorize};
@@ -219,7 +219,7 @@ enum Commands {
     Info(InfoArgs),
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), anyhow::Error> {
     let cli = Cli::parse();
 
     if let Some(runtime) = cli.global.container_runtime {
@@ -269,7 +269,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let decoded = match input_format.as_str() {
                     "base64" => {
                         use base64::{Engine, engine::general_purpose};
-                        general_purpose::STANDARD.decode(&content).map_err(|e| format!("Failed to decode base64 input: {}", e))?
+                        general_purpose::STANDARD.decode(&content).with_context(|| "Failed to decode base64 input".to_string())?
                     }
                     _ => content,
                 };
@@ -360,7 +360,7 @@ impl LoggingArgs {
 }
 
 impl ProjectArgs {
-    pub fn load_config(&self, silent: bool) -> Result<Config, String> {
+    pub fn load_config(&self, silent: bool) -> Result<Config, anyhow::Error> {
         Config::load_with_env(&self.source_dir.join(&self.config_path), &self.env_file, silent)
     }
 }

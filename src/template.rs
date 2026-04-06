@@ -1,8 +1,8 @@
+use anyhow::{Context, Result};
 use liquid::ParserBuilder;
 use liquid::model::{KString, Value};
 use regex::Regex;
 use std::collections::HashMap;
-use std::error::Error;
 use std::path::{Path, PathBuf};
 
 #[derive(Clone)]
@@ -51,18 +51,18 @@ pub struct Template {
 }
 
 impl Template {
-    pub fn from_content(content: impl Into<String>) -> Result<Self, Box<dyn Error>> {
+    pub fn from_content(content: impl Into<String>) -> Result<Self, anyhow::Error> {
         let source_content = content.into();
         let template = ParserBuilder::with_stdlib().build()?.parse(&source_content)?;
         Ok(Self { source_content, template })
     }
 
-    pub fn from_file(path: impl AsRef<Path>) -> Result<Self, Box<dyn Error>> {
-        let content = std::fs::read_to_string(&path).map_err(|e| format!("cannot read template {}: {}", path.as_ref().display(), e))?;
+    pub fn from_file(path: impl AsRef<Path>) -> Result<Self, anyhow::Error> {
+        let content = std::fs::read_to_string(&path).with_context(|| format!("cannot read template {}", path.as_ref().display()))?;
         Self::from_content(content)
     }
 
-    pub fn render(&self, vars: impl IntoIterator<Item = (String, Var)>) -> Result<String, Box<dyn Error>> {
+    pub fn render(&self, vars: impl IntoIterator<Item = (String, Var)>) -> Result<String, anyhow::Error> {
         let mut globals: liquid::Object = vars.into_iter().map(|(k, v)| (k.into(), v.0)).collect();
 
         // Hack for liquid to not fail on missing variable (https://github.com/cobalt-org/liquid-rust/issues/570)
@@ -73,12 +73,12 @@ impl Template {
         Ok(self.template.render(&globals)?)
     }
 
-    pub fn render_to_file(&self, vars: impl IntoIterator<Item = (String, Var)>, output_path: PathBuf) -> Result<(), Box<dyn Error>> {
+    pub fn render_to_file(&self, vars: impl IntoIterator<Item = (String, Var)>, output_path: PathBuf) -> Result<(), anyhow::Error> {
         if let Some(parent) = output_path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| format!("cannot create directory {}: {}", parent.display(), e))?;
+            std::fs::create_dir_all(parent).with_context(|| format!("cannot create directory {}", parent.display()))?;
         }
         let output = self.render(vars)?;
-        std::fs::write(&output_path, &output).map_err(|e| format!("cannot write to {}: {}", output_path.display(), e))?;
+        std::fs::write(&output_path, &output).with_context(|| format!("cannot write to {}", output_path.display()))?;
         Ok(())
     }
 }

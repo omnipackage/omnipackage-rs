@@ -1,4 +1,4 @@
-use std::error::Error;
+use anyhow::Result;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
@@ -7,11 +7,14 @@ pub struct ArtefactMatch {
     pub relative_path: PathBuf,
 }
 
-pub fn find_artefacts_in_repository_dir(artefacts: &[PathBuf], repository_dir: &Path) -> Result<Vec<ArtefactMatch>, Box<dyn Error>> {
+pub fn find_artefacts_in_repository_dir(artefacts: &[PathBuf], repository_dir: &Path) -> Result<Vec<ArtefactMatch>, anyhow::Error> {
     let mut results = Vec::new();
 
     for artifact in artefacts {
-        let filename = artifact.file_name().ok_or_else(|| format!("artifact has no filename: {}", artifact.display()))?.to_string_lossy();
+        let filename = artifact
+            .file_name()
+            .ok_or_else(|| anyhow::anyhow!("artifact has no filename: {}", artifact.display()))?
+            .to_string_lossy();
 
         let pattern = repository_dir.join("**").join(filename.as_ref()).to_string_lossy().into_owned();
 

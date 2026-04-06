@@ -1,37 +1,37 @@
 use crate::config::VersionExtractor;
 use crate::shell::Command;
+use anyhow::{Context, Result};
 use regex::Regex;
-use std::error::Error;
 use std::path::Path;
 
-pub fn extract_version(path: &Path, config: &VersionExtractor) -> Result<String, Box<dyn Error>> {
+pub fn extract_version(path: &Path, config: &VersionExtractor) -> Result<String, anyhow::Error> {
     match config.provider.as_str() {
         "file" => {
-            let file_config = config.file.clone().ok_or("file config is missing")?;
+            let file_config = config.file.clone().ok_or(anyhow::anyhow!("file config is missing"))?;
 
             let file_path = path.join(&file_config.file);
-            let content = std::fs::read_to_string(&file_path).map_err(|e| format!("cannot read {}: {}", file_path.display(), e))?;
+            let content = std::fs::read_to_string(&file_path).with_context(|| format!("cannot read {}", file_path.display()))?;
 
             let regex = &file_config.regex;
-            let re = Regex::new(regex).map_err(|e| format!("invalid regex '{}': {}", regex, e))?;
+            let re = Regex::new(regex).with_context(|| format!("invalid regex '{}'", regex))?;
 
             let result = re
                 .captures(&content)
                 .and_then(|c| c.get(1))
                 .map(|m| m.as_str().to_string())
-                .ok_or_else(|| format!("regex '{}' did not match in {}", regex, file_path.display()));
+                .ok_or_else(|| anyhow::anyhow!("regex '{}' did not match in {}", regex, file_path.display()));
             Ok(result?)
         }
         "shell" => {
-            let shell_config = config.shell.clone().ok_or("shell config is missing")?;
+            let shell_config = config.shell.clone().ok_or(anyhow::anyhow!("shell config is missing"))?;
             let output = Command::new("sh").args(["-c", &shell_config.command]).capture()?.trim_end().to_string();
             Ok(output)
         }
         "constant" => {
-            let constant_config = config.constant.clone().ok_or("constant config is missing")?;
+            let constant_config = config.constant.clone().ok_or(anyhow::anyhow!("constant config is missing"))?;
             Ok(constant_config.version)
         }
-        _ => Err(format!("unknown version provider '{}'", config.provider).into()),
+        _ => Err(anyhow::anyhow!("unknown version provider '{}'", config.provider)),
     }
 }
 
