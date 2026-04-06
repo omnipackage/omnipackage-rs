@@ -2,7 +2,7 @@ use crate::config::{Build, Repository};
 use crate::distros::Distro;
 use crate::gpg::Key;
 use crate::job_variables::JobVariables;
-use crate::package::Package;
+use crate::package::{Package, SetupStage};
 use crate::template::{Template, Var};
 use std::collections::HashMap;
 use std::error::Error;
@@ -18,7 +18,7 @@ pub struct Deb {
     mounts: HashMap<String, String>,
     commands: Vec<String>,
     build_output_dir: PathBuf,
-    setup_stages: Vec<String>,
+    setup_stages: Vec<SetupStage>,
     gpgkey: Option<Key>,
 }
 
@@ -128,7 +128,7 @@ impl Package for Deb {
         ]);
 
         self.build_output_dir = output_path;
-        self.setup_stages.push("build".to_string());
+        self.setup_stages.push(SetupStage::Build);
 
         Ok(())
     }
@@ -161,7 +161,7 @@ impl Package for Deb {
         ]);
 
         self.build_output_dir = repo_dir.clone();
-        self.setup_stages.push("repository".to_string());
+        self.setup_stages.push(SetupStage::Repository);
         self.gpgkey = Some(gpgkey);
 
         Ok(())
@@ -195,7 +195,7 @@ impl Package for Deb {
         self.build_output_dir.clone()
     }
 
-    fn setup_stages(&self) -> Vec<String> {
+    fn setup_stages(&self) -> Vec<SetupStage> {
         self.setup_stages.clone()
     }
 
@@ -412,7 +412,7 @@ mod tests {
 
         deb.setup_build(make_build_config(&dir)).unwrap();
 
-        assert!(deb.setup_stages().contains(&"build".to_string()));
+        assert!(deb.setup_stages().contains(&SetupStage::Build));
     }
 
     #[test]
@@ -460,7 +460,7 @@ mod tests {
 
         deb.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
 
-        assert!(deb.setup_stages().contains(&"repository".to_string()));
+        assert!(deb.setup_stages().contains(&SetupStage::Repository));
     }
 
     #[test]

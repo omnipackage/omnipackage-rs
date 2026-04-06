@@ -2,7 +2,7 @@ use crate::config::{Build, Repository};
 use crate::distros::Distro;
 use crate::gpg::{Gpg, Key};
 use crate::job_variables::JobVariables;
-use crate::package::Package;
+use crate::package::{Package, SetupStage};
 use crate::template::{Template, Var};
 use std::collections::HashMap;
 use std::error::Error;
@@ -18,7 +18,7 @@ pub struct Rpm {
     mounts: HashMap<String, String>,
     commands: Vec<String>,
     build_output_dir: PathBuf,
-    setup_stages: Vec<String>,
+    setup_stages: Vec<SetupStage>,
     gpgkey: Option<Key>,
 }
 
@@ -100,7 +100,7 @@ impl Package for Rpm {
         ]);
 
         self.build_output_dir = rpmbuild_path.join("RPMS");
-        self.setup_stages.push("build".to_string());
+        self.setup_stages.push(SetupStage::Build);
 
         Ok(())
     }
@@ -129,7 +129,7 @@ impl Package for Rpm {
         ]);
 
         self.build_output_dir = repo_dir.clone();
-        self.setup_stages.push("repository".to_string());
+        self.setup_stages.push(SetupStage::Repository);
         self.gpgkey = Some(gpgkey);
 
         self.write_repo_file(&repo_dir, &config.project_slug(), &self.distro.name, &self.distro_url(&config))
@@ -163,7 +163,7 @@ impl Package for Rpm {
         self.build_output_dir.clone()
     }
 
-    fn setup_stages(&self) -> Vec<String> {
+    fn setup_stages(&self) -> Vec<SetupStage> {
         self.setup_stages.clone()
     }
 
@@ -353,7 +353,7 @@ mod tests {
 
         rpm.setup_build(make_build_config(&dir)).unwrap();
 
-        assert!(rpm.setup_stages().contains(&"build".to_string()));
+        assert!(rpm.setup_stages().contains(&SetupStage::Build));
     }
 
     #[test]
@@ -401,7 +401,7 @@ mod tests {
 
         rpm.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
 
-        assert!(rpm.setup_stages().contains(&"repository".to_string()));
+        assert!(rpm.setup_stages().contains(&SetupStage::Repository));
     }
 
     #[test]

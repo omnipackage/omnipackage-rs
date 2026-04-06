@@ -23,6 +23,12 @@ pub fn make_package(distro: &'static Distro, source_dir: PathBuf, job_variables:
     }
 }
 
+#[derive(PartialEq, Debug, Clone)]
+pub enum SetupStage {
+    Build,
+    Repository,
+}
+
 pub trait Package {
     fn clone_box(&self) -> Box<dyn Package>;
 
@@ -35,16 +41,16 @@ pub trait Package {
     fn distro_build_dir(&self) -> PathBuf;
     fn distro(&self) -> &'static Distro;
     fn build_output_dir(&self) -> PathBuf;
-    fn setup_stages(&self) -> Vec<String>;
+    fn setup_stages(&self) -> Vec<SetupStage>;
     fn gpgkey(&self) -> Option<Key>;
 
     fn setup_stage_name(&self) -> String {
         let s = self.setup_stages();
-        if s.contains(&"build".to_string()) && s.contains(&"repository".to_string()) {
+        if s.contains(&SetupStage::Build) && s.contains(&SetupStage::Repository) {
             "build & respository setup".to_string()
-        } else if s.contains(&"build".to_string()) {
+        } else if s.contains(&SetupStage::Build) {
             "build".to_string()
-        } else if s.contains(&"repository".to_string()) {
+        } else if s.contains(&SetupStage::Repository) {
             "respository setup".to_string()
         } else {
             "<empty package preparation stage>".to_string()
