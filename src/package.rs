@@ -58,12 +58,22 @@ pub trait Package {
     }
 
     fn artefacts(&self) -> Vec<PathBuf> {
-        // TODO check setup stage, search in repo dir if stage repo setup, search in build dir otherwise
-        let pattern = match self.distro().package_type.as_str() {
-            "rpm" => self.build_output_dir().join("**/*.rpm"),
-            "deb" => self.build_output_dir().join("**/*.deb"),
-            _ => panic!("unknown package type {}", self.distro().package_type),
+        let ext = match self.distro().package_type.as_str() {
+            "rpm" => "rpm",
+            "deb" => "deb",
+            other => panic!("unknown package type {}", other),
         };
+
+        let stage = self.setup_stages();
+        let dir = if stage.contains(&SetupStage::Repository) {
+            self.repository_output_dir()
+        } else if stage.contains(&SetupStage::Build) {
+            self.build_output_dir()
+        } else {
+            panic!("package not set up")
+        };
+
+        let pattern = dir.join(format!("**/*.{}", ext));
 
         glob::glob(pattern.to_str().unwrap()).unwrap().filter_map(|e| e.ok()).collect()
     }
