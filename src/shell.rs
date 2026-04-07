@@ -189,6 +189,23 @@ impl Command {
             Err(anyhow::anyhow!(ExitError(status.code().unwrap_or(1) as i32)))
         }
     }
+
+    pub fn run_interactive(self) -> Result<(), anyhow::Error> {
+        self.logger.cmd(&self.program, &self.args, &self.env_vars);
+
+        let mut cmd = std::process::Command::new(&self.program);
+        cmd.args(&self.args);
+        for (k, v) in &self.env_vars {
+            cmd.env(k, v);
+        }
+
+        let status = cmd.status()?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!(ExitError(status.code().unwrap_or(1))))
+        }
+    }
 }
 
 #[cfg(test)]

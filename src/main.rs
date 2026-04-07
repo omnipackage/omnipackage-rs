@@ -11,6 +11,7 @@ mod gpg;
 mod job_variables;
 mod logger;
 mod package;
+mod portal;
 mod publish;
 mod release;
 mod runner;
@@ -198,6 +199,17 @@ enum GpgCommands {
     },
 }
 
+#[derive(Args, Clone, Debug)]
+pub struct PortalArgs {
+    /// Distro id to spawn in a container
+    #[arg()]
+    distro: String,
+
+    /// Root directory for temporary build/publish files, will be mounted in the container under the same basename
+    #[arg(long, default_value_t = default_build_dir())]
+    build_dir: String,
+}
+
 #[derive(Subcommand)]
 enum Commands {
     /// Build the project with omnipackage
@@ -217,6 +229,9 @@ enum Commands {
 
     /// Query various info about the project
     Info(InfoArgs),
+
+    /// Shortcut to spawn a distro interactively in a container
+    Portal(PortalArgs),
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -306,6 +321,9 @@ fn main() -> Result<(), anyhow::Error> {
                     _ => distros.iter().for_each(|d| println!("{}", d)),
                 }
             }
+        }
+        Commands::Portal(args) => {
+            portal::run(args)?;
         }
     }
     Ok(())
