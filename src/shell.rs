@@ -200,11 +200,7 @@ impl Command {
         }
 
         let status = cmd.status()?;
-        if status.success() {
-            Ok(())
-        } else {
-            Err(anyhow::anyhow!(ExitError(status.code().unwrap_or(1))))
-        }
+        if status.success() { Ok(()) } else { Err(anyhow::anyhow!(ExitError(status.code().unwrap_or(1)))) }
     }
 }
 

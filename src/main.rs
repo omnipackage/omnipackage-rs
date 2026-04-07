@@ -8,6 +8,7 @@ mod config;
 mod distros;
 mod extract_version;
 mod gpg;
+mod gpg_commands;
 mod job_variables;
 mod logger;
 mod package;
@@ -18,10 +19,9 @@ mod runner;
 mod shell;
 mod template;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use config::Config;
-use gpg::Gpg;
-use logger::{Color, LogOutput, Logger, colorize};
+use logger::{LogOutput, Logger};
 
 #[derive(Debug, Args)]
 struct GlobalOpts {
@@ -160,43 +160,49 @@ pub struct InfoArgs {
     format: String,
 }
 
+#[derive(Args, Clone, Debug)]
+pub struct GpgGenerateArgs {
+    #[arg(default_value = ".")]
+    output_dir: PathBuf,
+
+    /// Key owner name, i.e. your real name
+    #[arg(short, long)]
+    name: String,
+
+    /// Key owner email, i.e. your real email
+    #[arg(short, long)]
+    email: String,
+
+    /// Output format
+    #[arg(long, default_value = "pem", value_parser = ["pem", "base64"])]
+    format: String,
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct GpgConvertArgs {
+    /// Input file
+    #[arg()]
+    input: PathBuf,
+
+    /// Format of the input key file
+    #[arg(short, long, default_value = "pem")]
+    input_format: String,
+
+    #[arg(default_value = ".")]
+    output_dir: PathBuf,
+
+    /// Format of the output key file
+    #[arg(short, long, default_value = "base64")]
+    output_format: String,
+}
+
 #[derive(Subcommand)]
 enum GpgCommands {
     /// Generate a new GPG key
-    Generate {
-        #[arg(default_value = ".")]
-        output_dir: PathBuf,
-
-        /// Key owner name, i.e. your real name
-        #[arg(short, long)]
-        name: String,
-
-        /// Key owner email, i.e. your real email
-        #[arg(short, long)]
-        email: String,
-
-        /// Output format
-        #[arg(long, default_value = "pem", value_parser = ["pem", "base64"])]
-        format: String,
-    },
+    Generate(GpgGenerateArgs),
 
     /// Convert keys between pem and base64 formats
-    Convert {
-        /// Input file
-        #[arg()]
-        input: PathBuf,
-
-        /// Format of the input key file
-        #[arg(short, long, default_value = "pem")]
-        input_format: String,
-
-        #[arg(default_value = ".")]
-        output_dir: PathBuf,
-
-        /// Format of the output key file
-        #[arg(short, long, default_value = "base64")]
-        output_format: String,
-    },
+    Convert(GpgConvertArgs),
 }
 
 #[derive(Args, Clone, Debug)]
@@ -252,60 +258,11 @@ fn main() -> Result<(), anyhow::Error> {
             release::release(args.project, args.job, args.logging, args.repository, args.version_extractor)?;
         }
         Commands::Gpg { command } => match command {
-            GpgCommands::Generate { output_dir, name, email, format } => {
-                let keys = Gpg::new().generate_keys(&name, &email)?;
-
-                let (priv_content, pub_content) = match format.as_str() {
-                    "base64" => {
-                        use base64::{Engine, engine::general_purpose};
-                        (general_purpose::STANDARD.encode(&keys.priv_key), general_purpose::STANDARD.encode(&keys.pub_key))
-                    }
-                    _ => (keys.priv_key.clone(), keys.pub_key.clone()),
-                };
-
-                let ext = if format == "base64" { ".base64" } else { "" };
-                let priv_path = output_dir.join(format!("private.asc{}", ext));
-                let pub_path = output_dir.join(format!("public.asc{}", ext));
-
-                std::fs::write(&priv_path, &priv_content)?;
-                std::fs::write(&pub_path, &pub_content)?;
-
-                println!("private key written to {}", colorize(Color::BoldYellow, priv_path.display()));
-                println!("public key written to {}", colorize(Color::BoldYellow, pub_path.display()));
+            GpgCommands::Generate(args) => {
+                gpg_commands::generate(args)?;
             }
-            GpgCommands::Convert {
-                input,
-                input_format,
-                output_dir,
-                output_format,
-            } => {
-                let content = std::fs::read(&input)?;
-
-                let decoded = match input_format.as_str() {
-                    "base64" => {
-                        use base64::{Engine, engine::general_purpose};
-                        general_purpose::STANDARD.decode(&content).with_context(|| "Failed to decode base64 input".to_string())?
-                    }
-                    _ => content,
-                };
-
-                let output_content = match output_format.as_str() {
-                    "base64" => {
-                        use base64::{Engine, engine::general_purpose};
-                        general_purpose::STANDARD.encode(&decoded).into_bytes()
-                    }
-                    _ => decoded,
-                };
-
-                let input_stem = input.file_stem().and_then(|s| s.to_str()).unwrap_or("key");
-                let base_name = input_stem.trim_end_matches(".base64");
-
-                let ext = if output_format == "base64" { ".asc.base64" } else { ".asc" };
-                let output_path = output_dir.join(format!("{}{}", base_name, ext));
-
-                std::fs::write(&output_path, &output_content)?;
-
-                println!("converted key written to {}", colorize(Color::BoldYellow, output_path.display()));
+            GpgCommands::Convert(args) => {
+                gpg_commands::convert(args)?;
             }
         },
         Commands::Info(args) => {
