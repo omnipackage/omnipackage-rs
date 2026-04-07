@@ -30,7 +30,6 @@ impl Runner {
         ));
         let started_at = Instant::now();
         let result = self.execute();
-        self.package.teardown();
         let finished_at = started_at.elapsed().as_secs_f32();
 
         match result {
@@ -91,12 +90,15 @@ impl Runner {
         let log_path = self.package.distro_build_dir().join("runner.log");
         let _ = std::fs::remove_file(&log_path);
 
-        Command::container(args)
+        let result = Command::container(args)
             .stream_output_to(self.container_logger())
             .log_to(&log_path)
             .run()
             .map(|_| self.package.artefacts())
-            .map_err(|e| (e, log_path.clone()))
+            .map_err(|e| (e, log_path.clone()));
+
+        self.package.teardown();
+        result
     }
 
     fn container_logger(&self) -> Logger {
