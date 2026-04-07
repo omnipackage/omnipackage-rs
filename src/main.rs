@@ -9,6 +9,7 @@ mod distros;
 mod extract_version;
 mod gpg;
 mod gpg_commands;
+mod info;
 mod job_variables;
 mod logger;
 mod package;
@@ -248,40 +249,15 @@ fn main() -> Result<(), anyhow::Error> {
     }
 
     match cli.command {
-        Commands::Build(args) => {
-            release::build(args.project, args.job, args.logging, args.version_extractor)?;
-        }
-        Commands::Publish(args) => {
-            release::publish(args.project, args.job, args.logging, args.repository)?;
-        }
-        Commands::Release(args) => {
-            release::release(args.project, args.job, args.logging, args.repository, args.version_extractor)?;
-        }
+        Commands::Build(args) => release::build(args.project, args.job, args.logging, args.version_extractor)?,
+        Commands::Publish(args) => release::publish(args.project, args.job, args.logging, args.repository)?,
+        Commands::Release(args) => release::release(args.project, args.job, args.logging, args.repository, args.version_extractor)?,
         Commands::Gpg { command } => match command {
-            GpgCommands::Generate(args) => {
-                gpg_commands::generate(args)?;
-            }
-            GpgCommands::Convert(args) => {
-                gpg_commands::convert(args)?;
-            }
+            GpgCommands::Generate(args) => gpg_commands::generate(args)?,
+            GpgCommands::Convert(args) => gpg_commands::convert(args)?,
         },
-        Commands::Info(args) => {
-            let config = args.project.load_config(true)?;
-            if args.show_install_page_url {
-                let repository_config = config.repositories.find_by_name_or_default(args.repository.as_deref())?.clone();
-                let page_url = publish::install_page_url(&repository_config).unwrap_or("".to_string());
-                println!("{}", page_url);
-            } else if args.list_distros {
-                let distros: Vec<&str> = config.builds.iter().map(|b| b.distro.as_str()).collect();
-                match args.format.as_str() {
-                    "json" => println!("{}", serde_json::to_string(&distros)?),
-                    _ => distros.iter().for_each(|d| println!("{}", d)),
-                }
-            }
-        }
-        Commands::Portal(args) => {
-            portal::run(args)?;
-        }
+        Commands::Info(args) => info::info(args)?,
+        Commands::Portal(args) => portal::run(args)?,
     }
     Ok(())
 }
