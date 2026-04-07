@@ -263,7 +263,7 @@ fn main() -> Result<(), anyhow::Error> {
 }
 
 fn default_build_dir() -> String {
-    std::env::temp_dir().join("omnipackage").to_string_lossy().into()
+    std::env::temp_dir().join("omnipackage-build").to_string_lossy().into()
 }
 
 fn styles() -> Styles {
