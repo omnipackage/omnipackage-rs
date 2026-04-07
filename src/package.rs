@@ -44,6 +44,13 @@ pub trait Package {
     fn setup_stages(&self) -> Vec<SetupStage>;
     fn gpgkey(&self) -> Option<Key>;
 
+    fn teardown(&self) {
+        let dir = self.home_dir();
+        if dir.exists() {
+            let _ = std::fs::remove_dir_all(&dir);
+        }
+    }
+
     fn setup_stage_name(&self) -> String {
         let s = self.setup_stages();
         if s.contains(&SetupStage::Build) && s.contains(&SetupStage::Repository) {
@@ -120,6 +127,10 @@ pub trait Package {
         self.distro_build_dir().join("repository")
     }
 
+    fn home_dir(&self) -> PathBuf {
+        self.distro_build_dir().join("home")
+    }
+
     fn setup_repo_dir(&self) -> Result<PathBuf, anyhow::Error> {
         let dir = self.repository_output_dir();
         if dir.exists() {
@@ -130,7 +141,7 @@ pub trait Package {
     }
 
     fn setup_home_dir(&self) -> Result<PathBuf, anyhow::Error> {
-        let dir = self.distro_build_dir().join("home");
+        let dir = self.home_dir();
         if dir.exists() {
             std::fs::remove_dir_all(&dir)?;
         }
