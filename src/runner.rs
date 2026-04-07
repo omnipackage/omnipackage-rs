@@ -30,7 +30,6 @@ impl Runner {
         ));
         let started_at = Instant::now();
         let result = self.execute();
-        self.package.teardown();
         let finished_at = started_at.elapsed().as_secs_f32();
 
         match result {
