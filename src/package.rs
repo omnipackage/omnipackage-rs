@@ -91,7 +91,11 @@ pub trait Package {
     }
 
     fn import_gpg_keys_commands(&self) -> Vec<String> {
-        vec!["gpg --no-tty --batch --import /root/key.priv".to_string(), "gpg --no-tty --batch --import /repo/public.key".to_string()]
+        vec![
+            "gpg --no-tty --batch --import /root/key.priv".to_string(),
+            "gpg --no-tty --batch --import /repo/public.key".to_string(),
+            "rm /root/key.priv".to_string(),
+        ]
     }
 
     fn write_gpg_keys(&self, key: &Key, home_dir: &Path, repo_dir: &Path) -> Result<(), anyhow::Error> {
