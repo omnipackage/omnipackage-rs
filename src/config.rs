@@ -151,6 +151,12 @@ impl S3Config {
     }
 }
 
+impl LocalFsConfig {
+    pub fn repository_path(&self) -> PathBuf {
+        PathBuf::from(self.path.clone())
+    }
+}
+
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct Repositories(Vec<Repository>);
 

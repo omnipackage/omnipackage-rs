@@ -90,9 +90,7 @@ impl Publish {
             }
             "localfs" => {
                 let localfs_config = self.config.localfs();
-                let dst_path = PathBuf::from(localfs_config.path.clone());
-                let dst_folder = PathBuf::from(self.package.distro().id.clone());
-                let dst = dst_path.join(dst_folder);
+                let dst = localfs_config.repository_path().join(&self.package.distro().id);
                 artefacts::copy_dir_recursive(&dir, &dst)?;
                 Ok(())
             }
@@ -179,10 +177,22 @@ impl Publish {
 
                 Ok(InstallPageBadge { page_url, badge_md })
             }
-            "localfs" => Ok(InstallPageBadge {
-                page_url: "".to_string(),
-                badge_md: "".to_string(),
-            }),
+            "localfs" => {
+                let localfs_config = self.config.localfs();
+                let path = localfs_config.repository_path().join(INSTALL_PAGE_NAME);
+                let existing_install_page = std::fs::read_to_string(&path).unwrap_or_default();
+                let custom_template = match self.custom_install_page.clone() {
+                    Some(path) => Some(std::fs::read_to_string(path)?),
+                    None => None,
+                };
+                let output = install_page::upsert(&existing_install_page, &repositories, &self.config, custom_template)?;
+                std::fs::write(&path, output.install_page)?;
+
+                Ok(InstallPageBadge {
+                    page_url: path.to_string_lossy().to_string(),
+                    badge_md: "".to_string(),
+                })
+            }
             &_ => panic!("unknown repository provider {}", self.config.provider),
         }
     }
