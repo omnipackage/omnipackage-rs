@@ -88,7 +88,15 @@ impl Publish {
                 s3.delete_deleted_files(&dir)?;
                 Ok(())
             }
-            &_ => todo!(),
+            "localfs" => {
+                let localfs_config = self.config.localfs();
+                let dst_path = PathBuf::from(localfs_config.path.clone());
+                let dst_folder = PathBuf::from(self.package.distro().id.clone());
+                let dst = dst_path.join(dst_folder);
+                artefacts::copy_dir_recursive(&dir, &dst)?;
+                Ok(())
+            }
+            &_ => panic!("unknown repository provider {}", self.config.provider),
         }
     }
 
@@ -171,7 +179,11 @@ impl Publish {
 
                 Ok(InstallPageBadge { page_url, badge_md })
             }
-            &_ => todo!(),
+            "localfs" => Ok(InstallPageBadge {
+                page_url: "".to_string(),
+                badge_md: "".to_string(),
+            }),
+            &_ => panic!("unknown repository provider {}", self.config.provider),
         }
     }
 

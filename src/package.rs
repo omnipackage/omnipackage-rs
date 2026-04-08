@@ -164,7 +164,11 @@ pub trait Package {
                 let s3_config = config.s3();
                 format!("{}/{}", s3_config.base_url(), self.s3_in_bucket_distro_path(s3_config))
             }
-            &_ => todo!(),
+            "localfs" => {
+                let localfs_config = config.localfs();
+                format!("{}/{}", localfs_config.path, self.distro().id)
+            }
+            &_ => panic!("unknown repository provider {}", config.provider),
         }
     }
 
