@@ -96,10 +96,17 @@ pub struct S3Config {
     pub cloudflare_api_token: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum RepositoryProvider {
+    S3,
+    LocalFs,
+}
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct Repository {
     pub name: String,
-    pub provider: String,
+    pub provider: RepositoryProvider,
     pub localfs: Option<LocalFsConfig>,
     pub s3: Option<S3Config>,
     pub gpg_private_key_base64: String,
@@ -322,7 +329,7 @@ mod tests {
 
         let s3 = &config.repositories[0];
         assert_eq!(s3.name, "test repo on Cloudflare R2");
-        assert_eq!(s3.provider, "s3");
+        assert_eq!(s3.provider, RepositoryProvider::S3);
         assert_eq!(s3.s3().bucket, "repositories-test");
         assert_eq!(<std::option::Option<std::string::String> as Clone>::clone(&s3.s3().region).unwrap(), "auto");
         assert!(s3.localfs.is_none());
@@ -332,7 +339,7 @@ mod tests {
 
         let localfs = &config.repositories[1];
         assert_eq!(localfs.name, "Local test");
-        assert_eq!(localfs.provider, "localfs");
+        assert_eq!(localfs.provider, RepositoryProvider::LocalFs);
         assert_eq!(localfs.localfs().path, "/tmp/omnipackage-repos");
         assert!(localfs.s3.is_none());
     }

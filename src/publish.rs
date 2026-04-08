@@ -1,5 +1,5 @@
 use crate::LoggingArgs;
-use crate::config::{Repository, S3Config};
+use crate::config::{Repository, RepositoryProvider, S3Config};
 use crate::logger::{Color, Logger, colorize};
 use crate::package::Package;
 use anyhow::{Context, Result};
@@ -76,8 +76,8 @@ impl Publish {
             return Err(anyhow::anyhow!("no artefacts in {}", self.package.build_output_dir().display()));
         }
 
-        match self.config.provider.as_str() {
-            "s3" => {
+        match self.config.provider {
+            RepositoryProvider::S3 => {
                 let s3_config = self.config.s3();
                 let s3 = S3::new(s3_config, self.s3_in_bucket_distro_path(s3_config));
 
@@ -88,13 +88,12 @@ impl Publish {
                 s3.delete_deleted_files(&dir)?;
                 Ok(())
             }
-            "localfs" => {
+            RepositoryProvider::LocalFs => {
                 let localfs_config = self.config.localfs();
                 let dst = localfs_config.repository_path().join(&self.package.distro().id);
                 artefacts::copy_dir_recursive(&dir, &dst)?;
                 Ok(())
             }
-            &_ => panic!("unknown repository provider {}", self.config.provider),
         }
     }
 
@@ -107,7 +106,7 @@ impl Publish {
     }
 
     fn purge_cache(&self) -> Result<(), anyhow::Error> {
-        if self.config.provider.as_str() != "s3" {
+        if self.config.provider != RepositoryProvider::S3 {
             return Ok(());
         }
         let s3_config = self.config.s3();
@@ -152,8 +151,8 @@ impl Publish {
         ]);
         let repositories: install_page::Repositories = vec![repo];
 
-        match self.config.provider.as_str() {
-            "s3" => {
+        match self.config.provider {
+            RepositoryProvider::S3 => {
                 let s3_config = self.config.s3();
                 let path = PathBuf::new().join(s3_config.path_in_bucket.as_deref().unwrap_or(""));
                 let s3 = S3::new(s3_config, path.to_string_lossy().to_string());
@@ -177,7 +176,7 @@ impl Publish {
 
                 Ok(InstallPageBadge { page_url, badge_md })
             }
-            "localfs" => {
+            RepositoryProvider::LocalFs => {
                 let localfs_config = self.config.localfs();
                 let path = localfs_config.repository_path().join(INSTALL_PAGE_NAME);
                 let existing_install_page = std::fs::read_to_string(&path).unwrap_or_default();
@@ -193,7 +192,6 @@ impl Publish {
                     badge_md: "".to_string(),
                 })
             }
-            &_ => panic!("unknown repository provider {}", self.config.provider),
         }
     }
 
@@ -207,12 +205,12 @@ impl Publish {
 }
 
 pub fn install_page_url(repository: &Repository) -> Option<String> {
-    match repository.provider.as_str() {
-        "s3" => {
+    match repository.provider {
+        RepositoryProvider::S3 => {
             let s3_config = repository.s3();
             let page_url = format!("{}/{}", s3_config.base_bucket_url(), INSTALL_PAGE_NAME);
             Some(page_url)
         }
-        &_ => None,
+        _ => None,
     }
 }

@@ -215,7 +215,7 @@ impl Package for Deb {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{Build, DebConfig, Repository, S3Config};
+    use crate::config::{Build, DebConfig, Repository, RepositoryProvider, S3Config};
     use crate::distros::Distros;
     use crate::gpg::Gpg;
     use crate::job_variables::JobVariables;
@@ -283,7 +283,7 @@ mod tests {
         use base64::{Engine, engine::general_purpose};
         Repository {
             name: "test-repo".to_string(),
-            provider: "s3".to_string(),
+            provider: RepositoryProvider::S3,
             localfs: None,
             s3: Some(S3Config {
                 bucket: "test-bucket".to_string(),

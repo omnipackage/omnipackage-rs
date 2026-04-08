@@ -108,6 +108,7 @@ pub fn badge_vars(title: String, aux: String) -> HashMap<String, Var> {
 mod tests {
     use super::*;
     use crate::config::AnyValue;
+    use crate::config::RepositoryProvider;
 
     fn fixture() -> String {
         std::fs::read_to_string("tests/fixtures/install.html").expect("cannot read tests/fixtures/install.html")
@@ -254,7 +255,7 @@ mod tests {
         let rest = HashMap::from([("homepage".to_string(), AnyValue::String("http://testpacka.ge".to_string()))]);
         let repo_conf = RepoConfig {
             name: "this is badge title".into(),
-            provider: "s3".into(),
+            provider: RepositoryProvider::S3,
             gpg_private_key_base64: "".into(),
             package_name: "test123".into(),
             rest,

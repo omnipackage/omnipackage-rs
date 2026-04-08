@@ -175,7 +175,7 @@ impl Package for Rpm {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{Build, Repository, RpmConfig, S3Config};
+    use crate::config::{Build, Repository, RepositoryProvider, RpmConfig, S3Config};
     use crate::distros::Distros;
     use crate::gpg::Gpg;
     use crate::job_variables::JobVariables;
@@ -233,7 +233,7 @@ mod tests {
         let encoded = general_purpose::STANDARD.encode(gpg_private_key);
         Repository {
             name: "test-repo".to_string(),
-            provider: "s3".to_string(),
+            provider: RepositoryProvider::S3,
             localfs: None,
             s3: Some(S3Config {
                 bucket: "test-bucket".to_string(),
