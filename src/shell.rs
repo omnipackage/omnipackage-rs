@@ -4,6 +4,7 @@ use std::error::Error;
 use std::fs::OpenOptions;
 use std::io::BufReader;
 use std::io::{BufRead, Write};
+use std::path::PathBuf;
 use subprocess::{Exec, Redirection};
 
 static CONTAINER_RUNTIME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
@@ -56,10 +57,11 @@ impl Error for ExitError {}
 pub struct Command {
     program: String,
     args: Vec<String>,
-    log_file: Option<std::path::PathBuf>,
+    log_file: Option<PathBuf>,
     logger: Logger,
     stdin_fn: Option<StdinFn>,
     env_vars: Vec<(String, String)>,
+    current_dir: Option<PathBuf>,
 }
 
 impl Command {
@@ -71,6 +73,7 @@ impl Command {
             logger: Logger::new(),
             stdin_fn: None,
             env_vars: vec![],
+            current_dir: None,
         }
     }
 
@@ -82,7 +85,13 @@ impl Command {
             logger: Logger::new(),
             stdin_fn: None,
             env_vars: vec![],
+            current_dir: None,
         }
+    }
+
+    pub fn current_dir(mut self, path: impl Into<PathBuf>) -> Self {
+        self.current_dir = Some(path.into());
+        self
     }
 
     pub fn with_stdin(mut self, f: impl FnOnce(&mut dyn std::io::Write) + 'static) -> Self {
@@ -119,6 +128,10 @@ impl Command {
         let stdin_redirect = if self.stdin_fn.is_some() { Redirection::Pipe } else { Redirection::None };
 
         let mut exec = Exec::cmd(&self.program).args(&self.args).stdin(stdin_redirect).stdout(Redirection::Pipe).stderr(Redirection::Merge);
+
+        if let Some(ref dir) = self.current_dir {
+            exec = exec.cwd(dir);
+        }
 
         for (k, v) in &self.env_vars {
             exec = exec.env(k, v);
@@ -197,6 +210,10 @@ impl Command {
         cmd.args(&self.args);
         for (k, v) in &self.env_vars {
             cmd.env(k, v);
+        }
+
+        if let Some(ref dir) = self.current_dir {
+            cmd.current_dir(dir);
         }
 
         let status = cmd.status()?;

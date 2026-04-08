@@ -24,7 +24,7 @@ pub fn extract_version(path: &Path, config: &VersionExtractor) -> Result<String,
         }
         VersionExtractorProvider::Shell => {
             let shell_config = config.shell.clone().ok_or(anyhow::anyhow!("shell config is missing"))?;
-            let output = Command::new("sh").args(["-c", &shell_config.command]).capture()?.trim_end().to_string();
+            let output = Command::new("sh").current_dir(path).args(["-c", &shell_config.command]).capture()?.trim_end().to_string();
             Ok(output)
         }
         VersionExtractorProvider::Constant => {
