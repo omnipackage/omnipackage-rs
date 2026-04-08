@@ -22,10 +22,18 @@ pub struct ExtractVersionConstant {
     pub version: String,
 }
 
+#[derive(Debug, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum VersionExtractorProvider {
+    File,
+    Shell,
+    Constant,
+}
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct VersionExtractor {
     pub name: String,
-    pub provider: String,
+    pub provider: VersionExtractorProvider,
     pub file: Option<ExtractVersionFile>,
     pub shell: Option<ExtractVersionShell>,
     pub constant: Option<ExtractVersionConstant>,
@@ -288,7 +296,7 @@ mod tests {
 
         assert!(!config.version_extractors.is_empty());
         let ve = &config.version_extractors[1];
-        assert_eq!(ve.provider, "file");
+        assert_eq!(ve.provider, VersionExtractorProvider::File);
         let file = ve.file.as_ref().unwrap();
         assert_eq!(file.file, "version.h");
 
@@ -452,7 +460,7 @@ builds: []
         assert_eq!(config.version_extractors.len(), 2);
 
         let found = config.version_extractors.find_by_name_or_default(Some("from-shell")).unwrap();
-        assert_eq!(found.provider, "shell");
+        assert_eq!(found.provider, VersionExtractorProvider::Shell);
         assert!(found.shell.is_some());
         assert_eq!(found.shell.as_ref().unwrap().command, "./get-version.sh");
     }

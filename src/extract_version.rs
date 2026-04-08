@@ -1,12 +1,12 @@
-use crate::config::VersionExtractor;
+use crate::config::{VersionExtractor, VersionExtractorProvider};
 use crate::shell::Command;
 use anyhow::{Context, Result};
 use regex::Regex;
 use std::path::Path;
 
 pub fn extract_version(path: &Path, config: &VersionExtractor) -> Result<String, anyhow::Error> {
-    match config.provider.as_str() {
-        "file" => {
+    match config.provider {
+        VersionExtractorProvider::File => {
             let file_config = config.file.clone().ok_or(anyhow::anyhow!("file config is missing"))?;
 
             let file_path = path.join(&file_config.file);
@@ -22,16 +22,15 @@ pub fn extract_version(path: &Path, config: &VersionExtractor) -> Result<String,
                 .ok_or_else(|| anyhow::anyhow!("regex '{}' did not match in {}", regex, file_path.display()));
             Ok(result?)
         }
-        "shell" => {
+        VersionExtractorProvider::Shell => {
             let shell_config = config.shell.clone().ok_or(anyhow::anyhow!("shell config is missing"))?;
             let output = Command::new("sh").args(["-c", &shell_config.command]).capture()?.trim_end().to_string();
             Ok(output)
         }
-        "constant" => {
+        VersionExtractorProvider::Constant => {
             let constant_config = config.constant.clone().ok_or(anyhow::anyhow!("constant config is missing"))?;
             Ok(constant_config.version)
         }
-        _ => Err(anyhow::anyhow!("unknown version provider '{}'", config.provider)),
     }
 }
 
@@ -43,7 +42,7 @@ mod tests {
 
     fn make_config(file: &str, regex: &str) -> VersionExtractor {
         VersionExtractor {
-            provider: "file".to_string(),
+            provider: VersionExtractorProvider::File,
             name: "testtest".to_string(),
             file: Some(ExtractVersionFile {
                 file: file.to_string(),
@@ -77,7 +76,7 @@ mod tests {
     #[test]
     fn test_extract_version_unknown_provider() {
         let config = VersionExtractor {
-            provider: "constant".to_string(),
+            provider: VersionExtractorProvider::Constant,
             name: "onono".to_string(),
             file: None,
             shell: None,
