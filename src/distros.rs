@@ -1,12 +1,28 @@
 use serde::Deserialize;
 
+#[derive(Debug, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum PackageType {
+    Rpm,
+    Deb,
+}
+
+impl std::fmt::Display for PackageType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PackageType::Rpm => write!(f, "rpm"),
+            PackageType::Deb => write!(f, "deb"),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct Distro {
     pub id: String,
     pub name: String,
     pub image: String,
     pub arch: String,
-    pub package_type: String,
+    pub package_type: PackageType,
     #[serde(default)]
     pub setup: Vec<String>,
     #[serde(default)]
@@ -113,7 +129,7 @@ mod tests {
         let opensuse = distros.iter().find(|d| d.id == "opensuse_15.6").unwrap();
 
         assert_eq!(opensuse.image, "opensuse/leap:15.6");
-        assert_eq!(opensuse.package_type, "rpm");
+        assert_eq!(opensuse.package_type, PackageType::Rpm);
         assert_eq!(opensuse.arch, "x86_64");
         assert!(!opensuse.setup.is_empty());
         assert!(!opensuse.setup_repo.is_empty());
@@ -138,11 +154,11 @@ mod tests {
         // these distros have no explicit setup, relies on anchor merge
         let fedora = distros.iter().find(|d| d.id == "fedora_38").unwrap();
         assert!(!fedora.setup.is_empty());
-        assert_eq!(fedora.package_type, "rpm");
+        assert_eq!(fedora.package_type, PackageType::Rpm);
 
         let ubuntu = distros.iter().find(|d| d.id == "ubuntu_22.04").unwrap();
         assert!(!ubuntu.setup.is_empty());
-        assert_eq!(ubuntu.package_type, "deb");
+        assert_eq!(ubuntu.package_type, PackageType::Deb);
     }
 
     #[test]
@@ -152,7 +168,6 @@ mod tests {
             assert!(!distro.id.is_empty(), "distro {} has empty id", distro.id);
             assert!(!distro.name.is_empty(), "distro {} has empty name", distro.id);
             assert!(!distro.image.is_empty(), "distro {} has empty image", distro.id);
-            assert!(!distro.package_type.is_empty(), "distro {} has empty package_type", distro.id);
             assert!(!distro.setup.is_empty(), "distro {} has empty setup", distro.id);
         }
     }
@@ -177,7 +192,7 @@ mod tests {
             name: "Test".to_string(),
             image: "test:latest".to_string(),
             arch: "x86_64".to_string(),
-            package_type: "rpm".to_string(),
+            package_type: PackageType::Rpm,
             setup,
             setup_repo: vec![],
             install_steps: vec![],

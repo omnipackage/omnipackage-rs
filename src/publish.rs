@@ -146,7 +146,7 @@ impl Publish {
             ("install_steps".to_string(), self.install_steps().join("\n")),
             ("gpg_key".to_string(), self.package.gpgkey().ok_or(anyhow::anyhow!("no gpg key"))?.pub_key),
             ("download_url".to_string(), download_url),
-            ("package_type".to_string(), self.package.distro().package_type.clone()),
+            ("package_type".to_string(), self.package.distro().package_type.to_string()),
             ("timestamp".to_string(), chrono::Utc::now().to_rfc3339()),
         ]);
         let repositories: install_page::Repositories = vec![repo];

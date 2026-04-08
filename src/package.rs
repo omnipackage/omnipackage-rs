@@ -1,5 +1,5 @@
 use crate::config::{Build, Repository, RepositoryProvider, S3Config};
-use crate::distros::Distro;
+use crate::distros::{Distro, PackageType};
 use crate::gpg::{Gpg, Key};
 use crate::job_variables::JobVariables;
 use anyhow::{Context, Result};
@@ -16,10 +16,9 @@ impl Clone for Box<dyn Package> {
 }
 
 pub fn make_package(distro: &'static Distro, source_dir: PathBuf, job_variables: JobVariables, distro_build_dir: PathBuf) -> Result<Box<dyn Package>, anyhow::Error> {
-    match distro.package_type.as_str() {
-        "deb" => Ok(Box::new(deb::Deb::new(distro, source_dir, job_variables, distro_build_dir))),
-        "rpm" => Ok(Box::new(rpm::Rpm::new(distro, source_dir, job_variables, distro_build_dir))),
-        other => Err(anyhow::anyhow!("unknown package type: {other}")),
+    match distro.package_type {
+        PackageType::Deb => Ok(Box::new(deb::Deb::new(distro, source_dir, job_variables, distro_build_dir))),
+        PackageType::Rpm => Ok(Box::new(rpm::Rpm::new(distro, source_dir, job_variables, distro_build_dir))),
     }
 }
 
@@ -65,10 +64,9 @@ pub trait Package {
     }
 
     fn artefacts(&self) -> Vec<PathBuf> {
-        let ext = match self.distro().package_type.as_str() {
-            "rpm" => "rpm",
-            "deb" => "deb",
-            other => panic!("unknown package type {}", other),
+        let ext = match self.distro().package_type {
+            PackageType::Rpm => "rpm",
+            PackageType::Deb => "deb",
         };
 
         let stage = self.setup_stages();
