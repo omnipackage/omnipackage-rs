@@ -117,6 +117,10 @@ pub struct PublishArgs {
     /// Repository name, if blank the first repository from config will be used
     #[arg(short, long)]
     repository: Option<String>,
+
+    /// Path to custom install page template
+    #[arg(long)]
+    custom_install_page: Option<PathBuf>,
 }
 
 #[derive(Args, Clone, Debug)]
@@ -137,6 +141,10 @@ pub struct ReleaseArgs {
     /// Version extractor name, if blank the first version extractor from config will be used
     #[arg(short, long)]
     version_extractor: Option<String>,
+
+    /// Path to custom install page template
+    #[arg(long)]
+    custom_install_page: Option<PathBuf>,
 }
 
 #[derive(Args, Clone, Debug)]
@@ -249,9 +257,9 @@ fn main() -> Result<(), anyhow::Error> {
     }
 
     match cli.command {
-        Commands::Build(args) => release::build(args.project, args.job, args.logging, args.version_extractor)?,
-        Commands::Publish(args) => release::publish(args.project, args.job, args.logging, args.repository)?,
-        Commands::Release(args) => release::release(args.project, args.job, args.logging, args.repository, args.version_extractor)?,
+        Commands::Build(args) => release::build(args)?,
+        Commands::Publish(args) => release::publish(args)?,
+        Commands::Release(args) => release::release(args)?,
         Commands::Gpg { command } => match command {
             GpgCommands::Generate(args) => gpg_commands::generate(args)?,
             GpgCommands::Convert(args) => gpg_commands::convert(args)?,

@@ -17,6 +17,7 @@ pub struct Publish {
     pub logging: LoggingArgs,
     pub config: Repository,
     pub package: Box<dyn Package>,
+    pub custom_install_page: Option<PathBuf>,
 }
 
 const INSTALL_PAGE_NAME: &str = "install.html";
@@ -29,8 +30,13 @@ struct InstallPageBadge {
 }
 
 impl Publish {
-    pub fn new(package: Box<dyn Package>, logging: LoggingArgs, config: Repository) -> Self {
-        Self { package, logging, config }
+    pub fn new(package: Box<dyn Package>, logging: LoggingArgs, config: Repository, custom_install_page: Option<PathBuf>) -> Self {
+        Self {
+            package,
+            logging,
+            config,
+            custom_install_page,
+        }
     }
 
     pub fn run(&self) -> Result<(), anyhow::Error> {
@@ -148,8 +154,13 @@ impl Publish {
 
                 let existing_page_bytes = s3.download_file(INSTALL_PAGE_NAME).unwrap_or(vec![]);
                 let existing_install_page = String::from_utf8_lossy(&existing_page_bytes).into_owned();
-                let output = install_page::upsert(&existing_install_page, &repositories, &self.config)?;
 
+                let custom_template = match self.custom_install_page.clone() {
+                    Some(path) => Some(std::fs::read_to_string(path)?),
+                    None => None,
+                };
+
+                let output = install_page::upsert(&existing_install_page, &repositories, &self.config, custom_template)?;
                 s3.upload_file(INSTALL_PAGE_NAME, output.install_page.as_bytes().to_vec(), Some("text/html"))?;
 
                 let page_url = install_page_url(&self.config).ok_or(anyhow::anyhow!("install page url cannot be generated"))?;

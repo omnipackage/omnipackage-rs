@@ -15,14 +15,14 @@ pub struct Output {
     pub badge: String,
 }
 
-pub fn upsert(existing_page_html: &str, repositories: &Repositories, config: &RepoConfig) -> Result<Output, anyhow::Error> {
+pub fn upsert(existing_page_html: &str, repositories: &Repositories, config: &RepoConfig, custom_template: Option<String>) -> Result<Output, anyhow::Error> {
     let mut repos = parse(existing_page_html).unwrap_or_else(|_| vec![]);
 
     repositories.iter().for_each(|repo| {
         upsert_repository(&mut repos, repo.clone());
     });
 
-    let template_html = render(&repos)?;
+    let template_html = render(&repos, custom_template)?;
 
     let install_page = Template::from_content(&template_html)?.render(config.to_template_vars())?;
     let badge = render_badge(&repos, config).unwrap_or("".to_string());
@@ -49,8 +49,8 @@ fn parse(html: &str) -> Result<Repositories, anyhow::Error> {
     Ok(serde_json::from_str(json)?)
 }
 
-fn render(repositories: &Repositories) -> Result<String, anyhow::Error> {
-    let html = PAGE_TEMPLATE_HTML;
+fn render(repositories: &Repositories, custom_template: Option<String>) -> Result<String, anyhow::Error> {
+    let html: &str = custom_template.as_deref().unwrap_or(PAGE_TEMPLATE_HTML);
     let (start_pos, end_pos) = extract_json_bounds(html)?;
 
     let ids = Distros::get().ids();
@@ -190,7 +190,7 @@ mod tests {
         let html = fixture();
         let mut repos = parse(&html).expect("cannot parse");
         repos.sort_by_key(|r| r.get("distro_id").cloned().unwrap_or_default());
-        let injected = render(&repos).expect("cannot render");
+        let injected = render(&repos, None).expect("cannot render");
         let mut repos2 = parse(&injected).expect("cannot parse after render");
         repos2.sort_by_key(|r| r.get("distro_id").cloned().unwrap_or_default());
         assert_eq!(repos, repos2);
@@ -213,7 +213,7 @@ mod tests {
         ]);
         upsert_repository(&mut repos, new_repo);
 
-        let injected = render(&repos).expect("cannot render");
+        let injected = render(&repos, None).expect("cannot render");
         let repos2 = parse(&injected).expect("cannot parse after render");
 
         assert_eq!(repos2.len(), 23);
@@ -262,7 +262,7 @@ mod tests {
             localfs: None,
         };
         let new_repos: Repositories = vec![new_repo1, new_repo2];
-        let result = upsert(&html, &new_repos, &repo_conf).unwrap();
+        let result = upsert(&html, &new_repos, &repo_conf, None).unwrap();
 
         assert!(result.install_page.contains("Debian 14"));
         assert!(result.install_page.contains("Debian 15 LTS"));
