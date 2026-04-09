@@ -1,4 +1,7 @@
+use anyhow::Result;
 use serde::Deserialize;
+use std::path::Path;
+use std::sync::OnceLock;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -76,14 +79,14 @@ pub struct Distros {
 }
 
 const DISTROS_YAML: &str = include_str!("distros.yml");
-static DISTROS: std::sync::OnceLock<Distros> = std::sync::OnceLock::new();
+static DISTROS: OnceLock<Distros> = OnceLock::new();
 
 impl Distros {
     pub fn get() -> &'static Self {
         DISTROS.get_or_init(Self::load_default)
     }
 
-    pub fn load_from_file(path: &std::path::Path) -> std::result::Result<Self, anyhow::Error> {
+    pub fn load_from_file(path: &Path) -> Result<Self, anyhow::Error> {
         let content = std::fs::read_to_string(path)?;
         Ok(serde_saphyr::from_str(&content)?)
     }
@@ -116,7 +119,7 @@ mod tests {
     #[test]
     fn test_loads_successfully() {
         let distros = Distros::get();
-        assert!(!distros.is_empty());
+        assert!(!distros.distros.is_empty());
     }
 
     #[test]
