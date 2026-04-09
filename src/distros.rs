@@ -82,8 +82,8 @@ const DISTROS_YAML: &str = include_str!("distros.yml");
 static DISTROS: OnceLock<Distros> = OnceLock::new();
 
 impl Distros {
-    pub fn get() -> &'static Self {
-        DISTROS.get_or_init(Self::load_default)
+    pub fn get() -> Self {
+        DISTROS.get_or_init(Self::load_default).clone()
     }
 
     pub fn load_from_file(path: &Path) -> Result<Self, anyhow::Error> {
@@ -103,8 +103,8 @@ impl Distros {
         self.distros.iter()
     }
 
-    pub fn by_id(&self, id: &str) -> &Distro {
-        self.iter().find(|d| d.id == id).unwrap_or_else(|| panic!("distro '{}' not found", id))
+    pub fn by_id(&self, id: &str) -> Distro {
+        self.iter().find(|d| d.id == id).unwrap_or_else(|| panic!("distro '{}' not found", id)).clone()
     }
 
     pub fn contains(&self, id: &str) -> bool {

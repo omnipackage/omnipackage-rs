@@ -31,10 +31,10 @@ impl JobSetup {
         let distro = Distros::get().by_id(distro_id);
 
         make_package(
-            distro,
+            distro.clone(),
             self.source_dir.clone(),
             self.job_variables.clone(),
-            self.build_dir.join(format!("{}-{}", package_name, distro.id)),
+            self.build_dir.join(format!("{}-{}", package_name, distro_id)),
         )
     }
 }

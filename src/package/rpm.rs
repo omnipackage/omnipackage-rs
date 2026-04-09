@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
 pub struct Rpm {
-    pub distro: &'static Distro,
+    pub distro: Distro,
     pub source_dir: PathBuf,
     pub job_variables: JobVariables,
     pub distro_build_dir: PathBuf,
@@ -23,7 +23,7 @@ pub struct Rpm {
 }
 
 impl Rpm {
-    pub fn new(distro: &'static Distro, source_dir: PathBuf, job_variables: JobVariables, distro_build_dir: PathBuf) -> Self {
+    pub fn new(distro: Distro, source_dir: PathBuf, job_variables: JobVariables, distro_build_dir: PathBuf) -> Self {
         Self {
             distro,
             source_dir,
@@ -147,8 +147,8 @@ impl Package for Rpm {
         self.distro_build_dir.clone()
     }
 
-    fn distro(&self) -> &'static Distro {
-        self.distro
+    fn distro(&self) -> Distro {
+        self.distro.clone()
     }
 
     fn mounts(&self) -> HashMap<String, String> {
@@ -191,7 +191,7 @@ mod tests {
             .unwrap_or(false)
     }
 
-    fn make_distro() -> &'static Distro {
+    fn make_distro() -> Distro {
         Distros::get().by_id("fedora_38")
     }
 

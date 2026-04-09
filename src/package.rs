@@ -15,10 +15,10 @@ impl Clone for Box<dyn Package> {
     }
 }
 
-pub fn make_package(distro: &'static Distro, source_dir: PathBuf, job_variables: JobVariables, distro_build_dir: PathBuf) -> Result<Box<dyn Package>, anyhow::Error> {
+pub fn make_package(distro: Distro, source_dir: PathBuf, job_variables: JobVariables, distro_build_dir: PathBuf) -> Result<Box<dyn Package>, anyhow::Error> {
     match distro.package_type {
-        PackageType::Deb => Ok(Box::new(deb::Deb::new(distro, source_dir, job_variables, distro_build_dir))),
-        PackageType::Rpm => Ok(Box::new(rpm::Rpm::new(distro, source_dir, job_variables, distro_build_dir))),
+        PackageType::Deb => Ok(Box::new(deb::Deb::new(distro.clone(), source_dir, job_variables, distro_build_dir))),
+        PackageType::Rpm => Ok(Box::new(rpm::Rpm::new(distro.clone(), source_dir, job_variables, distro_build_dir))),
     }
 }
 
@@ -38,7 +38,7 @@ pub trait Package {
     fn commands(&self) -> Vec<String>;
     fn source_dir(&self) -> PathBuf;
     fn distro_build_dir(&self) -> PathBuf;
-    fn distro(&self) -> &'static Distro;
+    fn distro(&self) -> Distro;
     fn build_output_dir(&self) -> PathBuf;
     fn setup_stages(&self) -> Vec<SetupStage>;
     fn gpgkey(&self) -> Option<Key>;
