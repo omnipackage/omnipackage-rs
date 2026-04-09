@@ -83,7 +83,7 @@ impl Distros {
         DISTROS.get_or_init(Self::load_default)
     }
 
-    pub fn load(path: &std::path::Path) -> std::result::Result<Self, anyhow::Error> {
+    pub fn load_from_file(path: &std::path::Path) -> std::result::Result<Self, anyhow::Error> {
         let content = std::fs::read_to_string(path)?;
         Ok(serde_saphyr::from_str(&content)?)
     }
@@ -98,10 +98,6 @@ impl Distros {
 
     pub fn iter(&self) -> impl Iterator<Item = &Distro> {
         self.distros.iter()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.distros.is_empty()
     }
 
     pub fn by_id(&self, id: &str) -> &Distro {
