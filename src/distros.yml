@@ -1,10 +1,10 @@
 opensuse: &opensuse
   package_type: 'rpm'
   setup:
-  - 'zypper --non-interactive install -y --no-recommends -t pattern devel_basis devel_rpm_build'
-  - 'zypper --non-interactive install -y --no-recommends rpmdevtools %{build_dependencies}'
+  - 'zypper --non-interactive install -y -t pattern devel_basis devel_rpm_build'
+  - 'zypper --non-interactive install -y rpmdevtools %{build_dependencies}'
   setup_repo:
-  - 'zypper --non-interactive install -y --no-recommends createrepo_c'
+  - 'zypper --non-interactive install -y createrepo_c'
   install_steps:
   - 'zypper addrepo --refresh %{url}/%{project_slug}.repo'
   - 'zypper refresh'
@@ -14,10 +14,10 @@ debian: &debian
   package_type: 'deb'
   setup:
   - 'DEBIAN_FRONTEND=noninteractive apt-get update'
-  - 'DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential debhelper %{build_dependencies}'
+  - 'DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential debhelper ca-certificates %{build_dependencies}'
   setup_repo:
   - 'DEBIAN_FRONTEND=noninteractive apt-get update'
-  - 'DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install dpkg-dev gpg gpg-agent'
+  - 'DEBIAN_FRONTEND=noninteractive apt-get -y install dpkg-dev ca-certificates gpg'
   install_steps:
   - "echo 'deb %{url} stable/' | sudo tee /etc/apt/sources.list.d/omnipackage_%{project_slug}.list"
   - "curl -fsSL %{url}/stable/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/omnipackage_%{project_slug}.gpg > /dev/null"
@@ -27,9 +27,9 @@ debian: &debian
 redhat: &redhat
   package_type: 'rpm'
   setup:
-  - 'dnf install -y --allowerasing --setopt=install_weak_deps=False rpmdevtools tar %{build_dependencies}'
+  - 'dnf install -y --allowerasing rpmdevtools tar %{build_dependencies}'
   setup_repo:
-  - 'dnf install -y --allowerasing --setopt=install_weak_deps=False createrepo rpm-sign'
+  - 'dnf install -y --allowerasing createrepo rpm-sign'
   install_steps:
   - "curl -o /etc/yum.repos.d/%{project_slug}.repo %{url}/%{project_slug}.repo"
   - "dnf install %{package_name}"
