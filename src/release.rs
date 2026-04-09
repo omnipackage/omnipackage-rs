@@ -72,7 +72,7 @@ pub fn publish(args: PublishArgs) -> Result<(), anyhow::Error> {
         let runner = Runner::new(pkg.clone(), args.logging.clone(), setup.job_variables.clone());
         let build_ok = fail_fast_or_continue(runner.run(), args.job.fail_fast)?;
         if build_ok {
-            let publisher = Publish::new(pkg.clone(), args.logging.clone(), repository_config.clone(), args.custom_install_page.clone());
+            let publisher = Publish::new(pkg.clone(), repository_config.clone(), args.custom_install_page.clone());
             let publish_ok = fail_fast_or_continue(publisher.run(), args.job.fail_fast)?;
             any_failed |= !publish_ok;
         } else {
@@ -97,7 +97,7 @@ pub fn release(args: ReleaseArgs) -> Result<(), anyhow::Error> {
         let runner = Runner::new(pkg.clone(), args.logging.clone(), setup.job_variables.clone());
         let build_ok = fail_fast_or_continue(runner.run(), args.job.fail_fast)?;
         if build_ok {
-            let publisher = Publish::new(pkg.clone(), args.logging.clone(), repository_config.clone(), args.custom_install_page.clone());
+            let publisher = Publish::new(pkg.clone(), repository_config.clone(), args.custom_install_page.clone());
             let publish_ok = fail_fast_or_continue(publisher.run(), args.job.fail_fast)?;
             any_failed |= !publish_ok;
         } else {

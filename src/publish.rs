@@ -1,4 +1,3 @@
-use crate::LoggingArgs;
 use crate::config::{Repository, RepositoryProvider, S3Config};
 use crate::logger::{Color, Logger, colorize};
 use crate::package::Package;
@@ -14,7 +13,6 @@ use cloudflare::CloudflareApi;
 use s3::S3;
 
 pub struct Publish {
-    pub logging: LoggingArgs,
     pub config: Repository,
     pub package: Box<dyn Package>,
     pub custom_install_page: Option<PathBuf>,
@@ -30,13 +28,8 @@ struct InstallPageBadge {
 }
 
 impl Publish {
-    pub fn new(package: Box<dyn Package>, logging: LoggingArgs, config: Repository, custom_install_page: Option<PathBuf>) -> Self {
-        Self {
-            package,
-            logging,
-            config,
-            custom_install_page,
-        }
+    pub fn new(package: Box<dyn Package>, config: Repository, custom_install_page: Option<PathBuf>) -> Self {
+        Self { package, config, custom_install_page }
     }
 
     pub fn run(&self) -> Result<(), anyhow::Error> {
