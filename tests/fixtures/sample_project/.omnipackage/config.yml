@@ -1,3 +1,17 @@
+image_caches:
+  - name: local
+    provider: local
+    image_tag: sample-project
+
+  - name: github
+    provider: registry
+    image_tag: sample-project
+    registry:
+      url: ghcr.io
+      namespace: '${IMAGE_CACHE_REGISTRY_NAMESPACE}'
+      username: '${IMAGE_CACHE_REGISTRY_USERNAME}'
+      password: '${IMAGE_CACHE_REGISTRY_PASSWORD}'
+
 version_extractors:
   - name: "git"
     provider: "shell"

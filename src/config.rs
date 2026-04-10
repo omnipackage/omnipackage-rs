@@ -213,6 +213,31 @@ impl std::ops::Deref for VersionExtractors {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct ImageCacheRegistry {
+    pub url: String,
+    pub namespace: String,
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Debug, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum ImageCacheProvider {
+    Registry,
+    Local,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct ImageCache {
+    pub provider: ImageCacheProvider,
+    pub image_tag: Option<String>,
+    pub registry: Option<ImageCacheRegistry>,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct ImageCaches(Vec<ImageCache>);
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct Config {
     pub version_extractors: VersionExtractors,
     pub builds: Vec<Build>,
@@ -220,6 +245,7 @@ pub struct Config {
     pub repositories: Repositories,
     #[serde(default)]
     pub secrets: HashMap<String, String>,
+    pub image_caches: Option<ImageCaches>,
 }
 
 impl Config {

@@ -9,6 +9,7 @@ mod distros;
 mod extract_version;
 mod gpg;
 mod gpg_commands;
+mod image_cache;
 mod info;
 mod job_variables;
 mod logger;
@@ -225,6 +226,22 @@ pub struct PortalArgs {
     build_dir: String,
 }
 
+#[derive(Args, Clone, Debug)]
+pub struct ImageCacheRefreshArgs {
+    #[command(flatten)]
+    project: ProjectArgs,
+
+    /// Image cache name from config.yml, if omitted the first one will be used
+    #[arg(long)]
+    image_cache: Option<String>,
+}
+
+#[derive(Subcommand)]
+enum ImageCacheCommands {
+    /// Create or update cached images for a project
+    Refresh(ImageCacheRefreshArgs),
+}
+
 #[derive(Subcommand)]
 enum Commands {
     /// Build the project with omnipackage
@@ -247,6 +264,12 @@ enum Commands {
 
     /// Shortcut to spawn a distro interactively in a container
     Portal(PortalArgs),
+
+    /// Manage pre-built images
+    ImageCache {
+        #[command(subcommand)]
+        command: ImageCacheCommands,
+    },
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -266,6 +289,9 @@ fn main() -> Result<(), anyhow::Error> {
         },
         Commands::Info(args) => info::info(args)?,
         Commands::Portal(args) => portal::run(args)?,
+        Commands::ImageCache { command } => match command {
+            ImageCacheCommands::Refresh(args) => image_cache::refresh(args)?,
+        },
     }
     Ok(())
 }
