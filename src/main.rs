@@ -234,6 +234,9 @@ pub struct ImageCacheRefreshArgs {
     /// Image cache name from config.yml, if omitted the first one will be used
     #[arg(long)]
     image_cache: Option<String>,
+
+    #[command(flatten)]
+    job: JobArgs,
 }
 
 #[derive(Subcommand)]

@@ -108,7 +108,7 @@ pub fn release(args: ReleaseArgs) -> Result<(), anyhow::Error> {
     if any_failed { Err(anyhow::anyhow!("release one or more distros failed")) } else { Ok(()) }
 }
 
-fn fail_fast_or_continue(result: Result<(), anyhow::Error>, fail_fast: bool) -> Result<bool, anyhow::Error> {
+pub fn fail_fast_or_continue(result: Result<(), anyhow::Error>, fail_fast: bool) -> Result<bool, anyhow::Error> {
     match result {
         Ok(()) => Ok(true),
         Err(e) if fail_fast => Err(e),
@@ -116,7 +116,7 @@ fn fail_fast_or_continue(result: Result<(), anyhow::Error>, fail_fast: bool) -> 
     }
 }
 
-fn detect_builds(job: JobArgs, config: Config) -> impl Iterator<Item = Build> {
+pub fn detect_builds(job: JobArgs, config: Config) -> impl Iterator<Item = Build> {
     config
         .builds
         .into_iter()

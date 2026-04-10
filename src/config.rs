@@ -229,6 +229,7 @@ pub enum ImageCacheProvider {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ImageCache {
+    pub name: String,
     pub provider: ImageCacheProvider,
     pub image_tag: Option<String>,
     pub registry: Option<ImageCacheRegistry>,
@@ -236,6 +237,15 @@ pub struct ImageCache {
 
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct ImageCaches(Vec<ImageCache>);
+
+impl ImageCaches {
+    pub fn find_by_name_or_default(&self, name: Option<&str>) -> Result<&ImageCache, anyhow::Error> {
+        match name {
+            Some(name) => self.0.iter().find(|r| r.name == name).ok_or_else(|| anyhow::anyhow!("image cache '{}' not found", name)),
+            None => self.0.first().ok_or_else(|| anyhow::anyhow!("no image cache configured")),
+        }
+    }
+}
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
