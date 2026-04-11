@@ -27,7 +27,6 @@ pub fn refresh(args: ImageCacheRefreshArgs) -> Result<(), anyhow::Error> {
 
         let ok = release::fail_fast_or_continue(res, args.job.fail_fast)?;
 
-
         if !ok {
             any_failed = true;
         }
@@ -68,8 +67,32 @@ fn refresh_distro(args: ImageCacheRefreshArgs, build_config: Build, image_cache_
     let mut commands: Vec<String> = Vec::new();
     commands.extend(distro.setup(&build_config.build_dependencies));
     commands.extend(distro.setup_repo.clone());
+
+    let mut has_bbs_file = false;
+    if let Some(bbs) = build_config.before_build_script {
+        let bbs_path = args.project.source_dir.join(&bbs);
+        if bbs_path.exists() {
+            has_bbs_file = true;
+            std::fs::copy(&bbs_path, temp_dir.join("before_build_script"))?;
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let dest = temp_dir.join("before_build_script");
+                std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o755))?;
+            }
+            commands.push("/before_build_script".to_string());
+        } else {
+            commands.push(bbs.to_string());
+        };
+    }
     commands.extend(distro.cleanup.clone());
-    let runcmd = commands.join(" && ");
+
+    let mut runcmd = String::new();
+    if has_bbs_file {
+        runcmd.push_str("--mount=type=bind,source=before_build_script,target=/before_build_script \\");
+    }
+    runcmd.push_str(&commands.join(" && "));
+
     let dockerfile = format!(
         "FROM {base_image}\n\
          RUN {runcmd}\n"

@@ -199,6 +199,7 @@ mod tests {
             install_steps: vec![],
             image_info_url: None,
             deprecated: None,
+            cleanup: Vec::new(),
         }
     }
 

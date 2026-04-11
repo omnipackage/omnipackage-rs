@@ -10,6 +10,16 @@ version_extractors:
       file: 'Cargo.toml'
       regex: 'version = "(.+)"'
 
+image_caches:
+  - name: github
+    provider: registry
+    image_tag: omnipackage-rs-latest
+    registry:
+      url: ghcr.io
+      namespace: '${IMAGE_CACHE_REGISTRY_NAMESPACE}'
+      username: '${IMAGE_CACHE_REGISTRY_USERNAME}'
+      password: '${IMAGE_CACHE_REGISTRY_PASSWORD}'
+
 common: &common
   package_name: omnipackage
   maintainer: 'Oleg Antonyan <oleg.b.antonyan@gmail.com>'
