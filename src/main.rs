@@ -237,6 +237,9 @@ pub struct ImageCacheRefreshArgs {
 
     #[command(flatten)]
     job: JobArgs,
+
+    #[command(flatten)]
+    logging: LoggingArgs,
 }
 
 #[derive(Subcommand)]

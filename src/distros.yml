@@ -5,6 +5,8 @@ opensuse: &opensuse
   - 'zypper --non-interactive install -y rpmdevtools %{build_dependencies}'
   setup_repo:
   - 'zypper --non-interactive install -y createrepo_c'
+  cleanup:
+  - 'zypper clean --all'
   install_steps:
   - 'zypper addrepo --refresh %{url}/%{project_slug}.repo'
   - 'zypper refresh'
@@ -18,6 +20,8 @@ debian: &debian
   setup_repo:
   - 'DEBIAN_FRONTEND=noninteractive apt-get update'
   - 'DEBIAN_FRONTEND=noninteractive apt-get -y install dpkg-dev ca-certificates gpg'
+  cleanup:
+  - 'DEBIAN_FRONTEND=noninteractive apt-get clean && rm -rf /var/lib/apt/lists/*'
   install_steps:
   - "echo 'deb %{url} stable/' | sudo tee /etc/apt/sources.list.d/omnipackage_%{project_slug}.list"
   - "curl -fsSL %{url}/stable/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/omnipackage_%{project_slug}.gpg > /dev/null"
@@ -30,6 +34,8 @@ redhat: &redhat
   - 'dnf install -y --allowerasing rpmdevtools tar %{build_dependencies}'
   setup_repo:
   - 'dnf install -y --allowerasing createrepo rpm-sign'
+  cleanup:
+  - 'dnf clean all'
   install_steps:
   - "curl -o /etc/yum.repos.d/%{project_slug}.repo %{url}/%{project_slug}.repo"
   - "dnf install %{package_name}"

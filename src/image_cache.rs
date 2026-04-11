@@ -17,8 +17,16 @@ pub fn refresh(args: ImageCacheRefreshArgs) -> Result<(), anyhow::Error> {
     let mut any_failed = false;
 
     for build_config in release::detect_builds(args.job.clone(), config.clone()) {
+        Logger::new().info(format!("starting image cache refresh for {}", build_config.distro));
         let res = refresh_distro(args.clone(), build_config.clone(), ic.clone());
+        if let Err(ref e) = res {
+            Logger::new().error(format!("image cache refresh error: {}", e));
+        } else {
+            Logger::new().info(format!("finished image cache refresh for {}", build_config.distro));
+        }
+
         let ok = release::fail_fast_or_continue(res, args.job.fail_fast)?;
+
 
         if !ok {
             any_failed = true;
@@ -60,7 +68,7 @@ fn refresh_distro(args: ImageCacheRefreshArgs, build_config: Build, image_cache_
     let mut commands: Vec<String> = Vec::new();
     commands.extend(distro.setup(&build_config.build_dependencies));
     commands.extend(distro.setup_repo.clone());
-    commands.push("zypper clean --all".to_string());
+    commands.extend(distro.cleanup.clone());
     let runcmd = commands.join(" && ");
     let dockerfile = format!(
         "FROM {base_image}\n\
@@ -72,12 +80,13 @@ fn refresh_distro(args: ImageCacheRefreshArgs, build_config: Build, image_cache_
     let output_image = image_cache_config.full_image_name(&distro.id);
     let cliargs = vec!["build".to_string(), "-t".to_string(), output_image.clone(), ".".to_string()]; // "--no-cache".to_string()
 
-    Command::container(cliargs).stream_output_to(Logger::new()).current_dir(temp_dir.clone()).run()?;
+    Command::container(cliargs).stream_output_to(args.logging.container_logger()).current_dir(temp_dir.clone()).run()?;
 
     if image_cache_config.provider == ImageCacheProvider::Registry {
-        login_to_registry(image_cache_config.clone(), Logger::new(), None)?;
+        Logger::new().info(format!("pushing image {} to registry", output_image));
+        login_to_registry(image_cache_config.clone(), args.logging.container_logger(), None)?;
         Command::container(vec!["push".to_string(), output_image.clone()])
-            .stream_output_to(Logger::new())
+            .stream_output_to(args.logging.container_logger())
             .current_dir(temp_dir.clone())
             .run()?;
     }
