@@ -249,8 +249,13 @@ impl ImageCaches {
 
 impl ImageCache {
     pub fn full_image_name(&self, distro_id: &str) -> String {
-        // TODO check provider and add registry
-        format!("{}:{}", distro_id, self.image_tag)
+        match self.provider {
+            ImageCacheProvider::Registry => {
+                let reg = self.registry.clone().unwrap();
+                format!("{}/{}/{}:{}", reg.url.trim_end_matches('/'), reg.namespace, distro_id, self.image_tag)
+            }
+            ImageCacheProvider::Local => format!("{}:{}", distro_id, self.image_tag),
+        }
     }
 }
 
