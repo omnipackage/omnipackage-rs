@@ -1,11 +1,11 @@
 image_caches:
   - name: local
     provider: local
-    image_tag: sample-project
+    image_tag: sample-project-latest
 
   - name: github
     provider: registry
-    image_tag: sample-project
+    image_tag: sample-project-latest
     registry:
       url: ghcr.io
       namespace: '${IMAGE_CACHE_REGISTRY_NAMESPACE}'

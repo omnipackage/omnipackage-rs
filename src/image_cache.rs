@@ -8,7 +8,11 @@ use anyhow::{Context, Result};
 
 pub fn refresh(args: ImageCacheRefreshArgs) -> Result<(), anyhow::Error> {
     let config = args.project.load_config(false)?;
-    let ic = config.image_caches.as_ref().context("image_caches is missing")?.find_by_name_or_default(args.image_cache.as_deref())?;
+    let ic = config
+        .image_caches
+        .as_ref()
+        .context("image_caches is missing")?
+        .find_by_name_or_default(args.job.image_cache.as_deref())?;
     let mut any_failed = false;
 
     for build_config in release::detect_builds(args.job.clone(), config.clone()) {
@@ -43,7 +47,7 @@ fn refresh_distro(args: ImageCacheRefreshArgs, build_config: Build, image_cache_
     std::fs::create_dir_all(&temp_dir)?;
     std::fs::write(temp_dir.join("Dockerfile"), &dockerfile)?;
 
-    let output_image = image_cache_config.full_image_name(&distro.id, &build_config.package_name);
+    let output_image = image_cache_config.full_image_name(&distro.id);
     let cliargs = vec!["build".to_string(), "-t".to_string(), output_image, ".".to_string()]; // "--no-cache".to_string()
 
     Command::container(cliargs).stream_output_to(Logger::new()).current_dir(temp_dir).run()

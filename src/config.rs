@@ -231,7 +231,7 @@ pub enum ImageCacheProvider {
 pub struct ImageCache {
     pub name: String,
     pub provider: ImageCacheProvider,
-    pub image_tag: Option<String>,
+    pub image_tag: String,
     pub registry: Option<ImageCacheRegistry>,
 }
 
@@ -248,9 +248,9 @@ impl ImageCaches {
 }
 
 impl ImageCache {
-    pub fn full_image_name(&self, distro_id: &str, package_name: &str) -> String {
+    pub fn full_image_name(&self, distro_id: &str) -> String {
         // TODO check provider and add registry
-        format!("{}:{}", distro_id, self.image_tag.clone().unwrap_or_else(|| package_name.to_string()))
+        format!("{}:{}", distro_id, self.image_tag)
     }
 }
 

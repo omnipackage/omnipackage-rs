@@ -1,17 +1,18 @@
-use crate::config::{Build, Config};
+use crate::config::{Build, Config, ImageCache};
 use crate::distros::Distros;
 use crate::package::{Package, make_package};
 use crate::publish::Publish;
 use crate::runner::Runner;
 use crate::{BuildArgs, JobArgs, ProjectArgs, PublishArgs, ReleaseArgs};
 use crate::{extract_version, job_variables};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::path::PathBuf;
 
 struct JobSetup {
     job_variables: job_variables::JobVariables,
     build_dir: PathBuf,
     source_dir: PathBuf,
+    image_cache: Option<ImageCache>,
 }
 
 impl JobSetup {
@@ -19,11 +20,17 @@ impl JobSetup {
         let version_config = config.version_extractors.find_by_name_or_default(version_extractor.as_deref())?.clone();
         let version = extract_version::extract_version(&project.source_dir, &version_config)?;
         let job_variables = job_variables::JobVariables::new(version).with_secrets(config.secrets.clone().into_iter().collect());
+        let image_cache = job
+            .image_cache
+            .as_deref()
+            .map(|ic| config.image_caches.as_ref().context("image_caches is missing")?.find_by_name_or_default(Some(ic)).cloned())
+            .transpose()?;
 
         Ok(Self {
             job_variables,
             build_dir: job.build_dir.clone(),
             source_dir: project.source_dir.clone(),
+            image_cache,
         })
     }
 
@@ -35,6 +42,7 @@ impl JobSetup {
             self.source_dir.clone(),
             self.job_variables.clone(),
             self.build_dir.join(format!("{}-{}", package_name, distro_id)),
+            self.image_cache.clone(),
         )
     }
 }

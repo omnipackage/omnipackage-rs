@@ -1,4 +1,4 @@
-use crate::config::{Build, Repository};
+use crate::config::{Build, ImageCache, Repository};
 use crate::distros::Distro;
 use crate::gpg::Key;
 use crate::job_variables::JobVariables;
@@ -14,6 +14,7 @@ pub struct Deb {
     pub source_dir: PathBuf,
     pub job_variables: JobVariables,
     pub distro_build_dir: PathBuf,
+    pub image_cache: Option<ImageCache>,
 
     mounts: HashMap<String, String>,
     commands: Vec<String>,
@@ -23,11 +24,12 @@ pub struct Deb {
 }
 
 impl Deb {
-    pub fn new(distro: Distro, source_dir: PathBuf, job_variables: JobVariables, distro_build_dir: PathBuf) -> Self {
+    pub fn new(distro: Distro, source_dir: PathBuf, job_variables: JobVariables, distro_build_dir: PathBuf, image_cache: Option<ImageCache>) -> Self {
         Self {
             distro,
             source_dir,
             job_variables,
+            image_cache,
             distro_build_dir: distro_build_dir.clone(),
             mounts: HashMap::new(),
             commands: Vec::new(),
@@ -125,7 +127,9 @@ impl Package for Deb {
         self.mounts.insert(build_path.to_string_lossy().to_string(), "/output/build".to_string());
         self.mounts.insert(self.output_path().to_string_lossy().to_string(), "/output/".to_string());
 
-        self.commands.extend(self.distro.setup(&config.build_dependencies));
+        if self.image_cache.is_none() {
+            self.commands.extend(self.distro.setup(&config.build_dependencies));
+        }
         if let Some(bbs) = self.before_build_script("/source", &config) {
             self.commands.push(bbs);
         }
@@ -151,7 +155,9 @@ impl Package for Deb {
         self.mounts.insert(repo_dir.to_string_lossy().to_string(), "/repo".to_string());
         self.mounts.insert(self.output_path().to_string_lossy().to_string(), "/output/".to_string());
 
-        self.commands.extend(self.distro.setup_repo.clone());
+        if self.image_cache.is_none() {
+            self.commands.extend(self.distro.setup_repo.clone());
+        }
         self.commands.extend(self.import_gpg_keys_commands());
         self.commands.extend([
             "cd /repo".to_string(),
@@ -210,6 +216,10 @@ impl Package for Deb {
     fn gpgkey(&self) -> Option<Key> {
         self.gpgkey.clone()
     }
+
+    fn image_cache(&self) -> Option<ImageCache> {
+        self.image_cache.clone()
+    }
 }
 
 #[cfg(test)]
@@ -245,7 +255,7 @@ mod tests {
         let build_dir = dir.path().join("build");
         std::fs::create_dir_all(&source_dir).unwrap();
         std::fs::create_dir_all(&build_dir).unwrap();
-        Deb::new(make_distro(), source_dir, make_job_variables(), build_dir)
+        Deb::new(make_distro(), source_dir, make_job_variables(), build_dir, None)
     }
 
     fn make_debian_templates(dir: &tempfile::TempDir) -> String {

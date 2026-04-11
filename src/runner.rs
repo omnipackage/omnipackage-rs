@@ -1,4 +1,5 @@
 use crate::LoggingArgs;
+use crate::config::ImageCacheProvider;
 use crate::job_variables::JobVariables;
 use crate::logger::{Color, Logger, colorize};
 use crate::package::Package;
@@ -83,7 +84,14 @@ impl Runner {
         let env_args: Vec<String> = env_vars.iter().flat_map(|(k, v)| ["-e".to_string(), format!("{k}={v}")]).collect();
         args.extend(env_args);
 
-        args.push(self.package.distro().image.clone());
+        if let Some(image_cache) = self.package.image_cache() {
+            if image_cache.provider == ImageCacheProvider::Local {
+                args.push("--pull=never".to_string());
+            }
+            args.push(image_cache.full_image_name(&self.package.distro().id));
+        } else {
+            args.push(self.package.distro().image.clone());
+        }
         args.push("-c".to_string());
         args.push(commands.join(" && "));
 
