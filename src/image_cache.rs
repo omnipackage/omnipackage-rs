@@ -1,7 +1,9 @@
 use crate::ImageCacheRefreshArgs;
 use crate::config::{Build, ImageCache};
-use crate::distros::{Distro, Distros};
+use crate::distros::Distros;
+use crate::logger::Logger;
 use crate::release;
+use crate::shell::Command;
 use anyhow::{Context, Result};
 
 pub fn refresh(args: ImageCacheRefreshArgs) -> Result<(), anyhow::Error> {
@@ -27,7 +29,22 @@ pub fn refresh(args: ImageCacheRefreshArgs) -> Result<(), anyhow::Error> {
 
 fn refresh_distro(args: ImageCacheRefreshArgs, build_config: Build, image_cache_config: ImageCache) -> Result<(), anyhow::Error> {
     let distro = Distros::get().by_id(&build_config.distro);
-    let dir = args.job.build_dir.join(format!("{}-{}", build_config.package_name, build_config.distro));
+    let temp_dir = args.job.build_dir.join(format!("{}-{}", build_config.package_name, build_config.distro));
 
-    Ok(())
+    let base_image = distro.image.clone();
+    let mut commands: Vec<String> = Vec::new();
+    commands.extend(distro.setup(&build_config.build_dependencies));
+    commands.extend(distro.setup_repo.clone());
+    let runcmd = commands.join(" && ");
+    let dockerfile = format!(
+        "FROM {base_image}\n\
+         RUN {runcmd}\n"
+    );
+    std::fs::create_dir_all(&temp_dir)?;
+    std::fs::write(temp_dir.join("Dockerfile"), &dockerfile)?;
+
+    let output_image = format!("{}:{}", distro.id, image_cache_config.image_tag.unwrap_or_else(|| build_config.package_name.clone()));
+    let cliargs = vec!["build".to_string(), "-t".to_string(), output_image, ".".to_string()];
+
+    Command::container(cliargs).stream_output_to(Logger::new()).current_dir(temp_dir).run()
 }
