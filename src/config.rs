@@ -247,6 +247,13 @@ impl ImageCaches {
     }
 }
 
+impl ImageCache {
+    pub fn full_image_name(&self, distro_id: &str, package_name: &str) -> String {
+        // TODO check provider and add registry
+        format!("{}:{}", distro_id, self.image_tag.clone().unwrap_or_else(|| package_name.to_string()))
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
     pub version_extractors: VersionExtractors,

@@ -43,8 +43,8 @@ fn refresh_distro(args: ImageCacheRefreshArgs, build_config: Build, image_cache_
     std::fs::create_dir_all(&temp_dir)?;
     std::fs::write(temp_dir.join("Dockerfile"), &dockerfile)?;
 
-    let output_image = format!("{}:{}", distro.id, image_cache_config.image_tag.unwrap_or_else(|| build_config.package_name.clone()));
-    let cliargs = vec!["build".to_string(), "-t".to_string(), output_image, ".".to_string()];
+    let output_image = image_cache_config.full_image_name(&distro.id, &build_config.package_name);
+    let cliargs = vec!["build".to_string(), "-t".to_string(), output_image, ".".to_string()]; // "--no-cache".to_string()
 
     Command::container(cliargs).stream_output_to(Logger::new()).current_dir(temp_dir).run()
 }
