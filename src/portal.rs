@@ -15,7 +15,7 @@ pub fn run(portal_args: PortalArgs) -> Result<(), anyhow::Error> {
         .ok_or_else(|| anyhow::anyhow!("build_dir is not valid UTF-8"))?;
 
     let mut mounts: HashMap<String, String> = HashMap::new();
-    mounts.insert(portal_args.build_dir.clone(), format!("/{mountpoint_basename}").to_string());
+    mounts.insert(portal_args.build_dir.to_string_lossy().to_string(), format!("/{mountpoint_basename}").to_string());
     let mount_args: Vec<String> = mounts.iter().flat_map(|(from, to)| ["--mount".to_string(), format!("type=bind,source={from},target={to}")]).collect();
     args.extend(mount_args);
 

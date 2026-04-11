@@ -1,4 +1,4 @@
-use crate::config::{Build, Repository, RepositoryProvider, S3Config};
+use crate::config::{Build, ImageCache, Repository, RepositoryProvider, S3Config};
 use crate::distros::{Distro, PackageType};
 use crate::gpg::{Gpg, Key};
 use crate::job_variables::JobVariables;
@@ -15,10 +15,10 @@ impl Clone for Box<dyn Package> {
     }
 }
 
-pub fn make_package(distro: Distro, source_dir: PathBuf, job_variables: JobVariables, distro_build_dir: PathBuf) -> Result<Box<dyn Package>, anyhow::Error> {
+pub fn make_package(distro: Distro, source_dir: PathBuf, job_variables: JobVariables, distro_build_dir: PathBuf, image_cache: Option<ImageCache>) -> Result<Box<dyn Package>, anyhow::Error> {
     match distro.package_type {
-        PackageType::Deb => Ok(Box::new(deb::Deb::new(distro.clone(), source_dir, job_variables, distro_build_dir))),
-        PackageType::Rpm => Ok(Box::new(rpm::Rpm::new(distro.clone(), source_dir, job_variables, distro_build_dir))),
+        PackageType::Deb => Ok(Box::new(deb::Deb::new(distro.clone(), source_dir, job_variables, distro_build_dir, image_cache))),
+        PackageType::Rpm => Ok(Box::new(rpm::Rpm::new(distro.clone(), source_dir, job_variables, distro_build_dir, image_cache))),
     }
 }
 
@@ -42,6 +42,7 @@ pub trait Package {
     fn build_output_dir(&self) -> PathBuf;
     fn setup_stages(&self) -> Vec<SetupStage>;
     fn gpgkey(&self) -> Option<Key>;
+    fn image_cache(&self) -> Option<ImageCache>;
 
     fn teardown(&self) {
         let dir = self.home_dir();

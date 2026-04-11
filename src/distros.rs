@@ -32,6 +32,8 @@ pub struct Distro {
     pub setup_repo: Vec<String>,
     #[serde(default)]
     pub install_steps: Vec<String>,
+    #[serde(default)]
+    pub cleanup: Vec<String>,
     pub image_info_url: Option<String>,
     pub deprecated: Option<String>,
 }
@@ -197,6 +199,7 @@ mod tests {
             install_steps: vec![],
             image_info_url: None,
             deprecated: None,
+            cleanup: Vec::new(),
         }
     }
 

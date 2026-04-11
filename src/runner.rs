@@ -1,4 +1,6 @@
 use crate::LoggingArgs;
+use crate::config::ImageCacheProvider;
+use crate::image_cache::login_to_registry;
 use crate::job_variables::JobVariables;
 use crate::logger::{Color, Logger, colorize};
 use crate::package::Package;
@@ -83,12 +85,20 @@ impl Runner {
         let env_args: Vec<String> = env_vars.iter().flat_map(|(k, v)| ["-e".to_string(), format!("{k}={v}")]).collect();
         args.extend(env_args);
 
-        args.push(self.package.distro().image.clone());
-        args.push("-c".to_string());
-        args.push(commands.join(" && "));
-
         let log_path = self.package.distro_build_dir().join("runner.log");
         let _ = std::fs::remove_file(&log_path);
+
+        if let Some(image_cache) = self.package.image_cache() {
+            match image_cache.provider {
+                ImageCacheProvider::Registry => login_to_registry(image_cache.clone(), self.container_logger(), Some(&log_path)).map_err(|e| (e, log_path.clone()))?,
+                ImageCacheProvider::Local => args.push("--pull=never".to_string()),
+            };
+            args.push(image_cache.full_image_name(&self.package.distro().id));
+        } else {
+            args.push(self.package.distro().image.clone());
+        }
+        args.push("-c".to_string());
+        args.push(commands.join(" && "));
 
         let result = Command::container(args)
             .stream_output_to(self.container_logger())

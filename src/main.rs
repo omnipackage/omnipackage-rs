@@ -9,6 +9,7 @@ mod distros;
 mod extract_version;
 mod gpg;
 mod gpg_commands;
+mod image_cache;
 mod info;
 mod job_variables;
 mod logger;
@@ -64,12 +65,16 @@ pub struct JobArgs {
     distros: Vec<String>,
 
     /// Root directory for temporary build/publish files
-    #[arg(long, default_value_t = default_build_dir())]
-    build_dir: String,
+    #[arg(long, default_value_os_t = default_build_dir())]
+    build_dir: PathBuf,
 
     /// Stop on first error instead of continuing with remaining distros
     #[arg(long, default_value_t = false)]
     fail_fast: bool,
+
+    /// Image cache name from config.yml, no cache if omitted
+    #[arg(long)]
+    image_cache: Option<String>,
 }
 
 #[derive(Args, Clone, Debug)]
@@ -221,8 +226,26 @@ pub struct PortalArgs {
     distro: String,
 
     /// Root directory for temporary build/publish files, will be mounted in the container under the same basename
-    #[arg(long, default_value_t = default_build_dir())]
-    build_dir: String,
+    #[arg(long, default_value_os_t = default_build_dir())]
+    build_dir: PathBuf,
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct ImageCacheRefreshArgs {
+    #[command(flatten)]
+    project: ProjectArgs,
+
+    #[command(flatten)]
+    job: JobArgs,
+
+    #[command(flatten)]
+    logging: LoggingArgs,
+}
+
+#[derive(Subcommand)]
+enum ImageCacheCommands {
+    /// Create or update cached images for a project
+    Refresh(ImageCacheRefreshArgs),
 }
 
 #[derive(Subcommand)]
@@ -247,6 +270,12 @@ enum Commands {
 
     /// Shortcut to spawn a distro interactively in a container
     Portal(PortalArgs),
+
+    /// Manage pre-built images
+    ImageCache {
+        #[command(subcommand)]
+        command: ImageCacheCommands,
+    },
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -266,12 +295,15 @@ fn main() -> Result<(), anyhow::Error> {
         },
         Commands::Info(args) => info::info(args)?,
         Commands::Portal(args) => portal::run(args)?,
+        Commands::ImageCache { command } => match command {
+            ImageCacheCommands::Refresh(args) => image_cache::refresh(args)?,
+        },
     }
     Ok(())
 }
 
-fn default_build_dir() -> String {
-    std::env::temp_dir().join("omnipackage-build").to_string_lossy().into()
+fn default_build_dir() -> PathBuf {
+    std::env::temp_dir().join("omnipackage-build")
 }
 
 fn styles() -> Styles {

@@ -213,6 +213,53 @@ impl std::ops::Deref for VersionExtractors {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct ImageCacheRegistry {
+    pub url: String,
+    pub namespace: String,
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Debug, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum ImageCacheProvider {
+    Registry,
+    Local,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct ImageCache {
+    pub name: String,
+    pub provider: ImageCacheProvider,
+    pub image_tag: String,
+    pub registry: Option<ImageCacheRegistry>,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct ImageCaches(Vec<ImageCache>);
+
+impl ImageCaches {
+    pub fn find_by_name_or_default(&self, name: Option<&str>) -> Result<&ImageCache, anyhow::Error> {
+        match name {
+            Some(name) => self.0.iter().find(|r| r.name == name).ok_or_else(|| anyhow::anyhow!("image cache '{}' not found", name)),
+            None => self.0.first().ok_or_else(|| anyhow::anyhow!("no image cache configured")),
+        }
+    }
+}
+
+impl ImageCache {
+    pub fn full_image_name(&self, distro_id: &str) -> String {
+        match self.provider {
+            ImageCacheProvider::Registry => {
+                let reg = self.registry.clone().unwrap();
+                format!("{}/{}/{}:{}", reg.url.trim_end_matches('/'), reg.namespace, distro_id, self.image_tag)
+            }
+            ImageCacheProvider::Local => format!("{}:{}", distro_id, self.image_tag),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct Config {
     pub version_extractors: VersionExtractors,
     pub builds: Vec<Build>,
@@ -220,6 +267,7 @@ pub struct Config {
     pub repositories: Repositories,
     #[serde(default)]
     pub secrets: HashMap<String, String>,
+    pub image_caches: Option<ImageCaches>,
 }
 
 impl Config {
@@ -285,10 +333,6 @@ impl Build {
         }
 
         vars
-    }
-
-    pub fn build_folder_name(&self) -> String {
-        format!("{}-{}", self.package_name, self.distro)
     }
 }
 
