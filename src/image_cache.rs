@@ -1,5 +1,5 @@
 use crate::ImageCacheRefreshArgs;
-use crate::config::ImageCache;
+use crate::config::{Build, ImageCache};
 use crate::distros::{Distro, Distros};
 use crate::release;
 use anyhow::{Context, Result};
@@ -10,8 +10,8 @@ pub fn refresh(args: ImageCacheRefreshArgs) -> Result<(), anyhow::Error> {
     let mut any_failed = false;
 
     for build_config in release::detect_builds(args.job.clone(), config.clone()) {
-        let distro = Distros::get().by_id(&build_config.distro);
-        let ok = release::fail_fast_or_continue(refresh_distro(distro.clone(), build_config.package_name.clone(), ic.clone()), args.job.fail_fast)?;
+        let res = refresh_distro(args.clone(), build_config.clone(), ic.clone());
+        let ok = release::fail_fast_or_continue(res, args.job.fail_fast)?;
 
         if !ok {
             any_failed = true;
@@ -25,7 +25,9 @@ pub fn refresh(args: ImageCacheRefreshArgs) -> Result<(), anyhow::Error> {
     }
 }
 
-fn refresh_distro(distro: Distro, package_name: String, image_cache_config: ImageCache) -> Result<(), anyhow::Error> {
-    println!("{:?} -- {:?}", distro, package_name);
+fn refresh_distro(args: ImageCacheRefreshArgs, build_config: Build, image_cache_config: ImageCache) -> Result<(), anyhow::Error> {
+    let distro = Distros::get().by_id(&build_config.distro);
+    let dir = args.job.build_dir.join(format!("{}-{}", build_config.package_name, build_config.distro));
+
     Ok(())
 }

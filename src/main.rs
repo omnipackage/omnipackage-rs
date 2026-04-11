@@ -65,8 +65,8 @@ pub struct JobArgs {
     distros: Vec<String>,
 
     /// Root directory for temporary build/publish files
-    #[arg(long, default_value_t = default_build_dir())]
-    build_dir: String,
+    #[arg(long, default_value_os_t = default_build_dir())]
+    build_dir: PathBuf,
 
     /// Stop on first error instead of continuing with remaining distros
     #[arg(long, default_value_t = false)]
@@ -222,8 +222,8 @@ pub struct PortalArgs {
     distro: String,
 
     /// Root directory for temporary build/publish files, will be mounted in the container under the same basename
-    #[arg(long, default_value_t = default_build_dir())]
-    build_dir: String,
+    #[arg(long, default_value_os_t = default_build_dir())]
+    build_dir: PathBuf,
 }
 
 #[derive(Args, Clone, Debug)]
@@ -299,8 +299,8 @@ fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn default_build_dir() -> String {
-    std::env::temp_dir().join("omnipackage-build").to_string_lossy().into()
+fn default_build_dir() -> PathBuf {
+    std::env::temp_dir().join("omnipackage-build")
 }
 
 fn styles() -> Styles {

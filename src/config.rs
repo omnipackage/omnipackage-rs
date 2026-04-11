@@ -322,10 +322,6 @@ impl Build {
 
         vars
     }
-
-    pub fn build_folder_name(&self) -> String {
-        format!("{}-{}", self.package_name, self.distro)
-    }
 }
 
 #[cfg(test)]

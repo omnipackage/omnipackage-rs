@@ -22,7 +22,7 @@ impl JobSetup {
 
         Ok(Self {
             job_variables,
-            build_dir: PathBuf::from(&job.build_dir),
+            build_dir: job.build_dir.clone(),
             source_dir: project.source_dir.clone(),
         })
     }
