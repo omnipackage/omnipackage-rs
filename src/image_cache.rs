@@ -62,6 +62,7 @@ pub fn login_to_registry(image_cache_config: ImageCache, logger: Logger, log_pat
 fn refresh_distro(args: ImageCacheRefreshArgs, build_config: Build, image_cache_config: ImageCache) -> Result<(), anyhow::Error> {
     let distro = Distros::get().by_id(&build_config.distro);
     let temp_dir = args.job.build_dir.join(format!("{}-{}", build_config.package_name, build_config.distro));
+    std::fs::create_dir_all(&temp_dir)?;
 
     let base_image = distro.image.clone();
     let mut commands: Vec<String> = Vec::new();
@@ -97,7 +98,6 @@ fn refresh_distro(args: ImageCacheRefreshArgs, build_config: Build, image_cache_
         "FROM {base_image}\n\
          RUN {runcmd}\n"
     );
-    std::fs::create_dir_all(&temp_dir)?;
     std::fs::write(temp_dir.join("Dockerfile"), &dockerfile)?;
 
     let output_image = image_cache_config.full_image_name(&distro.id);
