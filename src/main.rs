@@ -73,7 +73,7 @@ pub struct JobArgs {
     fail_fast: bool,
 
     /// Image cache name from config.yml, no cache if omitted
-    #[arg(long)]
+    #[arg(long, short)]
     image_cache: Option<String>,
 }
 
