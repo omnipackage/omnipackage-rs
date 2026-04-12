@@ -52,4 +52,4 @@ jobs:
           path: /usr/local/bin
       - run: chmod +x /usr/local/bin/omnipackage
       - run: echo "${{ secrets.OMNIPACKAGE_DOTENV }}" > .env
-      - run:  omnipackage image-cache . --image-cache "${{ inputs.image_cache }}" --distros "${{ matrix.distro }}"
+      - run:  omnipackage image-cache refresh . --image-cache "${{ inputs.image_cache }}" --distros "${{ matrix.distro }}"
