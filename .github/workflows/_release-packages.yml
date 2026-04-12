@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       image_cache:
-        required: true
+        required: false
         type: string
         default: github
 
