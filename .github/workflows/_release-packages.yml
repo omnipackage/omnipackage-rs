@@ -7,10 +7,6 @@ on:
       version_extractor:
         required: true
         type: string
-      image_cache:
-        required: false
-        type: string
-        default: github
 
 jobs:
   bootstrap-binary:
@@ -65,4 +61,4 @@ jobs:
           echo "GITHUB_REGISTRY_USERNAME=${{ github.actor }}" >> .env
           echo "GITHUB_REGISTRY_PASSWORD=${{ secrets.GITHUB_TOKEN }}" >> .env
           echo "GITHUB_REGISTRY_NAMESPACE=${{ github.repository_owner }}" >> .env
-      - run:  omnipackage release . --build-dir $RUNNER_TEMP/_omp --repository "${{ inputs.repository }}" --distros "${{ matrix.distro }}" --version-extractor "${{ inputs.version_extractor }}" --image-cache "${{ inputs.image_cache }}"
+      - run:  omnipackage release . --build-dir $RUNNER_TEMP/_omp --repository "${{ inputs.repository }}" --distros "${{ matrix.distro }}" --version-extractor "${{ inputs.version_extractor }}" --image-cache github
