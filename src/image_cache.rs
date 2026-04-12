@@ -1,6 +1,6 @@
 #![allow(clippy::single_char_add_str)]
 
-use crate::ImageCacheRefreshArgs;
+use crate::PrimeArgs;
 use crate::config::{Build, ImageCache, ImageCacheProvider};
 use crate::distros::Distros;
 use crate::logger::Logger;
@@ -9,7 +9,7 @@ use crate::shell::Command;
 use anyhow::{Context, Result};
 use std::path::PathBuf;
 
-pub fn refresh(args: ImageCacheRefreshArgs) -> Result<(), anyhow::Error> {
+pub fn refresh(args: PrimeArgs) -> Result<(), anyhow::Error> {
     let config = args.project.load_config(false)?;
     let ic = config
         .image_caches
@@ -61,7 +61,7 @@ pub fn login_to_registry(image_cache_config: ImageCache, logger: Logger, log_pat
     cmd.run()
 }
 
-fn refresh_distro(args: ImageCacheRefreshArgs, build_config: Build, image_cache_config: ImageCache) -> Result<(), anyhow::Error> {
+fn refresh_distro(args: PrimeArgs, build_config: Build, image_cache_config: ImageCache) -> Result<(), anyhow::Error> {
     let distro = Distros::get().by_id(&build_config.distro);
     let temp_dir = args.job.build_dir.join(format!("{}-{}", build_config.package_name, build_config.distro));
     std::fs::create_dir_all(&temp_dir)?;

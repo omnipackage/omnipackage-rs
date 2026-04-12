@@ -231,7 +231,7 @@ pub struct PortalArgs {
 }
 
 #[derive(Args, Clone, Debug)]
-pub struct ImageCacheRefreshArgs {
+pub struct PrimeArgs {
     #[command(flatten)]
     project: ProjectArgs,
 
@@ -240,12 +240,6 @@ pub struct ImageCacheRefreshArgs {
 
     #[command(flatten)]
     logging: LoggingArgs,
-}
-
-#[derive(Subcommand)]
-enum ImageCacheCommands {
-    /// Create or update cached images for a project
-    Refresh(ImageCacheRefreshArgs),
 }
 
 #[derive(Subcommand)]
@@ -271,11 +265,8 @@ enum Commands {
     /// Shortcut to spawn a distro interactively in a container
     Portal(PortalArgs),
 
-    /// Manage pre-built images
-    ImageCache {
-        #[command(subcommand)]
-        command: ImageCacheCommands,
-    },
+    /// Create or update cached images for a project
+    Prime(PrimeArgs),
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -295,9 +286,7 @@ fn main() -> Result<(), anyhow::Error> {
         },
         Commands::Info(args) => info::info(args)?,
         Commands::Portal(args) => portal::run(args)?,
-        Commands::ImageCache { command } => match command {
-            ImageCacheCommands::Refresh(args) => image_cache::refresh(args)?,
-        },
+        Commands::Prime(args) => image_cache::refresh(args)?,
     }
     Ok(())
 }
