@@ -4,8 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       image_cache:
-        required: false
-        default: 'github'
+        required: true
+        type: string
+        default: github
 
 jobs:
   bootstrap-binary:
@@ -52,4 +53,7 @@ jobs:
           path: /usr/local/bin
       - run: chmod +x /usr/local/bin/omnipackage
       - run: echo "${{ secrets.OMNIPACKAGE_DOTENV }}" > .env
+      - run: |
+          echo "GITHUB_REGISTRY_USERNAME=${{ github.actor }}" >> .env
+          echo "GITHUB_REGISTRY_PASSWORD=${{ secrets.GITHUB_TOKEN }}" >> .env
       - run:  omnipackage image-cache refresh . --image-cache "${{ inputs.image_cache }}" --distros "${{ matrix.distro }}"

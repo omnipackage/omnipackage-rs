@@ -7,6 +7,10 @@ on:
       version_extractor:
         required: true
         type: string
+      image_cache:
+        required: true
+        type: string
+        default: github
 
 jobs:
   bootstrap-binary:
@@ -57,4 +61,7 @@ jobs:
           path: /usr/local/bin
       - run: chmod +x /usr/local/bin/omnipackage
       - run: echo "${{ secrets.OMNIPACKAGE_DOTENV }}" > .env
-      - run:  omnipackage release . --build-dir $RUNNER_TEMP/_omp --repository "${{ inputs.repository }}" --distros "${{ matrix.distro }}" --version-extractor "${{ inputs.version_extractor }}"
+      - run: |
+          echo "GITHUB_REGISTRY_USERNAME=${{ github.actor }}" >> .env
+          echo "GITHUB_REGISTRY_PASSWORD=${{ secrets.GITHUB_TOKEN }}" >> .env
+      - run:  omnipackage release . --build-dir $RUNNER_TEMP/_omp --repository "${{ inputs.repository }}" --distros "${{ matrix.distro }}" --version-extractor "${{ inputs.version_extractor }}" --image-cache "${{ inputs.image_cache }}"

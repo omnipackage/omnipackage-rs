@@ -16,9 +16,18 @@ image_caches:
     image_tag: omnipackage-rs-latest
     registry:
       url: ghcr.io
-      namespace: '${IMAGE_CACHE_REGISTRY_NAMESPACE}'
-      username: '${IMAGE_CACHE_REGISTRY_USERNAME}'
-      password: '${IMAGE_CACHE_REGISTRY_PASSWORD}'
+      namespace: omnipackage
+      username: '${GITHUB_REGISTRY_USERNAME}'
+      password: '${GITHUB_REGISTRY_PASSWORD}'
+
+  - name: github_personal
+    provider: registry
+    image_tag: omnipackage-rs-latest
+    registry:
+      url: ghcr.io
+      namespace: '${GITHUB_PERSONAL_REGISTRY_NAMESPACE}'
+      username: '${GITHUB_PERSONAL_REGISTRY_USERNAME}'
+      password: '${GITHUB_PERSONAL_REGISTRY_PASSWORD}'
 
 common: &common
   package_name: omnipackage
