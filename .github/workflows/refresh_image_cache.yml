@@ -59,4 +59,5 @@ jobs:
       - run: |
           echo "GITHUB_REGISTRY_USERNAME=${{ github.actor }}" >> .env
           echo "GITHUB_REGISTRY_PASSWORD=${{ secrets.GITHUB_TOKEN }}" >> .env
+          echo "GITHUB_REGISTRY_NAMESPACE=${{ github.repository_owner }}" >> .env
       - run:  omnipackage prime . --image-cache "${{ inputs.image_cache }}" --distros "${{ matrix.distro }}"

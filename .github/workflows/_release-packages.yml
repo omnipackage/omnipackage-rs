@@ -64,4 +64,5 @@ jobs:
       - run: |
           echo "GITHUB_REGISTRY_USERNAME=${{ github.actor }}" >> .env
           echo "GITHUB_REGISTRY_PASSWORD=${{ secrets.GITHUB_TOKEN }}" >> .env
+          echo "GITHUB_REGISTRY_NAMESPACE=${{ github.repository_owner }}" >> .env
       - run:  omnipackage release . --build-dir $RUNNER_TEMP/_omp --repository "${{ inputs.repository }}" --distros "${{ matrix.distro }}" --version-extractor "${{ inputs.version_extractor }}" --image-cache "${{ inputs.image_cache }}"
