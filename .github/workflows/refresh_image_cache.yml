@@ -8,6 +8,9 @@ on:
         type: string
         default: github
 
+permissions:
+  packages: write
+
 jobs:
   bootstrap-binary:
     runs-on: ubuntu-latest
