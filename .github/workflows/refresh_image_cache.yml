@@ -1,7 +1,7 @@
 name: Image cache refresh
 
 on:
-  worflow_dispatch:
+  workflow_dispatch:
     inputs:
       image_cache:
         required: false
