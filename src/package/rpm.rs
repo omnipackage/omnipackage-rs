@@ -89,9 +89,9 @@ impl Package for Rpm {
 
         if self.image_cache.is_none() {
             self.commands.extend(self.distro.setup(&config.build_dependencies));
-        }
-        if let Some(bbs) = self.before_build_script("/source", &config) {
-            self.commands.push(bbs);
+            if let Some(bbs) = self.before_build_script("/source", &config) {
+                self.commands.push(bbs);
+            }
         }
         self.commands.extend([
             "rpmdev-setuptree".to_string(),
