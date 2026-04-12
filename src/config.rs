@@ -298,7 +298,7 @@ impl Config {
 
         let content = std::fs::read_to_string(path).with_context(|| format!("cannot read {}", path.display()))?;
 
-        let content = Self::expand_env_vars_with(&content, |var| env_map.get(var).cloned().or_else(|| std::env::var(var).ok()).unwrap_or_default());
+        let content = Self::expand_env_vars_with(&content, |var| std::env::var(var).ok().or_else(|| env_map.get(var).cloned()).unwrap_or_default());
 
         serde_saphyr::from_str(&content).with_context(|| format!("cannot parse {}", path.display()))
     }

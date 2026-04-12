@@ -60,8 +60,8 @@ jobs:
           name: omnipackage-binary
           path: /usr/local/bin
       - run: chmod +x /usr/local/bin/omnipackage
-      - run: echo "${{ secrets.OMNIPACKAGE_DOTENV }}" > .env
       - run: |
+          echo "${{ secrets.OMNIPACKAGE_DOTENV }}" > .env
           echo "GITHUB_REGISTRY_USERNAME=${{ github.actor }}" >> .env
           echo "GITHUB_REGISTRY_PASSWORD=${{ secrets.GITHUB_TOKEN }}" >> .env
           echo "GITHUB_REGISTRY_NAMESPACE=${{ github.repository_owner }}" >> .env
