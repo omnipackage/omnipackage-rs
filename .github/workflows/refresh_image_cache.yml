@@ -1,3 +1,5 @@
+name: Image cache refresh
+
 on:
   worflow_dispatch:
     inputs:
