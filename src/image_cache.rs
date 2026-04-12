@@ -1,5 +1,3 @@
-#![allow(clippy::single_char_add_str)]
-
 use crate::PrimeArgs;
 use crate::config::{Build, ImageCache, ImageCacheProvider};
 use crate::distros::Distros;
@@ -8,6 +6,7 @@ use crate::release;
 use crate::shell::Command;
 use anyhow::{Context, Result};
 use std::path::PathBuf;
+use std::time::Instant;
 
 pub fn refresh(args: PrimeArgs) -> Result<(), anyhow::Error> {
     let config = args.project.load_config(false)?;
@@ -20,11 +19,12 @@ pub fn refresh(args: PrimeArgs) -> Result<(), anyhow::Error> {
 
     for build_config in release::detect_builds(args.job.clone(), config.clone()) {
         Logger::new().info(format!("starting image cache refresh for {}", build_config.distro));
+        let started_at = Instant::now();
         let res = refresh_distro(args.clone(), build_config.clone(), ic.clone());
         if let Err(ref e) = res {
             Logger::new().error(format!("image cache refresh error: {}", e));
         } else {
-            Logger::new().info(format!("finished image cache refresh for {}", build_config.distro));
+            Logger::new().info(format!("finished image cache refresh for {} in {:.1}s", build_config.distro, started_at.elapsed().as_secs_f32()));
         }
 
         let ok = release::fail_fast_or_continue(res, args.job.fail_fast)?;
@@ -96,6 +96,7 @@ fn refresh_distro(args: PrimeArgs, build_config: Build, image_cache_config: Imag
     }
     runcmd.push_str("bash -c '");
     runcmd.push_str(&commands.join(" && "));
+    #[allow(clippy::single_char_add_str)]
     runcmd.push_str("'");
 
     let dockerfile = format!(
