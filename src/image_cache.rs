@@ -1,3 +1,5 @@
+#![allow(clippy::single_char_add_str)]
+
 use crate::ImageCacheRefreshArgs;
 use crate::config::{Build, ImageCache, ImageCacheProvider};
 use crate::distros::Distros;
@@ -90,9 +92,11 @@ fn refresh_distro(args: ImageCacheRefreshArgs, build_config: Build, image_cache_
 
     let mut runcmd = String::new();
     if has_bbs_file {
-        runcmd.push_str("--mount=type=bind,source=before_build_script,target=/before_build_script \\");
+        runcmd.push_str("--mount=type=bind,source=before_build_script,target=/before_build_script ");
     }
+    runcmd.push_str("bash -c '");
     runcmd.push_str(&commands.join(" && "));
+    runcmd.push_str("'");
 
     let dockerfile = format!(
         "FROM {base_image}\n\
