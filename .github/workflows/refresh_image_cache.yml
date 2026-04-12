@@ -7,6 +7,8 @@ on:
         required: true
         type: string
         default: github
+  schedule:
+    - cron: '0 6 * * 1'
 
 permissions:
   packages: write
@@ -60,4 +62,4 @@ jobs:
           echo "GITHUB_REGISTRY_USERNAME=${{ github.actor }}" >> .env
           echo "GITHUB_REGISTRY_PASSWORD=${{ secrets.GITHUB_TOKEN }}" >> .env
           echo "GITHUB_REGISTRY_NAMESPACE=${{ github.repository_owner }}" >> .env
-      - run:  omnipackage prime . --image-cache "${{ inputs.image_cache }}" --distros "${{ matrix.distro }}"
+      - run:  omnipackage prime . --image-cache "${{ inputs.image_cache || 'github' }}" --distros "${{ matrix.distro }}"
