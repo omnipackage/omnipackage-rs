@@ -2,7 +2,9 @@
 
 [![OmniPackage repositories badge](https://repositories.omnipackage.org/omnipackage-rs/stable/badge.svg)](https://repositories.omnipackage.org/omnipackage-rs/stable/install.html) [![OmniPackage repositories badge](https://repositories.omnipackage.org/omnipackage-rs/master/badge.svg)](https://repositories.omnipackage.org/omnipackage-rs/master/install.html)
 
-# WIP
+# Documentation
+
+Visit https://docs.omnipackage.org
 
 # Installation
 
