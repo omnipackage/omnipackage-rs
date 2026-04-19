@@ -6,7 +6,7 @@ Build and distribute RPM & DEB packages easily.
 
 # Installation
 
-- [Stable](https://repositories.omnipackage.org/omnipackage-rs/stable/install.html)
+- [Stable](https://repositories.omnipackage.org/omnipackage-rs/stable/install.html) (recommended for most users)
 - [Unstable builds from master](https://repositories.omnipackage.org/omnipackage-rs/master/install.html)
 - From sources `cargo build --release`
 
