@@ -199,9 +199,6 @@ pub struct GpgConvertArgs {
     #[arg(short, long, default_value = "pem")]
     input_format: String,
 
-    #[arg(default_value = ".")]
-    output_dir: PathBuf,
-
     /// Format of the output key file
     #[arg(short, long, default_value = "base64")]
     output_format: String,

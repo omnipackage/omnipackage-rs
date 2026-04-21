@@ -1,5 +1,4 @@
 use crate::gpg::Gpg;
-use crate::logger::{Color, colorize};
 use crate::{GpgConvertArgs, GpgGenerateArgs};
 use anyhow::{Context, Result};
 
@@ -25,7 +24,8 @@ pub fn convert(args: GpgConvertArgs) -> Result<(), anyhow::Error> {
     let decoded = match args.input_format.as_str() {
         "base64" => {
             use base64::{Engine, engine::general_purpose};
-            general_purpose::STANDARD.decode(&content).with_context(|| "Failed to decode base64 input".to_string())?
+            let stripped: Vec<u8> = content.iter().copied().filter(|b| !b.is_ascii_whitespace()).collect();
+            general_purpose::STANDARD.decode(&stripped).with_context(|| "Failed to decode base64 input".to_string())?
         }
         _ => content,
     };
@@ -33,20 +33,12 @@ pub fn convert(args: GpgConvertArgs) -> Result<(), anyhow::Error> {
     let output_content = match args.output_format.as_str() {
         "base64" => {
             use base64::{Engine, engine::general_purpose};
-            general_purpose::STANDARD.encode(&decoded).into_bytes()
+            general_purpose::STANDARD.encode(&decoded)
         }
-        _ => decoded,
+        _ => String::from_utf8(decoded).with_context(|| "Decoded key is not valid UTF-8".to_string())?,
     };
 
-    let input_stem = args.input.file_stem().and_then(|s| s.to_str()).unwrap_or("key");
-    let base_name = input_stem.trim_end_matches(".base64");
-
-    let ext = if args.output_format == "base64" { ".asc.base64" } else { ".asc" };
-    let output_path = args.output_dir.join(format!("{}{}", base_name, ext));
-
-    std::fs::write(&output_path, &output_content)?;
-
-    println!("converted key written to {}", colorize(Color::BoldYellow, output_path.display()));
+    println!("{}", output_content);
 
     Ok(())
 }
