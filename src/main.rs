@@ -191,9 +191,9 @@ pub struct GpgGenerateArgs {
 
 #[derive(Args, Clone, Debug)]
 pub struct GpgConvertArgs {
-    /// Input file
+    /// Input file (reads from stdin if omitted)
     #[arg()]
-    input: PathBuf,
+    input: Option<PathBuf>,
 
     /// Format of the input key file
     #[arg(short, long, default_value = "pem")]

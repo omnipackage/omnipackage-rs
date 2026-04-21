@@ -19,7 +19,15 @@ pub fn generate(args: GpgGenerateArgs) -> Result<(), anyhow::Error> {
 }
 
 pub fn convert(args: GpgConvertArgs) -> Result<(), anyhow::Error> {
-    let content = std::fs::read(&args.input)?;
+    let content = match &args.input {
+        Some(path) => std::fs::read(path)?,
+        None => {
+            use std::io::Read;
+            let mut buf = Vec::new();
+            std::io::stdin().read_to_end(&mut buf)?;
+            buf
+        }
+    };
 
     let decoded = match args.input_format.as_str() {
         "base64" => {
