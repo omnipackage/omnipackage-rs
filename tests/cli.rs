@@ -39,16 +39,13 @@ fn test_build_dir_default() {
 
 #[test]
 fn test_gpg_generate() {
-    let dir = tempfile::tempdir().unwrap();
-
     Command::cargo_bin("omnipackage")
         .unwrap()
-        .args(["gpg", "generate", "--name", "John Doe", "--email", "john@example.com", dir.path().to_str().unwrap()])
+        .args(["gpg", "generate", "--name", "John Doe", "--email", "john@example.com"])
         .assert()
-        .success();
-
-    assert!(dir.path().join("private.asc").exists());
-    assert!(dir.path().join("public.asc").exists());
+        .success()
+        .stdout(predicate::str::contains("BEGIN PGP PRIVATE KEY BLOCK"))
+        .stdout(predicate::str::contains("BEGIN PGP PUBLIC KEY BLOCK").not());
 }
 /* TODO integration test with smaple_project in fixtures
 #[test]

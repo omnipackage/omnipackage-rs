@@ -176,9 +176,6 @@ pub struct InfoArgs {
 
 #[derive(Args, Clone, Debug)]
 pub struct GpgGenerateArgs {
-    #[arg(default_value = ".")]
-    output_dir: PathBuf,
-
     /// Key owner name, i.e. your real name
     #[arg(short, long)]
     name: String,

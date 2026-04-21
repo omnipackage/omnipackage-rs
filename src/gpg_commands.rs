@@ -6,23 +6,15 @@ use anyhow::{Context, Result};
 pub fn generate(args: GpgGenerateArgs) -> Result<(), anyhow::Error> {
     let keys = Gpg::new().generate_keys(&args.name, &args.email)?;
 
-    let (priv_content, pub_content) = match args.format.as_str() {
+    let priv_content = match args.format.as_str() {
         "base64" => {
             use base64::{Engine, engine::general_purpose};
-            (general_purpose::STANDARD.encode(&keys.priv_key), general_purpose::STANDARD.encode(&keys.pub_key))
+            general_purpose::STANDARD.encode(&keys.priv_key)
         }
-        _ => (keys.priv_key.clone(), keys.pub_key.clone()),
+        _ => keys.priv_key,
     };
 
-    let ext = if args.format == "base64" { ".base64" } else { "" };
-    let priv_path = args.output_dir.join(format!("private.asc{}", ext));
-    let pub_path = args.output_dir.join(format!("public.asc{}", ext));
-
-    std::fs::write(&priv_path, &priv_content)?;
-    std::fs::write(&pub_path, &pub_content)?;
-
-    println!("private key written to {}", colorize(Color::BoldYellow, priv_path.display()));
-    println!("public key written to {}", colorize(Color::BoldYellow, pub_path.display()));
+    println!("{}", priv_content);
 
     Ok(())
 }
