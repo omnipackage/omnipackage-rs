@@ -12,7 +12,9 @@ pub struct S3 {
 }
 
 fn block<F: std::future::Future>(f: F) -> F::Output {
-    tokio::runtime::Runtime::new().expect("cannot create tokio runtime").block_on(f)
+    static RT: std::sync::OnceLock<tokio::runtime::Runtime> = std::sync::OnceLock::new();
+    RT.get_or_init(|| tokio::runtime::Builder::new_current_thread().enable_all().build().expect("cannot create tokio runtime"))
+        .block_on(f)
 }
 
 fn build_client(config: &S3Config) -> Client {
