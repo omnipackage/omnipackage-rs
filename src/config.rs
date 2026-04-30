@@ -125,9 +125,7 @@ impl Repository {
     }
 
     pub fn gpg_private_key(&self) -> Result<String, anyhow::Error> {
-        let decoded = general_purpose::STANDARD
-            .decode(self.gpg_private_key_base64.clone())
-            .context("cannot decode GPG key")?;
+        let decoded = general_purpose::STANDARD.decode(self.gpg_private_key_base64.clone()).context("cannot decode GPG key")?;
         Ok(String::from_utf8(decoded)?)
     }
 
@@ -161,14 +159,14 @@ impl S3Config {
     }
 
     pub fn base_bucket_url(&self) -> String {
-        let path_in_b = PathBuf::new().join(self.path_in_bucket.as_deref().unwrap_or(""));
+        let path_in_b = PathBuf::from(self.path_in_bucket.as_deref().unwrap_or(""));
         format!("{}/{}", self.base_url().trim_end_matches('/'), path_in_b.display())
     }
 }
 
 impl LocalFsConfig {
     pub fn repository_path(&self) -> PathBuf {
-        PathBuf::from(self.path.clone())
+        PathBuf::from(&self.path)
     }
 }
 

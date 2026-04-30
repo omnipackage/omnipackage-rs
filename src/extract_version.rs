@@ -108,9 +108,7 @@ mod tests {
             provider: VersionExtractorProvider::Shell,
             name: "shell".to_string(),
             file: None,
-            shell: Some(crate::config::ExtractVersionShell {
-                command: "echo 7.8.9".to_string(),
-            }),
+            shell: Some(crate::config::ExtractVersionShell { command: "echo 7.8.9".to_string() }),
             constant: None,
         };
         let version = extract_version(dir.path(), &config).unwrap();

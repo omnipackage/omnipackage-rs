@@ -171,10 +171,6 @@ pub trait Package {
     }
 
     fn s3_in_bucket_distro_path(&self, s3_config: &S3Config) -> String {
-        PathBuf::new()
-            .join(s3_config.path_in_bucket.as_deref().unwrap_or(""))
-            .join(&self.distro().id)
-            .to_string_lossy()
-            .to_string()
+        PathBuf::from(s3_config.path_in_bucket.as_deref().unwrap_or("")).join(&self.distro().id).to_string_lossy().to_string()
     }
 }

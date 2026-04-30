@@ -91,8 +91,7 @@ impl Publish {
     }
 
     fn s3_in_bucket_distro_path(&self, s3_config: &S3Config) -> String {
-        PathBuf::new()
-            .join(s3_config.path_in_bucket.as_deref().unwrap_or(""))
+        PathBuf::from(s3_config.path_in_bucket.as_deref().unwrap_or(""))
             .join(&self.package.distro().id)
             .to_string_lossy()
             .to_string()
@@ -147,7 +146,7 @@ impl Publish {
         match self.config.provider {
             RepositoryProvider::S3 => {
                 let s3_config = self.config.s3();
-                let path = PathBuf::new().join(s3_config.path_in_bucket.as_deref().unwrap_or(""));
+                let path = PathBuf::from(s3_config.path_in_bucket.as_deref().unwrap_or(""));
                 let s3 = S3::new(s3_config, path.to_string_lossy().to_string());
 
                 let existing_page_bytes = s3.download_file(INSTALL_PAGE_NAME).unwrap_or_default();
