@@ -33,14 +33,14 @@ pub fn convert(args: GpgConvertArgs) -> Result<(), anyhow::Error> {
     let decoded = match args.input_format.as_str() {
         "base64" => {
             let stripped: Vec<u8> = content.iter().copied().filter(|b| !b.is_ascii_whitespace()).collect();
-            general_purpose::STANDARD.decode(&stripped).with_context(|| "Failed to decode base64 input".to_string())?
+            general_purpose::STANDARD.decode(&stripped).context("Failed to decode base64 input")?
         }
         _ => content,
     };
 
     let output_content = match args.output_format.as_str() {
         "base64" => general_purpose::STANDARD.encode(&decoded),
-        _ => String::from_utf8(decoded).with_context(|| "Decoded key is not valid UTF-8".to_string())?,
+        _ => String::from_utf8(decoded).context("Decoded key is not valid UTF-8")?,
     };
 
     println!("{}", output_content);

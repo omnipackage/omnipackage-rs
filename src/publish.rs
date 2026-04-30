@@ -137,7 +137,7 @@ impl Publish {
             ("distro_name".to_string(), self.package.distro().name.clone()),
             ("distro_family".to_string(), self.package.distro().family().to_string()),
             ("install_steps".to_string(), self.install_steps().join("\n")),
-            ("gpg_key".to_string(), self.package.gpgkey().ok_or(anyhow::anyhow!("no gpg key"))?.pub_key),
+            ("gpg_key".to_string(), self.package.gpgkey().ok_or_else(|| anyhow::anyhow!("no gpg key"))?.pub_key),
             ("download_url".to_string(), download_url),
             ("package_type".to_string(), self.package.distro().package_type.to_string()),
             ("timestamp".to_string(), chrono::Utc::now().to_rfc3339()),
@@ -150,18 +150,15 @@ impl Publish {
                 let path = PathBuf::new().join(s3_config.path_in_bucket.as_deref().unwrap_or(""));
                 let s3 = S3::new(s3_config, path.to_string_lossy().to_string());
 
-                let existing_page_bytes = s3.download_file(INSTALL_PAGE_NAME).unwrap_or(vec![]);
+                let existing_page_bytes = s3.download_file(INSTALL_PAGE_NAME).unwrap_or_default();
                 let existing_install_page = String::from_utf8_lossy(&existing_page_bytes).into_owned();
 
-                let custom_template = match self.custom_install_page.clone() {
-                    Some(path) => Some(std::fs::read_to_string(path)?),
-                    None => None,
-                };
+                let custom_template = self.custom_install_page.as_deref().map(std::fs::read_to_string).transpose()?;
 
                 let output = install_page::upsert(&existing_install_page, &repositories, &self.config, custom_template)?;
                 s3.upload_file(INSTALL_PAGE_NAME, output.install_page.as_bytes().to_vec(), Some("text/html"))?;
 
-                let page_url = install_page_url(&self.config).ok_or(anyhow::anyhow!("install page url cannot be generated"))?;
+                let page_url = install_page_url(&self.config).ok_or_else(|| anyhow::anyhow!("install page url cannot be generated"))?;
                 s3.upload_file(BADGE_NAME, output.badge.as_bytes().to_vec(), Some("image/svg+xml"))?;
 
                 let badge_url = format!("{}/{}", s3_config.base_bucket_url(), BADGE_NAME);
@@ -173,10 +170,7 @@ impl Publish {
                 let localfs_config = self.config.localfs();
                 let path = localfs_config.repository_path().join(INSTALL_PAGE_NAME);
                 let existing_install_page = std::fs::read_to_string(&path).unwrap_or_default();
-                let custom_template = match self.custom_install_page.clone() {
-                    Some(path) => Some(std::fs::read_to_string(path)?),
-                    None => None,
-                };
+                let custom_template = self.custom_install_page.as_deref().map(std::fs::read_to_string).transpose()?;
                 let output = install_page::upsert(&existing_install_page, &repositories, &self.config, custom_template)?;
                 std::fs::write(&path, output.install_page)?;
 

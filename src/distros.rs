@@ -228,4 +228,33 @@ mod tests {
         let result = distro.setup(&["gcc".to_string()]);
         assert_eq!(result[0], "echo hello");
     }
+
+    fn distro_with_id_name(id: &str, name: &str) -> Distro {
+        let mut d = make_distro(vec![]);
+        d.id = id.to_string();
+        d.name = name.to_string();
+        d
+    }
+
+    #[test]
+    fn test_family_matches_by_id() {
+        assert_eq!(distro_with_id_name("opensuse_15.6", "x").family(), "openSUSE");
+        assert_eq!(distro_with_id_name("fedora_40", "x").family(), "Fedora");
+        assert_eq!(distro_with_id_name("debian_12", "x").family(), "Debian");
+        assert_eq!(distro_with_id_name("ubuntu_22.04", "x").family(), "Ubuntu");
+        assert_eq!(distro_with_id_name("alma_9", "x").family(), "AlmaLinux");
+        assert_eq!(distro_with_id_name("rocky_9", "x").family(), "Rocky Linux");
+        assert_eq!(distro_with_id_name("mageia_9", "x").family(), "Mageia");
+    }
+
+    #[test]
+    fn test_family_matches_by_name() {
+        assert_eq!(distro_with_id_name("custom", "openSUSE Leap").family(), "openSUSE");
+        assert_eq!(distro_with_id_name("custom", "Fedora Workstation").family(), "Fedora");
+    }
+
+    #[test]
+    fn test_family_unknown_returns_other() {
+        assert_eq!(distro_with_id_name("arch_rolling", "Arch Linux").family(), "Other");
+    }
 }

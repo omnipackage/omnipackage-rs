@@ -34,7 +34,7 @@ impl JobVariables {
 
 impl std::fmt::Display for JobVariables {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let secret_keys = self.secrets.keys().cloned().collect::<Vec<_>>().join(", ");
+        let secret_keys = self.secrets.keys().map(String::as_str).collect::<Vec<_>>().join(", ");
         write!(f, "version={} current_time_rfc2822={} secrets=[{}]", self.version, self.current_time_rfc2822, secret_keys)
     }
 }

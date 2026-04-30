@@ -92,12 +92,12 @@ impl S3 {
             let entries = glob::glob(&pattern).with_context(|| format!("invalid glob pattern: {}", pattern))?;
 
             for entry in entries {
-                let path = entry.with_context(|| "glob error".to_string())?;
+                let path = entry.context("glob error")?;
                 if !path.is_file() {
                     continue;
                 }
 
-                let relative = path.strip_prefix(from).with_context(|| "cannot strip prefix".to_string())?;
+                let relative = path.strip_prefix(from).context("cannot strip prefix")?;
                 let key = format!("{}/{}", self.path.trim_end_matches('/'), relative.to_string_lossy());
 
                 let body = ByteStream::from_path(&path).await.with_context(|| format!("cannot read {}", path.display()))?;
@@ -182,7 +182,7 @@ impl S3 {
                 req = req.continuation_token(token);
             }
 
-            let response = req.send().await.with_context(|| "cannot list objects".to_string())?;
+            let response = req.send().await.context("cannot list objects")?;
 
             for obj in response.contents() {
                 if let Some(key) = obj.key() {

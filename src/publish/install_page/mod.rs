@@ -16,7 +16,7 @@ pub struct Output {
 }
 
 pub fn upsert(existing_page_html: &str, repositories: &Repositories, config: &RepoConfig, custom_template: Option<String>) -> Result<Output, anyhow::Error> {
-    let mut repos = parse(existing_page_html).unwrap_or_else(|_| vec![]);
+    let mut repos = parse(existing_page_html).unwrap_or_default();
 
     repositories.iter().for_each(|repo| {
         upsert_repository(&mut repos, repo.clone());
@@ -25,7 +25,7 @@ pub fn upsert(existing_page_html: &str, repositories: &Repositories, config: &Re
     let template_html = render(&repos, custom_template)?;
 
     let install_page = Template::from_content(&template_html)?.render(config.to_template_vars())?;
-    let badge = render_badge(&repos, config).unwrap_or("".to_string());
+    let badge = render_badge(&repos, config).unwrap_or_default();
     Ok(Output { install_page, badge })
 }
 
@@ -68,8 +68,8 @@ fn render(repositories: &Repositories, custom_template: Option<String>) -> Resul
 
 fn extract_json_bounds(html: &str) -> Result<(usize, usize), anyhow::Error> {
     let start_tag = r#"<script type="application/json" id="data">"#;
-    let start = html.find(start_tag).ok_or(anyhow::anyhow!("cannot find data script tag"))? + start_tag.len();
-    let end = html[start..].find("</script>").ok_or(anyhow::anyhow!("cannot find closing script tag"))? + start;
+    let start = html.find(start_tag).ok_or_else(|| anyhow::anyhow!("cannot find data script tag"))? + start_tag.len();
+    let end = html[start..].find("</script>").ok_or_else(|| anyhow::anyhow!("cannot find closing script tag"))? + start;
     Ok((start, end))
 }
 

@@ -81,7 +81,7 @@ pub trait Package {
 
         let pattern = dir.join(format!("**/*.{}", ext));
 
-        glob::glob(pattern.to_str().unwrap()).unwrap().filter_map(|e| e.ok()).collect()
+        glob::glob(pattern.to_str().unwrap()).unwrap().filter_map(Result::ok).collect()
     }
 
     fn before_build_script(&self, relative_to: &str, config: &Build) -> Option<String> {
@@ -118,7 +118,7 @@ pub trait Package {
     fn prepare_gpgkey(&self, config: &Repository) -> Result<Key, anyhow::Error> {
         let gpg = Gpg::new();
         let key = &config.gpg_private_key()?;
-        gpg.test_private_key(key).with_context(|| "GPG key test failed".to_string())?;
+        gpg.test_private_key(key).context("GPG key test failed")?;
         gpg.key_from_private(key)
     }
 

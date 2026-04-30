@@ -112,7 +112,7 @@ do_hash "SHA256" "sha256sum"
 impl Package for Deb {
     fn setup_build(&mut self, config: Build) -> Result<(), anyhow::Error> {
         self.prepare_build_dir()?;
-        let debian_folder_template_path = config.deb.clone().ok_or(anyhow::anyhow!("deb config is missing"))?.debian_templates;
+        let debian_folder_template_path = config.deb.clone().ok_or_else(|| anyhow::anyhow!("deb config is missing"))?.debian_templates;
 
         let build_path = self.distro_build_dir().join("build");
         let output_path = self.output_path();

@@ -70,7 +70,7 @@ impl Rpm {
 impl Package for Rpm {
     fn setup_build(&mut self, config: Build) -> Result<(), anyhow::Error> {
         self.prepare_build_dir()?;
-        let specfile_path_template_path = config.rpm.clone().ok_or(anyhow::anyhow!("rpm config is missing"))?.spec_template;
+        let specfile_path_template_path = config.rpm.clone().ok_or_else(|| anyhow::anyhow!("rpm config is missing"))?.spec_template;
 
         let rpmbuild_path = self.output_path();
         std::fs::create_dir_all(&rpmbuild_path).with_context(|| format!("cannot create directory {}", rpmbuild_path.display()))?;
@@ -304,7 +304,7 @@ mod tests {
 
         let spec_files: Vec<_> = std::fs::read_dir(rpm.distro_build_dir())
             .unwrap()
-            .filter_map(|e| e.ok())
+            .filter_map(Result::ok)
             .filter(|e| e.path().extension().map(|x| x == "spec").unwrap_or(false))
             .collect();
 

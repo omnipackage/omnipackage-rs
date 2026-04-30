@@ -127,7 +127,7 @@ impl Repository {
     pub fn gpg_private_key(&self) -> Result<String, anyhow::Error> {
         let decoded = general_purpose::STANDARD
             .decode(self.gpg_private_key_base64.clone())
-            .with_context(|| "cannot decode GPG key".to_string())?;
+            .context("cannot decode GPG key")?;
         Ok(String::from_utf8(decoded)?)
     }
 
@@ -251,7 +251,7 @@ impl ImageCache {
     pub fn full_image_name(&self, distro_id: &str) -> String {
         match self.provider {
             ImageCacheProvider::Registry => {
-                let reg = self.registry.clone().unwrap();
+                let reg = self.registry.as_ref().unwrap();
                 format!("{}/{}/{}:{}", reg.url.trim_end_matches('/'), reg.namespace, distro_id, self.image_tag)
             }
             ImageCacheProvider::Local => format!("{}:{}", distro_id, self.image_tag),
@@ -278,12 +278,12 @@ impl Config {
     pub fn load_with_env(path: &Path, env_path: &Path, silent: bool) -> Result<Self, anyhow::Error> {
         let env_map: HashMap<String, String> = match dotenvy::from_path_iter(env_path) {
             Ok(iter) => {
-                let map: HashMap<String, String> = iter.filter_map(|e| e.ok()).collect();
+                let map: HashMap<String, String> = iter.filter_map(Result::ok).collect();
                 if !silent {
                     Logger::new().info(format!(
                         "env loaded from {}: {}",
                         std::env::current_dir().unwrap_or_default().join(env_path).display(),
-                        map.keys().cloned().collect::<Vec<_>>().join(", ")
+                        map.keys().map(String::as_str).collect::<Vec<_>>().join(", ")
                     ));
                 }
                 map
@@ -558,6 +558,159 @@ builds: []
         let config = Config::load(&path, true).unwrap();
         let result = config.version_extractors.find_by_name_or_default(Some("does-not-exist"));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_s3_base_url_uses_public_url_when_set() {
+        let s3 = S3Config {
+            bucket: "b".to_string(),
+            path_in_bucket: None,
+            bucket_public_url: Some("https://cdn.example.com/".to_string()),
+            endpoint: "https://s3.example.com".to_string(),
+            access_key_id: "k".to_string(),
+            secret_access_key: "s".to_string(),
+            region: None,
+            force_path_style: false,
+            cloudflare_zone_id: None,
+            cloudflare_api_token: None,
+        };
+        assert_eq!(s3.base_url(), "https://cdn.example.com");
+    }
+
+    #[test]
+    fn test_s3_base_url_falls_back_to_endpoint() {
+        let s3 = S3Config {
+            bucket: "b".to_string(),
+            path_in_bucket: None,
+            bucket_public_url: None,
+            endpoint: "https://s3.example.com/".to_string(),
+            access_key_id: "k".to_string(),
+            secret_access_key: "s".to_string(),
+            region: None,
+            force_path_style: false,
+            cloudflare_zone_id: None,
+            cloudflare_api_token: None,
+        };
+        assert_eq!(s3.base_url(), "https://s3.example.com");
+    }
+
+    #[test]
+    fn test_s3_base_bucket_url_with_path() {
+        let s3 = S3Config {
+            bucket: "b".to_string(),
+            path_in_bucket: Some("packages/sub".to_string()),
+            bucket_public_url: Some("https://cdn.example.com".to_string()),
+            endpoint: "https://s3.example.com".to_string(),
+            access_key_id: "k".to_string(),
+            secret_access_key: "s".to_string(),
+            region: None,
+            force_path_style: false,
+            cloudflare_zone_id: None,
+            cloudflare_api_token: None,
+        };
+        assert_eq!(s3.base_bucket_url(), "https://cdn.example.com/packages/sub");
+    }
+
+    #[test]
+    fn test_s3_base_bucket_url_without_path() {
+        let s3 = S3Config {
+            bucket: "b".to_string(),
+            path_in_bucket: None,
+            bucket_public_url: Some("https://cdn.example.com".to_string()),
+            endpoint: "https://s3.example.com".to_string(),
+            access_key_id: "k".to_string(),
+            secret_access_key: "s".to_string(),
+            region: None,
+            force_path_style: false,
+            cloudflare_zone_id: None,
+            cloudflare_api_token: None,
+        };
+        assert_eq!(s3.base_bucket_url(), "https://cdn.example.com/");
+    }
+
+    #[test]
+    fn test_image_cache_full_image_name_registry() {
+        let ic = ImageCache {
+            name: "ic".to_string(),
+            provider: ImageCacheProvider::Registry,
+            image_tag: "v1".to_string(),
+            registry: Some(ImageCacheRegistry {
+                url: "registry.example.com/".to_string(),
+                namespace: "myteam".to_string(),
+                username: "u".to_string(),
+                password: "p".to_string(),
+            }),
+        };
+        assert_eq!(ic.full_image_name("debian_12"), "registry.example.com/myteam/debian_12:v1");
+    }
+
+    #[test]
+    fn test_image_cache_full_image_name_local() {
+        let ic = ImageCache {
+            name: "ic".to_string(),
+            provider: ImageCacheProvider::Local,
+            image_tag: "v1".to_string(),
+            registry: None,
+        };
+        assert_eq!(ic.full_image_name("debian_12"), "debian_12:v1");
+    }
+
+    #[test]
+    fn test_repositories_find_by_name_or_default() {
+        let yaml = r#"
+version_extractors: []
+builds: []
+repositories:
+  - name: primary
+    provider: localfs
+    localfs:
+      path: /tmp/a
+    gpg_private_key_base64: ""
+    package_name: pkg
+  - name: secondary
+    provider: localfs
+    localfs:
+      path: /tmp/b
+    gpg_private_key_base64: ""
+    package_name: pkg
+"#;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.yml");
+        std::fs::write(&path, yaml).unwrap();
+        let config = Config::load(&path, true).unwrap();
+
+        assert_eq!(config.repositories.find_by_name_or_default(None).unwrap().name, "primary");
+        assert_eq!(config.repositories.find_by_name_or_default(Some("secondary")).unwrap().name, "secondary");
+        assert!(config.repositories.find_by_name_or_default(Some("missing")).is_err());
+    }
+
+    #[test]
+    fn test_repositories_find_by_name_empty_errors_on_default() {
+        let repos = Repositories::default();
+        assert!(repos.find_by_name_or_default(None).is_err());
+    }
+
+    #[test]
+    fn test_image_caches_find_by_name_or_default() {
+        let caches = vec![
+            ImageCache {
+                name: "first".to_string(),
+                provider: ImageCacheProvider::Local,
+                image_tag: "v1".to_string(),
+                registry: None,
+            },
+            ImageCache {
+                name: "second".to_string(),
+                provider: ImageCacheProvider::Local,
+                image_tag: "v2".to_string(),
+                registry: None,
+            },
+        ];
+        let ics = ImageCaches(caches);
+
+        assert_eq!(ics.find_by_name_or_default(None).unwrap().name, "first");
+        assert_eq!(ics.find_by_name_or_default(Some("second")).unwrap().name, "second");
+        assert!(ics.find_by_name_or_default(Some("missing")).is_err());
     }
 
     #[test]

@@ -131,3 +131,87 @@ pub fn detect_builds(job: JobArgs, config: Config) -> impl Iterator<Item = Build
         .filter(move |build| Distros::get().contains(&build.distro))
         .filter(move |build| job.distros.is_empty() || job.distros.contains(&build.distro))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::{Repositories, VersionExtractors};
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_fail_fast_or_continue_ok_returns_true() {
+        let result = fail_fast_or_continue(Ok(()), false).unwrap();
+        assert!(result);
+    }
+
+    #[test]
+    fn test_fail_fast_or_continue_err_with_fail_fast_propagates() {
+        let result = fail_fast_or_continue(Err(anyhow::anyhow!("boom")), true);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_fail_fast_or_continue_err_without_fail_fast_returns_false() {
+        let result = fail_fast_or_continue(Err(anyhow::anyhow!("boom")), false).unwrap();
+        assert!(!result);
+    }
+
+    fn make_build(distro: &str) -> Build {
+        Build {
+            distro: distro.to_string(),
+            package_name: "p".to_string(),
+            maintainer: "m".to_string(),
+            homepage: "h".to_string(),
+            description: "d".to_string(),
+            build_dependencies: vec![],
+            runtime_dependencies: vec![],
+            before_build_script: None,
+            rpm: None,
+            deb: None,
+            rest: HashMap::new(),
+        }
+    }
+
+    fn make_config(builds: Vec<Build>) -> Config {
+        Config {
+            version_extractors: VersionExtractors::default(),
+            builds,
+            repositories: Repositories::default(),
+            secrets: HashMap::new(),
+            image_caches: None,
+        }
+    }
+
+    fn make_job(distros: Vec<String>) -> JobArgs {
+        JobArgs {
+            distros,
+            build_dir: PathBuf::from("/tmp/x"),
+            fail_fast: false,
+            image_cache: None,
+        }
+    }
+
+    #[test]
+    fn test_detect_builds_drops_unknown_distros() {
+        let config = make_config(vec![make_build("debian_12"), make_build("nonexistent_99")]);
+        let detected: Vec<_> = detect_builds(make_job(vec![]), config).collect();
+        assert_eq!(detected.len(), 1);
+        assert_eq!(detected[0].distro, "debian_12");
+    }
+
+    #[test]
+    fn test_detect_builds_filters_by_requested_distros() {
+        let config = make_config(vec![make_build("debian_12"), make_build("fedora_40")]);
+        let detected: Vec<_> = detect_builds(make_job(vec!["fedora_40".to_string()]), config).collect();
+        assert_eq!(detected.len(), 1);
+        assert_eq!(detected[0].distro, "fedora_40");
+    }
+
+    #[test]
+    fn test_detect_builds_empty_filter_keeps_all_known() {
+        let config = make_config(vec![make_build("debian_12"), make_build("fedora_40")]);
+        let detected: Vec<_> = detect_builds(make_job(vec![]), config).collect();
+        assert_eq!(detected.len(), 2);
+    }
+}
