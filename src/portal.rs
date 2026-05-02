@@ -8,6 +8,8 @@ use std::path::Path;
 pub fn run(portal_args: PortalArgs) -> Result<(), anyhow::Error> {
     let mut args = vec!["run".to_string(), "-it".to_string(), "--rm".to_string(), "--entrypoint".to_string(), "/bin/bash".to_string()];
 
+    std::fs::create_dir_all(&portal_args.build_dir)?;
+
     let mountpoint_basename = Path::new(&portal_args.build_dir)
         .file_name()
         .ok_or_else(|| anyhow::anyhow!("build_dir has no basename"))?
