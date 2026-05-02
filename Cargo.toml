@@ -1,7 +1,7 @@
 [package]
 name = "omnipackage"
 description = "Build and distribute RPM & DEB packages easily"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2024"
 authors = ["Oleg Antonyan <oleg.b.antonyan@gmail.com>"]
 license = "GPLv3"
