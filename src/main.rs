@@ -11,6 +11,7 @@ mod gpg;
 mod gpg_commands;
 mod image_cache;
 mod info;
+mod init;
 mod job_variables;
 mod logger;
 mod package;
@@ -261,6 +262,9 @@ enum Commands {
 
     /// Create or update cached images for a project
     Prime(PrimeArgs),
+
+    /// Scaffold .omnipackage/ in a project directory
+    Init(init::InitArgs),
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -281,6 +285,7 @@ fn main() -> Result<(), anyhow::Error> {
         Commands::Info(args) => info::info(args)?,
         Commands::Portal(args) => portal::run(args)?,
         Commands::Prime(args) => image_cache::refresh(args)?,
+        Commands::Init(args) => init::init(args)?,
     }
     Ok(())
 }
