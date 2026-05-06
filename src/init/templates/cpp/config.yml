@@ -26,6 +26,19 @@ common: &common
   homepage: __INIT_HOMEPAGE__
   description: __INIT_DESCRIPTION__
 
+# Files/dirs to skip when staging the source tree into the build container.
+# Excludes apply to both rpm and deb. Patterns are gitignore-style:
+#   "name"   matches any file/dir of that name at any depth
+#   "/name"  matches only at the source root (anchored)
+#   "*.ext"  basename glob, matches at any depth
+ignore_source_files:
+  - .git
+  - .env
+  - .DS_Store
+  - "*.log"
+  - "*.o"
+  - "*.a"
+
 repositories:
   - name: Local test
     gpg_private_key_base64: "${GPG_KEY}"

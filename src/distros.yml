@@ -2,7 +2,7 @@ opensuse: &opensuse
   package_type: 'rpm'
   setup:
   - 'zypper --non-interactive install -y -t pattern devel_basis devel_rpm_build'
-  - 'zypper --non-interactive install -y rpmdevtools %{build_dependencies}'
+  - 'zypper --non-interactive install -y rpmdevtools rsync %{build_dependencies}'
   setup_repo:
   - 'zypper --non-interactive install -y createrepo_c'
   cleanup:
@@ -16,7 +16,7 @@ debian: &debian
   package_type: 'deb'
   setup:
   - 'DEBIAN_FRONTEND=noninteractive apt-get update'
-  - 'DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential debhelper ca-certificates %{build_dependencies}'
+  - 'DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential debhelper ca-certificates rsync %{build_dependencies}'
   setup_repo:
   - 'DEBIAN_FRONTEND=noninteractive apt-get update'
   - 'DEBIAN_FRONTEND=noninteractive apt-get -y install dpkg-dev ca-certificates gpg'
@@ -31,7 +31,7 @@ debian: &debian
 redhat: &redhat
   package_type: 'rpm'
   setup:
-  - 'dnf install -y --allowerasing rpmdevtools tar %{build_dependencies}'
+  - 'dnf install -y --allowerasing rpmdevtools tar rsync %{build_dependencies}'
   setup_repo:
   - 'dnf install -y --allowerasing createrepo rpm-sign'
   cleanup:

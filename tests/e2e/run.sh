@@ -23,7 +23,7 @@
 set -euo pipefail
 
 TYPES_DEFAULT="c cpp cmake rust go python ruby crystal"
-DISTROS_DEFAULT="opensuse_tumbleweed fedora_42 debian_13 ubuntu_24.04 almalinux_10 rockylinux_9 mageia_9"
+DISTROS_DEFAULT="opensuse_16.0 fedora_42 debian_13 ubuntu_24.04 almalinux_10 rockylinux_9 mageia_9"
 
 TYPES="${TYPES:-$TYPES_DEFAULT}"
 DISTROS="${DISTROS:-$DISTROS_DEFAULT}"
@@ -53,7 +53,7 @@ fi
 
 distro_image() {
     case "$1" in
-        opensuse_tumbleweed)    echo "opensuse/tumbleweed" ;;
+        opensuse_16.0)          echo "opensuse/leap:16.0" ;;
         fedora_42)              echo "fedora:42" ;;
         debian_13)              echo "debian:trixie" ;;
         ubuntu_24.04)           echo "ubuntu:24.04" ;;

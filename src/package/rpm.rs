@@ -15,6 +15,7 @@ pub struct Rpm {
     pub job_variables: JobVariables,
     pub distro_build_dir: PathBuf,
     pub image_cache: Option<ImageCache>,
+    pub ignore_source_files: Vec<String>,
 
     mounts: HashMap<String, String>,
     commands: Vec<String>,
@@ -24,12 +25,13 @@ pub struct Rpm {
 }
 
 impl Rpm {
-    pub fn new(distro: Distro, source_dir: PathBuf, job_variables: JobVariables, distro_build_dir: PathBuf, image_cache: Option<ImageCache>) -> Self {
+    pub fn new(distro: Distro, source_dir: PathBuf, job_variables: JobVariables, distro_build_dir: PathBuf, image_cache: Option<ImageCache>, ignore_source_files: Vec<String>) -> Self {
         Self {
             distro,
             source_dir,
             job_variables,
             image_cache,
+            ignore_source_files,
             distro_build_dir: distro_build_dir.clone(),
             mounts: HashMap::new(),
             commands: Vec::new(),
@@ -93,12 +95,13 @@ impl Package for Rpm {
                 self.commands.push(bbs);
             }
         }
+        let rsync_excludes: String = self.ignore_source_files.iter().map(|p| format!(" --exclude='{p}'")).collect();
         self.commands.extend([
             "rpmdev-setuptree".to_string(),
             "rm -rf /root/rpmbuild/SOURCES/*".to_string(),
-            format!("cp -R /source /root/rpmbuild/SOURCES/{source_folder_name}"),
+            format!("rsync -a{rsync_excludes} /source/ /root/rpmbuild/SOURCES/{source_folder_name}/"),
             "cd /root/rpmbuild/SOURCES/".to_string(),
-            format!("tar -cvzf {source_folder_name}.tar.gz --exclude='.git' --exclude='node_modules' {source_folder_name}/"),
+            format!("tar -cvzf {source_folder_name}.tar.gz {source_folder_name}/"),
             format!("cd /root/rpmbuild/SOURCES/{source_folder_name}/"),
             format!("QA_RPATHS=$(( 0x0001|0x0010|0x0002|0x0004|0x0008|0x0020 )) rpmbuild --clean -bb /root/rpmbuild/{specfile_name}"),
         ]);
@@ -210,11 +213,15 @@ mod tests {
     }
 
     fn make_rpm(dir: &tempfile::TempDir) -> Rpm {
+        make_rpm_with_ignores(dir, vec![])
+    }
+
+    fn make_rpm_with_ignores(dir: &tempfile::TempDir, ignore_source_files: Vec<String>) -> Rpm {
         let source_dir = dir.path().join("source");
         let build_dir = dir.path().join("build");
         std::fs::create_dir_all(&source_dir).unwrap();
         std::fs::create_dir_all(&build_dir).unwrap();
-        Rpm::new(make_distro(), source_dir, make_job_variables(), build_dir, None)
+        Rpm::new(make_distro(), source_dir, make_job_variables(), build_dir, None, ignore_source_files)
     }
 
     fn make_build_config(dir: &tempfile::TempDir) -> Build {
@@ -384,6 +391,34 @@ mod tests {
         config.rpm = None;
 
         assert!(rpm.setup_build(config).is_err());
+    }
+
+    #[test]
+    fn test_setup_build_passes_ignore_source_files_to_rsync() {
+        let dir = tempfile::tempdir().unwrap();
+        let ignores = vec![".git".to_string(), "node_modules".to_string(), "*.log".to_string()];
+        let mut rpm = make_rpm_with_ignores(&dir, ignores);
+
+        rpm.setup_build(make_build_config(&dir)).unwrap();
+
+        let rsync_cmd = rpm.commands().into_iter().find(|c| c.starts_with("rsync ")).expect("rsync command not found");
+        assert!(rsync_cmd.contains("--exclude='.git'"));
+        assert!(rsync_cmd.contains("--exclude='node_modules'"));
+        assert!(rsync_cmd.contains("--exclude='*.log'"));
+        assert!(rsync_cmd.contains("/source/ /root/rpmbuild/SOURCES/"));
+    }
+
+    #[test]
+    fn test_setup_build_no_excludes_when_ignore_source_files_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut rpm = make_rpm(&dir);
+
+        rpm.setup_build(make_build_config(&dir)).unwrap();
+
+        let rsync_cmd = rpm.commands().into_iter().find(|c| c.starts_with("rsync ")).expect("rsync command not found");
+        assert!(!rsync_cmd.contains("--exclude"));
+        let tar_cmd = rpm.commands().into_iter().find(|c| c.contains("tar -cvzf")).expect("tar command not found");
+        assert!(!tar_cmd.contains("--exclude"));
     }
 
     #[test]

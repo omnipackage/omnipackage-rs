@@ -13,6 +13,7 @@ struct JobSetup {
     build_dir: PathBuf,
     source_dir: PathBuf,
     image_cache: Option<ImageCache>,
+    ignore_source_files: Vec<String>,
 }
 
 impl JobSetup {
@@ -31,6 +32,7 @@ impl JobSetup {
             build_dir: job.build_dir.clone(),
             source_dir: project.source_dir.clone(),
             image_cache,
+            ignore_source_files: config.ignore_source_files.clone(),
         })
     }
 
@@ -43,6 +45,7 @@ impl JobSetup {
             self.job_variables.clone(),
             self.build_dir.join(format!("{}-{}", package_name, distro_id)),
             self.image_cache.clone(),
+            self.ignore_source_files.clone(),
         )
     }
 }
@@ -180,6 +183,7 @@ mod tests {
             repositories: Repositories::default(),
             secrets: HashMap::new(),
             image_caches: None,
+            ignore_source_files: vec![],
         }
     }
 

@@ -266,6 +266,10 @@ pub struct Config {
     #[serde(default)]
     pub secrets: HashMap<String, String>,
     pub image_caches: Option<ImageCaches>,
+    // Basename-style globs only (e.g. ".git", "node_modules", "*.log").
+    // Patterns with slashes or "**" are not portable across rsync's exclude syntax.
+    #[serde(default)]
+    pub ignore_source_files: Vec<String>,
 }
 
 impl Config {

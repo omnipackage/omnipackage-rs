@@ -15,10 +15,17 @@ impl Clone for Box<dyn Package> {
     }
 }
 
-pub fn make_package(distro: Distro, source_dir: PathBuf, job_variables: JobVariables, distro_build_dir: PathBuf, image_cache: Option<ImageCache>) -> Result<Box<dyn Package>, anyhow::Error> {
+pub fn make_package(
+    distro: Distro,
+    source_dir: PathBuf,
+    job_variables: JobVariables,
+    distro_build_dir: PathBuf,
+    image_cache: Option<ImageCache>,
+    ignore_source_files: Vec<String>,
+) -> Result<Box<dyn Package>, anyhow::Error> {
     match distro.package_type {
-        PackageType::Deb => Ok(Box::new(deb::Deb::new(distro.clone(), source_dir, job_variables, distro_build_dir, image_cache))),
-        PackageType::Rpm => Ok(Box::new(rpm::Rpm::new(distro.clone(), source_dir, job_variables, distro_build_dir, image_cache))),
+        PackageType::Deb => Ok(Box::new(deb::Deb::new(distro.clone(), source_dir, job_variables, distro_build_dir, image_cache, ignore_source_files))),
+        PackageType::Rpm => Ok(Box::new(rpm::Rpm::new(distro.clone(), source_dir, job_variables, distro_build_dir, image_cache, ignore_source_files))),
     }
 }
 

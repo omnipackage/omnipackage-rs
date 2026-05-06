@@ -15,6 +15,7 @@ pub struct Deb {
     pub job_variables: JobVariables,
     pub distro_build_dir: PathBuf,
     pub image_cache: Option<ImageCache>,
+    pub ignore_source_files: Vec<String>,
 
     mounts: HashMap<String, String>,
     commands: Vec<String>,
@@ -24,12 +25,13 @@ pub struct Deb {
 }
 
 impl Deb {
-    pub fn new(distro: Distro, source_dir: PathBuf, job_variables: JobVariables, distro_build_dir: PathBuf, image_cache: Option<ImageCache>) -> Self {
+    pub fn new(distro: Distro, source_dir: PathBuf, job_variables: JobVariables, distro_build_dir: PathBuf, image_cache: Option<ImageCache>, ignore_source_files: Vec<String>) -> Self {
         Self {
             distro,
             source_dir,
             job_variables,
             image_cache,
+            ignore_source_files,
             distro_build_dir: distro_build_dir.clone(),
             mounts: HashMap::new(),
             commands: Vec::new(),
@@ -133,8 +135,9 @@ impl Package for Deb {
                 self.commands.push(bbs);
             }
         }
+        let rsync_excludes: String = self.ignore_source_files.iter().map(|p| format!(" --exclude='{p}'")).collect();
         self.commands.extend([
-            "cp -R /source/. /output/build/".to_string(),
+            format!("rsync -a{rsync_excludes} /source/ /output/build/"),
             "cd /output/build".to_string(),
             "DEB_BUILD_OPTIONS=noddebs dpkg-buildpackage -b -tc".to_string(),
         ]);
@@ -251,11 +254,15 @@ mod tests {
     }
 
     fn make_deb(dir: &tempfile::TempDir) -> Deb {
+        make_deb_with_ignores(dir, vec![])
+    }
+
+    fn make_deb_with_ignores(dir: &tempfile::TempDir, ignore_source_files: Vec<String>) -> Deb {
         let source_dir = dir.path().join("source");
         let build_dir = dir.path().join("build");
         std::fs::create_dir_all(&source_dir).unwrap();
         std::fs::create_dir_all(&build_dir).unwrap();
-        Deb::new(make_distro(), source_dir, make_job_variables(), build_dir, None)
+        Deb::new(make_distro(), source_dir, make_job_variables(), build_dir, None, ignore_source_files)
     }
 
     fn make_debian_templates(dir: &tempfile::TempDir) -> String {
@@ -405,7 +412,7 @@ mod tests {
         let commands = deb.commands();
         assert!(!commands.is_empty());
         assert!(commands.iter().any(|c| c.contains("dpkg-buildpackage")));
-        assert!(commands.iter().any(|c| c.contains("cp -R /source")));
+        assert!(commands.iter().any(|c| c.contains("rsync") && c.contains("/source/ /output/build/")));
     }
 
     #[test]
@@ -451,6 +458,32 @@ mod tests {
         config.deb = None;
 
         assert!(deb.setup_build(config).is_err());
+    }
+
+    #[test]
+    fn test_setup_build_passes_ignore_source_files_to_rsync() {
+        let dir = tempfile::tempdir().unwrap();
+        let ignores = vec![".git".to_string(), "node_modules".to_string(), "*.log".to_string()];
+        let mut deb = make_deb_with_ignores(&dir, ignores);
+
+        deb.setup_build(make_build_config(&dir)).unwrap();
+
+        let rsync_cmd = deb.commands().into_iter().find(|c| c.starts_with("rsync ")).expect("rsync command not found");
+        assert!(rsync_cmd.contains("--exclude='.git'"));
+        assert!(rsync_cmd.contains("--exclude='node_modules'"));
+        assert!(rsync_cmd.contains("--exclude='*.log'"));
+        assert!(rsync_cmd.contains("/source/ /output/build/"));
+    }
+
+    #[test]
+    fn test_setup_build_no_excludes_when_ignore_source_files_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut deb = make_deb(&dir);
+
+        deb.setup_build(make_build_config(&dir)).unwrap();
+
+        let rsync_cmd = deb.commands().into_iter().find(|c| c.starts_with("rsync ")).expect("rsync command not found");
+        assert!(!rsync_cmd.contains("--exclude"));
     }
 
     #[test]

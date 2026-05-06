@@ -12,6 +12,10 @@ override_dh_auto_build:
 	cargo install tauri-cli --version '^2.0.0'
 	cargo tauri build --no-bundle
 
+override_dh_auto_clean:
+	cargo clean --manifest-path src-tauri/Cargo.toml
+	dh_auto_clean
+
 override_dh_auto_install:
 	install -d -m755 $(DESTROOT)/usr/bin/
 	install -m755 src-tauri/target/release/{{ package_name }} $(DESTROOT)/usr/bin/{{ package_name }}
