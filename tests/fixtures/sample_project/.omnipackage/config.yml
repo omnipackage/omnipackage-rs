@@ -49,12 +49,26 @@ repositories:
       force_path_style: true
       cloudflare_zone_id: "${CLOUDFLARE_ZONE_ID}"
       cloudflare_api_token: "${CLOUDFLARE_API_TOKEN}"
+
   - name: Local test
     <<: *common
     gpg_private_key_base64: "${GPG_PRIVATE_KEY_BASE64}"
     provider: localfs
     localfs:
       path: /tmp/omnipackage-repos
+
+  - name: AWS S3 test repo
+    provider: s3
+    gpg_private_key_base64: "${GPG_PRIVATE_KEY_BASE64}"
+    <<: *common
+    s3:
+      bucket: "${AWS_BUCKET}"
+      path_in_bucket: "sample-project"
+      bucket_public_url: "https://${AWS_BUCKET}.s3.eu-central-1.amazonaws.com"
+      endpoint: "https://s3.eu-central-1.amazonaws.com"
+      access_key_id: "${AWS_ACCESS_KEY_ID}"
+      secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
+      region: eu-central-1
 
 rpm: &rpm
   <<: *common
