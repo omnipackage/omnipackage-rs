@@ -1,14 +1,42 @@
 use crate::config::S3Config;
 use anyhow::{Context, Result};
 use aws_sdk_s3::config::{BehaviorVersion, Credentials, Region};
+use aws_sdk_s3::error::SdkError;
 use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::{Client, Config};
 use std::path::Path;
+use std::sync::OnceLock;
+
+mod probe;
 
 pub struct S3 {
     client: Client,
     bucket: String,
     path: String,
+    supports_if_match: OnceLock<bool>,
+}
+
+#[derive(Debug)]
+pub enum UploadError {
+    PreconditionFailed,
+    Other(anyhow::Error),
+}
+
+impl std::fmt::Display for UploadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UploadError::PreconditionFailed => write!(f, "S3 precondition failed (412)"),
+            UploadError::Other(e) => write!(f, "{}", e),
+        }
+    }
+}
+
+impl std::error::Error for UploadError {}
+
+impl From<anyhow::Error> for UploadError {
+    fn from(e: anyhow::Error) -> Self {
+        UploadError::Other(e)
+    }
 }
 
 fn block<F: std::future::Future>(f: F) -> F::Output {
@@ -37,7 +65,16 @@ impl S3 {
             client: build_client(config),
             bucket: config.bucket.clone(),
             path: path.into(),
+            supports_if_match: OnceLock::new(),
         }
+    }
+
+    pub fn supports_if_match(&self) -> bool {
+        if let Some(v) = self.supports_if_match.get() {
+            return *v;
+        }
+        let detected = block(probe::detect(&self.client, &self.bucket, &self.path));
+        *self.supports_if_match.get_or_init(|| detected)
     }
 
     pub fn bucket_exists(&self) -> Result<bool, anyhow::Error> {
@@ -171,6 +208,57 @@ impl S3 {
         })
     }
 
+    pub fn download_file_with_etag(&self, key: &str) -> Result<(Vec<u8>, Option<String>), anyhow::Error> {
+        block(async {
+            let full_key = format!("{}/{}", self.path.trim_end_matches('/'), key.trim_start_matches('/'));
+
+            let response = match self.client.get_object().bucket(&self.bucket).key(&full_key).send().await {
+                Ok(r) => r,
+                Err(e) => {
+                    if matches!(http_status_from_get_err(&e), Some(404)) {
+                        return Ok((vec![], None));
+                    }
+                    let svc = e.into_service_error();
+                    if svc.is_no_such_key() {
+                        return Ok((vec![], None));
+                    }
+                    return Err(anyhow::anyhow!("cannot download {}: {}", full_key, svc));
+                }
+            };
+
+            let etag = response.e_tag().map(|s| s.to_string());
+            let bytes = response.body.collect().await.with_context(|| format!("cannot read body of {}", full_key))?.into_bytes().to_vec();
+            Ok((bytes, etag))
+        })
+    }
+
+    pub fn upload_file_if_match(&self, key: &str, data: Vec<u8>, content_type: Option<&str>, etag: Option<String>) -> Result<(), UploadError> {
+        block(async {
+            let full_key = format!("{}/{}", self.path.trim_end_matches('/'), key.trim_start_matches('/'));
+
+            let body = ByteStream::from(data);
+            let mut req = self.client.put_object().bucket(&self.bucket).key(&full_key).body(body);
+            if let Some(ct) = content_type {
+                req = req.content_type(ct);
+            }
+            req = match &etag {
+                Some(e) => req.if_match(e.clone()),
+                None => req.if_none_match("*"),
+            };
+
+            match req.send().await {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    if matches!(http_status_from_put_err(&e), Some(412)) {
+                        Err(UploadError::PreconditionFailed)
+                    } else {
+                        Err(UploadError::Other(anyhow::anyhow!("cannot upload {}: {}", full_key, e)))
+                    }
+                }
+            }
+        })
+    }
+
     async fn list_objects(&self) -> Result<Vec<String>, anyhow::Error> {
         let mut keys = vec![];
         let mut continuation_token: Option<String> = None;
@@ -199,4 +287,18 @@ impl S3 {
 
         Ok(keys)
     }
+}
+
+fn http_status_from_put_err(e: &SdkError<aws_sdk_s3::operation::put_object::PutObjectError>) -> Option<u16> {
+    if let SdkError::ServiceError(svc) = e {
+        return Some(svc.raw().status().as_u16());
+    }
+    None
+}
+
+fn http_status_from_get_err(e: &SdkError<aws_sdk_s3::operation::get_object::GetObjectError>) -> Option<u16> {
+    if let SdkError::ServiceError(svc) = e {
+        return Some(svc.raw().status().as_u16());
+    }
+    None
 }
