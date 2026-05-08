@@ -35,7 +35,6 @@ common: &common
 #   "*.ext"  basename glob, matches at any depth
 ignore_source_files:
   - .git
-  - .env
   - .DS_Store
   - "*.log"
   - "*.o"
