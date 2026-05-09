@@ -37,16 +37,16 @@ impl Publish {
         Logger::new().info(format!("starting repository publish for {}", self.package.distro().id));
 
         if let Err(e) = self.sync_repo_files() {
-            Logger::new().error(format!("failed publish for {} ({})", self.package.distro().id, e));
+            Logger::new().error(format!("failed publish for {} ({:#})", self.package.distro().id, e));
             return Err(e);
         }
 
         if let Err(e) = self.purge_cache() {
-            Logger::new().warn(format!("cannot purge cache: {}", e));
+            Logger::new().warn(format!("cannot purge cache: {:#}", e));
         }
 
         let res = self.update_install_page().map_err(|e| {
-            Logger::new().error(format!("failed deploy install page for {} ({})", self.package.distro().id, e));
+            Logger::new().error(format!("failed deploy install page for {} ({:#})", self.package.distro().id, e));
             e
         })?;
 

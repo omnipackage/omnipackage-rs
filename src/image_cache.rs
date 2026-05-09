@@ -22,7 +22,7 @@ pub fn refresh(args: PrimeArgs) -> Result<(), anyhow::Error> {
         let started_at = Instant::now();
         let res = refresh_distro(args.clone(), build_config.clone(), ic.clone());
         if let Err(ref e) = res {
-            Logger::new().error(format!("image cache refresh error: {}", e));
+            Logger::new().error(format!("image cache refresh error: {:#}", e));
         } else {
             Logger::new().info(format!("finished image cache refresh for {} in {:.1}s", build_config.distro, started_at.elapsed().as_secs_f32()));
         }

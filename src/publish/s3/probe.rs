@@ -1,6 +1,6 @@
 use crate::logger::Logger;
 use aws_sdk_s3::Client;
-use aws_sdk_s3::error::SdkError;
+use aws_sdk_s3::error::{DisplayErrorContext, SdkError};
 use aws_sdk_s3::primitives::ByteStream;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -16,7 +16,7 @@ pub(super) async fn detect(client: &Client, bucket: &str, path: &str) -> bool {
     let probe_key = full_key(path, &probe_object_name());
 
     if let Err(e) = client.put_object().bucket(bucket).key(&probe_key).body(ByteStream::from_static(b"probe")).send().await {
-        Logger::new().warn(format!("If-Match probe step 1 failed: {}; assuming unsupported", e));
+        Logger::new().warn(format!("If-Match probe step 1 failed: {}; assuming unsupported", DisplayErrorContext(&e)));
         return false;
     }
 
@@ -35,7 +35,7 @@ pub(super) async fn detect(client: &Client, bucket: &str, path: &str) -> bool {
     };
 
     if let Err(e) = client.delete_object().bucket(bucket).key(&probe_key).send().await {
-        Logger::new().warn(format!("If-Match probe cleanup of {} failed: {}", probe_key, e));
+        Logger::new().warn(format!("If-Match probe cleanup of {} failed: {}", probe_key, DisplayErrorContext(&e)));
     }
 
     supported
@@ -66,7 +66,7 @@ async fn sweep_orphans(client: &Client, bucket: &str, path: &str) {
         let response = match req.send().await {
             Ok(r) => r,
             Err(e) => {
-                Logger::new().warn(format!("If-Match probe orphan sweep list failed: {}", e));
+                Logger::new().warn(format!("If-Match probe orphan sweep list failed: {}", DisplayErrorContext(&e)));
                 return;
             }
         };
@@ -78,7 +78,7 @@ async fn sweep_orphans(client: &Client, bucket: &str, path: &str) {
                 continue;
             }
             if let Err(e) = client.delete_object().bucket(bucket).key(key).send().await {
-                Logger::new().warn(format!("If-Match probe orphan sweep delete of {} failed: {}", key, e));
+                Logger::new().warn(format!("If-Match probe orphan sweep delete of {} failed: {}", key, DisplayErrorContext(&e)));
             }
         }
 

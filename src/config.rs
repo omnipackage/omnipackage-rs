@@ -371,7 +371,7 @@ mod tests {
         assert_eq!(simple_rpm.package_name, "sample-project");
         assert_eq!(simple_rpm.homepage, "https://omnipackage.org/");
 
-        assert_eq!(config.repositories.len(), 2);
+        assert_eq!(config.repositories.len(), 4);
 
         let s3 = &config.repositories[0];
         assert_eq!(s3.name, "test repo on Cloudflare R2");

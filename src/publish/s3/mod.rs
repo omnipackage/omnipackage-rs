@@ -1,7 +1,7 @@
 use crate::config::S3Config;
 use anyhow::{Context, Result};
-use aws_sdk_s3::config::{BehaviorVersion, Credentials, Region};
-use aws_sdk_s3::error::SdkError;
+use aws_sdk_s3::config::{BehaviorVersion, Credentials, Region, RequestChecksumCalculation, ResponseChecksumValidation};
+use aws_sdk_s3::error::{DisplayErrorContext, SdkError};
 use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::{Client, Config};
 use std::path::Path;
@@ -26,7 +26,7 @@ impl std::fmt::Display for UploadError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             UploadError::PreconditionFailed => write!(f, "S3 precondition failed (412)"),
-            UploadError::Other(e) => write!(f, "{}", e),
+            UploadError::Other(e) => write!(f, "{:#}", e),
         }
     }
 }
@@ -53,6 +53,8 @@ fn build_client(config: &S3Config) -> Client {
         .credentials_provider(credentials)
         .region(Region::new(config.region.as_deref().unwrap_or("auto").to_string()))
         .force_path_style(config.force_path_style)
+        .request_checksum_calculation(RequestChecksumCalculation::WhenRequired)
+        .response_checksum_validation(ResponseChecksumValidation::WhenRequired)
         .behavior_version(BehaviorVersion::latest())
         .build();
 
@@ -86,7 +88,7 @@ impl S3 {
                     if ee.is_not_found() {
                         Ok(false)
                     } else {
-                        Err(anyhow::anyhow!("error checking bucket '{}': {}", self.bucket, ee))
+                        Err(anyhow::anyhow!("error checking bucket '{}': {}", self.bucket, DisplayErrorContext(&ee)))
                     }
                 }
             }
@@ -252,7 +254,7 @@ impl S3 {
                     if matches!(http_status_from_put_err(&e), Some(412)) {
                         Err(UploadError::PreconditionFailed)
                     } else {
-                        Err(UploadError::Other(anyhow::anyhow!("cannot upload {}: {}", full_key, e)))
+                        Err(UploadError::Other(anyhow::anyhow!("cannot upload {}: {}", full_key, DisplayErrorContext(&e))))
                     }
                 }
             }

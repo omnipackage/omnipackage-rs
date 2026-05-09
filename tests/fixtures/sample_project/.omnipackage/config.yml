@@ -70,6 +70,20 @@ repositories:
       secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
       region: eu-central-1
 
+  - name: GCS test europe-southwest1
+    provider: s3
+    gpg_private_key_base64: "${GPG_PRIVATE_KEY_BASE64}"
+    package_name: "sample-project"
+    s3:
+      bucket: omnipackage-repos
+      path_in_bucket: "sample-project"
+      bucket_public_url: "https://storage.googleapis.com/omnipackage-repos"
+      endpoint: "https://storage.googleapis.com"
+      access_key_id: "${GCS_HMAC_ACCESS_KEY_ID}"
+      secret_access_key: "${GCS_HMAC_SECRET_ACCESS_KEY}"
+      region: europe-southwest1
+      force_path_style: true
+
 rpm: &rpm
   <<: *common
   build_dependencies: ["gcc", "make"]
