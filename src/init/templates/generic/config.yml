@@ -49,6 +49,7 @@ common: &common
 # Add language-specific build artefacts (e.g. "/target", "node_modules") as needed.
 ignore_source_files:
   - .git
+  - .env
   - .DS_Store
   - "*.log"
 
