@@ -186,4 +186,3 @@ builds:
 
 ignore_source_files:
   - .git
-  - .env
