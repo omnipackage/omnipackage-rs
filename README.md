@@ -2,7 +2,7 @@
 
 # OmniPackage
 
-Build and distribute RPM & DEB packages easily.
+Build and distribute RPM & DEB packages [easily](https://omnipackage.org/about).
 
 # Installation
 
