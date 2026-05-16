@@ -83,13 +83,29 @@ fn upsert_repository(repositories: &mut Repositories, data: Repository) {
     }
 }
 
+fn char_width_11(c: char) -> f64 {
+    match c {
+        ' ' => 4.0,
+        'i' | 'l' | 'I' | '.' | ',' | ':' | ';' | '|' | '!' | '\'' | '`' => 3.8,
+        'f' | 'j' | 't' | 'r' => 4.8,
+        'm' => 10.0,
+        'w' => 9.0,
+        'M' => 10.5,
+        'W' => 11.5,
+        c if c.is_ascii_digit() => 7.2,
+        c if c.is_ascii_lowercase() => 6.8,
+        c if c.is_ascii_uppercase() => 8.4,
+        _ => 7.3,
+    }
+}
+
 fn measure_text_width(text: &str) -> f64 {
-    text.len() as f64 * 7.5
+    text.chars().map(char_width_11).sum()
 }
 
 pub fn badge_vars(title: String, aux: String) -> HashMap<String, Var> {
-    let left_w = (34.78 + measure_text_width(&title)).ceil() as u32;
-    let right_w = (18.0 + measure_text_width(&aux)).ceil() as u32;
+    let left_w = (25.4 + measure_text_width(&title)).ceil() as u32;
+    let right_w = (14.0 + measure_text_width(&aux)).ceil() as u32;
     let total_w = left_w + right_w;
     let aux_cx = left_w as f64 + right_w as f64 / 2.0;
 
