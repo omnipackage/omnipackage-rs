@@ -55,15 +55,6 @@ impl Rpm {
         Ok(std::fs::write(repo_dir.join(format!("{}.repo", project_slug)), content)?)
     }
 
-    fn write_rpmmacros(&self, home_dir: &Path, gpg_key_id: &str) -> Result<(), anyhow::Error> {
-        let content = format!(
-            "%_signature gpg\n\
-             %_gpg_name {gpg_key_id}\n"
-        );
-
-        Ok(std::fs::write(home_dir.join(".rpmmacros"), content)?)
-    }
-
     fn output_path(&self) -> PathBuf {
         self.distro_build_dir()
     }
@@ -117,9 +108,8 @@ impl Package for Rpm {
         let (home_dir, repo_dir) = self.prepare_repository(&gpgkey)?;
 
         let key_id = Gpg::new().key_id(&gpgkey.priv_key)?;
-        self.write_rpmmacros(&home_dir, &key_id)?;
 
-        self.mounts.insert(home_dir.to_string_lossy().to_string(), "/root".to_string());
+        self.mounts.insert(home_dir.to_string_lossy().to_string(), "/omnipackage".to_string());
         self.mounts.insert(repo_dir.to_string_lossy().to_string(), "/repo".to_string());
         self.mounts.insert(self.output_path().to_string_lossy().to_string(), "/root/rpmbuild".to_string());
 
@@ -131,7 +121,7 @@ impl Package for Rpm {
             "cd /repo".to_string(),
             "cp /root/rpmbuild/RPMS/**/*.rpm /repo/".to_string(),
             "rpm --import public.key".to_string(),
-            "rpm --addsign *.rpm".to_string(),
+            format!("rpm --define '_signature gpg' --define '_gpg_name {key_id}' --addsign *.rpm"),
             "createrepo --retain-old-md=0 --compatibility .".to_string(),
             "gpg --no-tty --batch --detach-sign --armor --verbose --yes --always-trust repodata/repomd.xml".to_string(),
             "mv public.key repodata/repomd.xml.key".to_string(),
@@ -475,7 +465,7 @@ mod tests {
         rpm.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
 
         let mounts = rpm.mounts();
-        assert!(mounts.values().any(|v| v == "/root"));
+        assert!(mounts.values().any(|v| v == "/omnipackage"));
         assert!(mounts.values().any(|v| v == "/repo"));
     }
 
@@ -575,19 +565,5 @@ mod tests {
         assert!(content.contains("gpgcheck=1"));
         assert!(content.contains("enabled=1"));
         assert!(content.contains("type=rpm-md"));
-    }
-
-    // ── write_rpmmacros() ────────────────────────────────────────────────────
-
-    #[test]
-    fn test_write_rpmmacros_content() {
-        let dir = tempfile::tempdir().unwrap();
-        let rpm = make_rpm(&dir);
-
-        rpm.write_rpmmacros(dir.path(), "ABCD1234").unwrap();
-
-        let content = std::fs::read_to_string(dir.path().join(".rpmmacros")).unwrap();
-        assert!(content.contains("%_signature gpg"));
-        assert!(content.contains("%_gpg_name ABCD1234"));
     }
 }

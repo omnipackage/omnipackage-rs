@@ -154,7 +154,7 @@ impl Package for Deb {
 
         self.write_releases_script(&home_dir)?;
 
-        self.mounts.insert(home_dir.to_string_lossy().to_string(), "/root".to_string());
+        self.mounts.insert(home_dir.to_string_lossy().to_string(), "/omnipackage".to_string());
         self.mounts.insert(repo_dir.to_string_lossy().to_string(), "/repo".to_string());
         self.mounts.insert(self.output_path().to_string_lossy().to_string(), "/output/".to_string());
 
@@ -165,13 +165,13 @@ impl Package for Deb {
         self.commands.extend([
             "cd /repo".to_string(),
             "cp /output/*.deb /repo/".to_string(),
-            "chmod +x /root/generate_releases_script.sh".to_string(),
+            "chmod +x /omnipackage/generate_releases_script.sh".to_string(),
             "mkdir -p stable".to_string(),
             "mv *.deb stable/".to_string(),
             "dpkg-scanpackages stable/ > stable/Packages".to_string(),
             "cat stable/Packages | gzip -1 > stable/Packages.gz".to_string(),
             "cd stable/".to_string(),
-            "/root/generate_releases_script.sh > Release".to_string(),
+            "/omnipackage/generate_releases_script.sh > Release".to_string(),
             "gpg --no-tty --batch --yes --armor --detach-sign -o Release.gpg Release".to_string(),
             "gpg --no-tty --batch --yes --armor --detach-sign --clearsign -o InRelease Release".to_string(),
             "mv ../public.key Release.key".to_string(),
@@ -540,7 +540,7 @@ mod tests {
         deb.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
 
         let mounts = deb.mounts();
-        assert!(mounts.values().any(|v| v == "/root"));
+        assert!(mounts.values().any(|v| v == "/omnipackage"));
         assert!(mounts.values().any(|v| v == "/repo"));
         assert!(mounts.values().any(|v| v == "/output/"));
     }
