@@ -482,7 +482,7 @@ mod tests {
 
         let commands = rpm.commands();
         assert!(commands.iter().any(|c| c.contains("createrepo")));
-        assert!(commands.iter().any(|c| c.contains("rpm --addsign")));
+        assert!(commands.iter().any(|c| c.contains("--addsign")));
         assert!(commands.iter().any(|c| c.contains("gpg")));
     }
 

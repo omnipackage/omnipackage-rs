@@ -93,7 +93,7 @@ Label: Example
 Suite: stable
 Codename: stable
 Version: 1.0
-Architectures: amd64
+Architectures: $(dpkg --print-architecture)
 Components: main
 Description: Omnipackage repository
 Date: $(date -Ru)
@@ -639,7 +639,7 @@ mod tests {
         assert!(content.contains("MD5Sum"));
         assert!(content.contains("SHA1"));
         assert!(content.contains("do_hash"));
-        assert!(content.contains("Architectures: amd64"));
+        assert!(content.contains("Architectures: $(dpkg --print-architecture)"));
     }
 
     // ── render_templates() ───────────────────────────────────────────────────
