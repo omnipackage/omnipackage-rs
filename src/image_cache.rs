@@ -71,33 +71,16 @@ fn refresh_distro(args: PrimeArgs, build_config: Build, image_cache_config: Imag
     commands.extend(distro.setup(&build_config.build_dependencies));
     commands.extend(distro.setup_repo.clone());
 
-    let mut has_bbs_file = false;
     if let Some(bbs) = build_config.before_build_script {
-        let bbs_path = args.project.source_dir.join(&bbs);
-        if bbs_path.exists() {
-            has_bbs_file = true;
-            std::fs::copy(&bbs_path, temp_dir.join("before_build_script"))?;
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::PermissionsExt;
-                let dest = temp_dir.join("before_build_script");
-                std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o755))?;
-            }
-            commands.push("/before_build_script".to_string());
+        if args.project.source_dir.join(&bbs).exists() {
+            commands.push(format!("/source/{}", bbs));
         } else {
-            commands.push(bbs.to_string());
-        };
+            commands.push(bbs);
+        }
     }
     commands.extend(distro.cleanup.clone());
 
-    let mut runcmd = String::new();
-    if has_bbs_file {
-        runcmd.push_str("--mount=type=bind,source=before_build_script,target=/before_build_script ");
-    }
-    runcmd.push_str("bash -c '");
-    runcmd.push_str(&commands.join(" && "));
-    #[allow(clippy::single_char_add_str)]
-    runcmd.push_str("'");
+    let runcmd = format!("--mount=type=bind,from=src,target=/source,readonly bash -c '{}'", commands.join(" && "));
 
     let dockerfile = format!(
         "FROM {base_image}\n\
@@ -106,7 +89,15 @@ fn refresh_distro(args: PrimeArgs, build_config: Build, image_cache_config: Imag
     std::fs::write(temp_dir.join("Dockerfile"), &dockerfile)?;
 
     let output_image = image_cache_config.full_image_name(&distro.id);
-    let cliargs = vec!["build".to_string(), "-t".to_string(), output_image.clone(), ".".to_string()]; // "--no-cache".to_string()
+    let source_dir_abs = std::fs::canonicalize(&args.project.source_dir).with_context(|| format!("cannot resolve source dir {}", args.project.source_dir.display()))?;
+    let cliargs = vec![
+        "build".to_string(),
+        "--build-context".to_string(),
+        format!("src={}", source_dir_abs.display()),
+        "-t".to_string(),
+        output_image.clone(),
+        ".".to_string(),
+    ];
 
     Command::container(cliargs).stream_output_to(args.logging.container_logger()).current_dir(temp_dir.clone()).run()?;
 
