@@ -24,7 +24,6 @@ pub struct Distro {
     pub id: String,
     pub name: String,
     pub image: String,
-    pub arch: String,
     pub package_type: PackageType,
     #[serde(default)]
     pub setup: Vec<String>,
@@ -131,7 +130,6 @@ mod tests {
 
         assert_eq!(opensuse.image, "opensuse/leap:15.6");
         assert_eq!(opensuse.package_type, PackageType::Rpm);
-        assert_eq!(opensuse.arch, "x86_64");
         assert!(!opensuse.setup.is_empty());
         assert!(!opensuse.setup_repo.is_empty());
         assert!(!opensuse.install_steps.is_empty());
@@ -192,7 +190,6 @@ mod tests {
             id: "test".to_string(),
             name: "Test".to_string(),
             image: "test:latest".to_string(),
-            arch: "x86_64".to_string(),
             package_type: PackageType::Rpm,
             setup,
             setup_repo: vec![],
