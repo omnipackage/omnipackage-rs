@@ -227,6 +227,26 @@ printf "Elapsed: %dm %ds\n" $((ELAPSED / 60)) $((ELAPSED % 60))
 echo "Passed: ${#PASS[@]}"
 echo "Failed: ${#FAIL[@]}"
 
+# When running under GitHub Actions, also append a markdown summary to the
+# job's Summary tab. Gated on $GITHUB_STEP_SUMMARY so local runs are unaffected.
+# Must precede the `exit 1` below so it fires on failure too.
+if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+    {
+        printf '### E2E — `%s`\n\n' "$DISTROS"
+        printf '| Type | Result |\n|------|--------|\n'
+        for entry in ${PASS[@]+"${PASS[@]}"}; do
+            printf '| %s | ✅ |\n' "${entry%%/*}"
+        done
+        for entry in ${FAIL[@]+"${FAIL[@]}"}; do
+            # entry: type/distro:reason  or  type:reason
+            left="${entry%%:*}"
+            reason="${entry#*:}"
+            printf '| %s | ❌ %s |\n' "${left%%/*}" "$reason"
+        done
+        printf '\n**Passed:** %d &nbsp;&nbsp; **Failed:** %d\n' "${#PASS[@]}" "${#FAIL[@]}"
+    } >> "$GITHUB_STEP_SUMMARY"
+fi
+
 if [ ${#FAIL[@]} -gt 0 ]; then
     printf '  - %s\n' "${FAIL[@]}"
     echo
