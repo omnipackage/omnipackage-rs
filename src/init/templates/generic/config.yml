@@ -78,7 +78,7 @@ repositories:
 # Add the distro packages your build needs (compilers, libraries, etc.).
 rpm: &rpm
   <<: *common
-  build_dependencies: ["gcc", "make", "gpg"]
+  build_dependencies: ["gcc", "make"]
   rpm:
     spec_template: ".omnipackage/specfile.spec.liquid"
 

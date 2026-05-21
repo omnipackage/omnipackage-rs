@@ -226,7 +226,7 @@ builds:
     <<: *rpm
 
   - distro: "rockylinux_10"
-    build_dependencies: ["curl", "gcc", "make", "gpg"]
+    build_dependencies: ["curl", "gcc", "make"]
     before_build_script: ".omnipackage/install_rust.sh"
     <<: *rpm
 

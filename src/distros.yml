@@ -248,18 +248,20 @@ distros:
 
   - id: "rockylinux_8"
     name: "Rocky Linux 8"
-    image: "rockylinux:8"
+    image: "rockylinux/rockylinux:8"
     <<: *redhat
-    image_info_url: "https://hub.docker.com/_/rockylinux"
+    image_info_url: "https://hub.docker.com/r/rockylinux/rockylinux"
 
   - id: "rockylinux_9"
     name: "Rocky Linux 9"
-    image: "rockylinux:9"
+    image: "rockylinux/rockylinux:9"
     <<: *redhat
-    image_info_url: "https://hub.docker.com/_/rockylinux"
+    image_info_url: "https://hub.docker.com/r/rockylinux/rockylinux"
 
   - id: "rockylinux_10"
     name: "Rocky Linux 10"
-    image: "rockylinux:10"
+    image: "rockylinux/rockylinux:10"
     <<: *redhat
-    image_info_url: "https://hub.docker.com/_/rockylinux"
+    setup_repo:
+      - "dnf install -y --allowerasing createrepo rpm-sign gpg"
+    image_info_url: "https://hub.docker.com/r/rockylinux/rockylinux"

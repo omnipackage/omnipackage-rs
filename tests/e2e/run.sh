@@ -58,7 +58,7 @@ distro_image() {
         debian_13)              echo "debian:trixie" ;;
         ubuntu_24.04)           echo "ubuntu:24.04" ;;
         almalinux_10)           echo "almalinux:10" ;;
-        rockylinux_9)           echo "rockylinux:9" ;;
+        rockylinux_9)           echo "rockylinux/rockylinux:9" ;;
         mageia_9)               echo "mageia:9" ;;
         *) echo "unknown distro: $1" >&2; exit 1 ;;
     esac

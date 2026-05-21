@@ -60,7 +60,7 @@ repositories:
 # too old for current modules.
 rpm: &rpm
   <<: *common
-  build_dependencies: ["curl", "gpg"]
+  build_dependencies: ["curl"]
   before_build_script: ".omnipackage/install_go.sh"
   rpm:
     spec_template: ".omnipackage/specfile.spec.liquid"

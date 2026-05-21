@@ -61,7 +61,7 @@ repositories:
 
 rpm: &rpm
   <<: *common
-  build_dependencies: ["ruby-devel", "gpg"]
+  build_dependencies: ["ruby-devel"]
   runtime_dependencies: ["ruby"]
   rpm:
     spec_template: ".omnipackage/specfile.spec.liquid"
@@ -140,9 +140,9 @@ builds:
     <<: *rpm
   - distro: "mageia_9"
     <<: *rpm
-    build_dependencies: ["ruby-bundler", "ruby-devel", "gpg"]
+    build_dependencies: ["ruby-bundler", "ruby-devel"]
     runtime_dependencies: ["ruby", "ruby-bundler"]
   - distro: "mageia_cauldron"
     <<: *rpm
-    build_dependencies: ["ruby-bundler", "ruby-devel", "gpg"]
+    build_dependencies: ["ruby-bundler", "ruby-devel"]
     runtime_dependencies: ["ruby", "ruby-bundler"]

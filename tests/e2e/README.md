@@ -65,7 +65,7 @@ TYPES=python DISTROS=debian_13 VERBOSE=1 bash tests/e2e/run.sh
 | Debian     | `debian_13`            | `debian:trixie`      |
 | Ubuntu     | `ubuntu_24.04`         | `ubuntu:24.04`       |
 | AlmaLinux  | `almalinux_10`         | `almalinux:10`       |
-| Rocky      | `rockylinux_9`         | `rockylinux:9`       |
+| Rocky      | `rockylinux_9`         | `rockylinux/rockylinux:9` |
 | Mageia     | `mageia_9`             | `mageia:9`           |
 
 ## What it does NOT cover

@@ -68,7 +68,7 @@ repositories:
 # Common: qt6-base-devel, boost-devel, openssl-devel.
 rpm: &rpm
   <<: *common
-  build_dependencies: ["cmake", "gcc-c++", "make", "gpg"]
+  build_dependencies: ["cmake", "gcc-c++", "make"]
   rpm:
     spec_template: ".omnipackage/specfile.spec.liquid"
 

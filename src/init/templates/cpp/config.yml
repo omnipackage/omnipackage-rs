@@ -65,7 +65,7 @@ repositories:
 # distros; add boost-devel, qt6-devel, or whatever your project links against.
 rpm: &rpm
   <<: *common
-  build_dependencies: ["gcc-c++", "make", "gpg"]
+  build_dependencies: ["gcc-c++", "make"]
   rpm:
     spec_template: ".omnipackage/specfile.spec.liquid"
 
