@@ -71,7 +71,7 @@ repositories:
 # binary needs shared libraries at runtime.
 rpm: &rpm
   <<: *common
-  build_dependencies: ["gcc", "make"]
+  build_dependencies: ["gcc", "make", "gpg"]
   rpm:
     spec_template: ".omnipackage/specfile.spec.liquid"
 
@@ -144,6 +144,8 @@ builds:
   - distro: "rockylinux_8"
     <<: *rpm
   - distro: "rockylinux_9"
+    <<: *rpm
+  - distro: "rockylinux_10"
     <<: *rpm
   - distro: "mageia_9"
     <<: *rpm

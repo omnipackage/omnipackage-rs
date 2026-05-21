@@ -68,7 +68,7 @@ repositories:
 # Common: qt6-base-devel, boost-devel, openssl-devel.
 rpm: &rpm
   <<: *common
-  build_dependencies: ["cmake", "gcc-c++", "make"]
+  build_dependencies: ["cmake", "gcc-c++", "make", "gpg"]
   rpm:
     spec_template: ".omnipackage/specfile.spec.liquid"
 
@@ -137,6 +137,8 @@ builds:
   - distro: "rockylinux_8"
     <<: *rpm
   - distro: "rockylinux_9"
+    <<: *rpm
+  - distro: "rockylinux_10"
     <<: *rpm
   - distro: "mageia_9"
     <<: *rpm

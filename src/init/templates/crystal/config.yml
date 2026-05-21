@@ -62,7 +62,7 @@ rpm: &rpm
   <<: *common
   rpm:
     spec_template: ".omnipackage/specfile.spec.liquid"
-  build_dependencies: ["curl", "pcre-devel", "libevent-devel", "gcc"]
+  build_dependencies: ["curl", "pcre-devel", "libevent-devel", "gcc", "gpg"]
   before_build_script: ".omnipackage/install_crystal.sh"
 
 deb: &deb
@@ -85,7 +85,7 @@ builds:
     <<: *rpm
   - distro: "opensuse_tumbleweed"
     <<: *rpm
-    build_dependencies: ["curl", "pcre2-devel", "libevent-devel", "gcc"]
+    build_dependencies: ["curl", "pcre2-devel", "libevent-devel", "gcc", "gpg"]
   - distro: "fedora_38"
     <<: *rpm
   - distro: "fedora_39"
@@ -102,7 +102,7 @@ builds:
     <<: *rpm
   - distro: "fedora_rawhide"
     <<: *rpm
-    build_dependencies: ["curl", "pcre2-devel", "libevent-devel", "gcc"]
+    build_dependencies: ["curl", "pcre2-devel", "libevent-devel", "gcc", "gpg"]
   - distro: "debian_11"
     <<: *deb
   - distro: "debian_12"
@@ -129,11 +129,14 @@ builds:
     <<: *rpm
   - distro: "almalinux_10"
     <<: *rpm
-    build_dependencies: ["curl", "pcre2-devel", "libevent-devel", "gcc"]
+    build_dependencies: ["curl", "pcre2-devel", "libevent-devel", "gcc", "gpg"]
   - distro: "rockylinux_8"
     <<: *rpm
   - distro: "rockylinux_9"
     <<: *rpm
+  - distro: "rockylinux_10"
+    <<: *rpm
+    build_dependencies: ["curl", "pcre2-devel", "libevent-devel", "gcc", "gpg"]
   - distro: "mageia_9"
     <<: *rpm
   - distro: "mageia_cauldron"

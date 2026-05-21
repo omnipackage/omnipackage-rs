@@ -68,7 +68,7 @@ repositories:
 # (compiles a vendored CPython into /usr/lib/<pkg>/vendorpython).
 rpm: &rpm
   <<: *common
-  build_dependencies: ["python3-devel", "python3-pip"]
+  build_dependencies: ["python3-devel", "python3-pip", "gpg"]
   runtime_dependencies: ["python3"]
   rpm:
     spec_template: ".omnipackage/specfile.spec.liquid"
@@ -140,6 +140,8 @@ builds:
   - distro: "rockylinux_8"
     <<: *rpm
   - distro: "rockylinux_9"
+    <<: *rpm
+  - distro: "rockylinux_10"
     <<: *rpm
   - distro: "mageia_9"
     <<: *rpm

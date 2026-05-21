@@ -72,46 +72,46 @@ deb: &deb
 
 builds:
   - distro: "opensuse_15.3"
-    build_dependencies: ["rust", "cargo", "make"]
+    build_dependencies: ["rust", "cargo", "make", "gpg"]
     <<: *rpm
   - distro: "opensuse_15.4"
-    build_dependencies: ["rust", "cargo", "make"]
+    build_dependencies: ["rust", "cargo", "make", "gpg"]
     <<: *rpm
   - distro: "opensuse_15.5"
-    build_dependencies: ["rust", "cargo", "make"]
+    build_dependencies: ["rust", "cargo", "make", "gpg"]
     <<: *rpm
   - distro: "opensuse_15.6"
-    build_dependencies: ["rust", "cargo", "make"]
+    build_dependencies: ["rust", "cargo", "make", "gpg"]
     <<: *rpm
   - distro: "opensuse_16.0"
-    build_dependencies: ["rust", "cargo", "make"]
+    build_dependencies: ["rust", "cargo", "make", "gpg"]
     <<: *rpm
   - distro: "opensuse_tumbleweed"
-    build_dependencies: ["rust", "cargo", "make"]
+    build_dependencies: ["rust", "cargo", "make", "gpg"]
     <<: *rpm
   - distro: "fedora_38"
-    build_dependencies: ["rust", "cargo", "make"]
+    build_dependencies: ["rust", "cargo", "make", "gpg"]
     <<: *rpm
   - distro: "fedora_39"
-    build_dependencies: ["rust", "cargo", "make"]
+    build_dependencies: ["rust", "cargo", "make", "gpg"]
     <<: *rpm
   - distro: "fedora_40"
-    build_dependencies: ["rust", "cargo", "make"]
+    build_dependencies: ["rust", "cargo", "make", "gpg"]
     <<: *rpm
   - distro: "fedora_41"
-    build_dependencies: ["rust", "cargo", "make"]
+    build_dependencies: ["rust", "cargo", "make", "gpg"]
     <<: *rpm
   - distro: "fedora_42"
-    build_dependencies: ["rust", "cargo", "make"]
+    build_dependencies: ["rust", "cargo", "make", "gpg"]
     <<: *rpm
   - distro: "fedora_43"
-    build_dependencies: ["rust", "cargo", "make"]
+    build_dependencies: ["rust", "cargo", "make", "gpg"]
     <<: *rpm
   - distro: "fedora_44"
-    build_dependencies: ["rust", "cargo", "make"]
+    build_dependencies: ["rust", "cargo", "make", "gpg"]
     <<: *rpm
   - distro: "fedora_rawhide"
-    build_dependencies: ["rust", "cargo", "make"]
+    build_dependencies: ["rust", "cargo", "make", "gpg"]
     <<: *rpm
   - distro: "debian_11"
     build_dependencies: ["curl", "build-essential"]
@@ -154,30 +154,34 @@ builds:
     before_build_script: ".omnipackage/install_rust.sh"
     <<: *deb
   - distro: "almalinux_8"
-    build_dependencies: ["curl", "gcc", "make"]
+    build_dependencies: ["curl", "gcc", "make", "gpg"]
     before_build_script: ".omnipackage/install_rust.sh"
     <<: *rpm
   - distro: "almalinux_9"
-    build_dependencies: ["curl", "gcc", "make"]
+    build_dependencies: ["curl", "gcc", "make", "gpg"]
     before_build_script: ".omnipackage/install_rust.sh"
     <<: *rpm
   - distro: "almalinux_10"
-    build_dependencies: ["curl", "gcc", "make"]
+    build_dependencies: ["curl", "gcc", "make", "gpg"]
     before_build_script: ".omnipackage/install_rust.sh"
     <<: *rpm
   - distro: "rockylinux_8"
-    build_dependencies: ["curl", "gcc", "make"]
+    build_dependencies: ["curl", "gcc", "make", "gpg"]
     before_build_script: ".omnipackage/install_rust.sh"
     <<: *rpm
   - distro: "rockylinux_9"
-    build_dependencies: ["curl", "gcc", "make"]
+    build_dependencies: ["curl", "gcc", "make", "gpg"]
+    before_build_script: ".omnipackage/install_rust.sh"
+    <<: *rpm
+  - distro: "rockylinux_10"
+    build_dependencies: ["curl", "gcc", "make", "gpg"]
     before_build_script: ".omnipackage/install_rust.sh"
     <<: *rpm
   - distro: "mageia_9"
-    build_dependencies: ["curl", "gcc", "make"]
+    build_dependencies: ["curl", "gcc", "make", "gpg"]
     before_build_script: ".omnipackage/install_rust.sh"
     <<: *rpm
   - distro: "mageia_cauldron"
-    build_dependencies: ["curl", "gcc", "make"]
+    build_dependencies: ["curl", "gcc", "make", "gpg"]
     before_build_script: ".omnipackage/install_rust.sh"
     <<: *rpm

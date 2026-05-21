@@ -257,3 +257,9 @@ distros:
     image: "rockylinux:9"
     <<: *redhat
     image_info_url: "https://hub.docker.com/_/rockylinux"
+
+  - id: "rockylinux_10"
+    name: "Rocky Linux 10"
+    image: "rockylinux:10"
+    <<: *redhat
+    image_info_url: "https://hub.docker.com/_/rockylinux"

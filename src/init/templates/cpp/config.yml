@@ -65,7 +65,7 @@ repositories:
 # distros; add boost-devel, qt6-devel, or whatever your project links against.
 rpm: &rpm
   <<: *common
-  build_dependencies: ["gcc-c++", "make"]
+  build_dependencies: ["gcc-c++", "make", "gpg"]
   rpm:
     spec_template: ".omnipackage/specfile.spec.liquid"
 
@@ -134,6 +134,8 @@ builds:
   - distro: "rockylinux_8"
     <<: *rpm
   - distro: "rockylinux_9"
+    <<: *rpm
+  - distro: "rockylinux_10"
     <<: *rpm
   - distro: "mageia_9"
     <<: *rpm

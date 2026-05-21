@@ -60,7 +60,7 @@ repositories:
 # too old for current modules.
 rpm: &rpm
   <<: *common
-  build_dependencies: ["curl"]
+  build_dependencies: ["curl", "gpg"]
   before_build_script: ".omnipackage/install_go.sh"
   rpm:
     spec_template: ".omnipackage/specfile.spec.liquid"
@@ -130,6 +130,8 @@ builds:
   - distro: "rockylinux_8"
     <<: *rpm
   - distro: "rockylinux_9"
+    <<: *rpm
+  - distro: "rockylinux_10"
     <<: *rpm
   - distro: "mageia_9"
     <<: *rpm

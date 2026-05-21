@@ -78,7 +78,7 @@ repositories:
 # Add the distro packages your build needs (compilers, libraries, etc.).
 rpm: &rpm
   <<: *common
-  build_dependencies: ["gcc", "make"]
+  build_dependencies: ["gcc", "make", "gpg"]
   rpm:
     spec_template: ".omnipackage/specfile.spec.liquid"
 
@@ -112,4 +112,6 @@ builds:
   - distro: "almalinux_9"
     <<: *rpm
   - distro: "rockylinux_9"
+    <<: *rpm
+  - distro: "rockylinux_10"
     <<: *rpm
