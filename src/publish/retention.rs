@@ -59,7 +59,7 @@ fn prune_by_mtime(dir: &Path, ext: &str, keep: usize) -> Result<RetentionStats> 
         files.push((path, mtime));
     }
 
-    files.sort_by(|a, b| b.1.cmp(&a.1));
+    files.sort_by_key(|b| std::cmp::Reverse(b.1));
 
     let mut removed = 0;
     for (path, _) in files.iter().skip(keep) {
@@ -68,7 +68,11 @@ fn prune_by_mtime(dir: &Path, ext: &str, keep: usize) -> Result<RetentionStats> 
     }
 
     let retained_files: Vec<PathBuf> = files.into_iter().take(keep).map(|(p, _)| p).collect();
-    Ok(RetentionStats { kept: retained_files.len(), removed, retained_files })
+    Ok(RetentionStats {
+        kept: retained_files.len(),
+        removed,
+        retained_files,
+    })
 }
 
 #[cfg(test)]

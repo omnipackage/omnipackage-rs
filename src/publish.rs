@@ -35,7 +35,12 @@ struct InstallPageBadge {
 
 impl Publish {
     pub fn new(package: Box<dyn Package>, config: Repository, custom_install_page: Option<PathBuf>, skip_upload: HashSet<PathBuf>) -> Self {
-        Self { package, config, custom_install_page, skip_upload }
+        Self {
+            package,
+            config,
+            custom_install_page,
+            skip_upload,
+        }
     }
 
     pub fn run(&self) -> Result<(), anyhow::Error> {
