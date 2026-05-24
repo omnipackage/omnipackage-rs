@@ -111,6 +111,8 @@ pub struct Repository {
     pub s3: Option<S3Config>,
     pub gpg_private_key_base64: String,
     pub package_name: String,
+    #[serde(default)]
+    pub retain_packages: u32,
     #[serde(flatten, default)]
     pub rest: HashMap<String, AnyValue>,
 }

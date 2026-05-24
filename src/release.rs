@@ -1,12 +1,24 @@
-use crate::config::{Build, Config, ImageCache};
+use crate::config::{Build, Config, ImageCache, Repository};
 use crate::distros::Distros;
+use crate::logger::Logger;
 use crate::package::{Package, make_package};
-use crate::publish::Publish;
+use crate::publish::{Publish, prepopulate_with_retention};
 use crate::runner::Runner;
 use crate::{BuildArgs, JobArgs, ProjectArgs, PublishArgs, ReleaseArgs};
 use crate::{extract_version, job_variables};
 use anyhow::{Context, Result};
+use std::collections::HashSet;
 use std::path::PathBuf;
+
+fn apply_retention(repository_config: &Repository, pkg: &dyn Package) -> Result<HashSet<PathBuf>, anyhow::Error> {
+    match prepopulate_with_retention(repository_config, pkg)? {
+        Some(stats) => {
+            Logger::new().info(format!("retention for {}: kept {}, removed {}", pkg.distro().id, stats.kept, stats.removed));
+            Ok(stats.retained_files.into_iter().collect())
+        }
+        None => Ok(HashSet::new()),
+    }
+}
 
 struct JobSetup {
     job_variables: job_variables::JobVariables,
@@ -79,11 +91,12 @@ pub fn publish(args: PublishArgs) -> Result<(), anyhow::Error> {
     for build_config in detect_builds(args.job.clone(), config) {
         let mut pkg = setup.make_package(&build_config.distro, &build_config.package_name)?;
         pkg.setup_repository(repository_config.clone())?;
+        let skip_upload = apply_retention(&repository_config, pkg.as_ref())?;
 
         let runner = Runner::new(pkg.clone(), args.logging.clone(), setup.job_variables.clone());
         let build_ok = fail_fast_or_continue(runner.run(), args.job.fail_fast)?;
         if build_ok {
-            let publisher = Publish::new(pkg.clone(), repository_config.clone(), args.custom_install_page.clone());
+            let publisher = Publish::new(pkg.clone(), repository_config.clone(), args.custom_install_page.clone(), skip_upload);
             let publish_ok = fail_fast_or_continue(publisher.run(), args.job.fail_fast)?;
             any_failed |= !publish_ok;
         } else {
@@ -104,11 +117,12 @@ pub fn release(args: ReleaseArgs) -> Result<(), anyhow::Error> {
         let mut pkg = setup.make_package(&build_config.distro, &build_config.package_name)?;
         pkg.setup_build(build_config.clone())?;
         pkg.setup_repository(repository_config.clone())?;
+        let skip_upload = apply_retention(&repository_config, pkg.as_ref())?;
 
         let runner = Runner::new(pkg.clone(), args.logging.clone(), setup.job_variables.clone());
         let build_ok = fail_fast_or_continue(runner.run(), args.job.fail_fast)?;
         if build_ok {
-            let publisher = Publish::new(pkg.clone(), repository_config.clone(), args.custom_install_page.clone());
+            let publisher = Publish::new(pkg.clone(), repository_config.clone(), args.custom_install_page.clone(), skip_upload);
             let publish_ok = fail_fast_or_continue(publisher.run(), args.job.fail_fast)?;
             any_failed |= !publish_ok;
         } else {

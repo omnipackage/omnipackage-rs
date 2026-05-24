@@ -6,7 +6,7 @@ use crate::logger::{Color, Logger, colorize};
 use crate::package::Package;
 use crate::shell::Command;
 use anyhow::Result;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -88,6 +88,8 @@ impl Runner {
         let log_path = self.package.distro_build_dir().join("runner.log");
         let _ = std::fs::remove_file(&log_path);
 
+        let preexisting: HashSet<PathBuf> = self.package.artefacts().into_iter().collect();
+
         if let Some(image_cache) = self.package.image_cache() {
             match image_cache.provider {
                 ImageCacheProvider::Registry => login_to_registry(image_cache.clone(), self.container_logger(), Some(&log_path)).map_err(|e| (e, log_path.clone()))?,
@@ -104,7 +106,7 @@ impl Runner {
             .stream_output_to(self.container_logger())
             .log_to(&log_path)
             .run()
-            .map(|_| self.package.artefacts())
+            .map(|_| self.package.artefacts().into_iter().filter(|p| !preexisting.contains(p)).collect())
             .map_err(|e| (e, log_path.clone()));
 
         self.package.teardown();

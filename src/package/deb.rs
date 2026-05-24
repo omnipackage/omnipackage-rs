@@ -316,6 +316,7 @@ mod tests {
             }),
             gpg_private_key_base64: general_purpose::STANDARD.encode(gpg_private_key),
             package_name: "myapp".to_string(),
+            retain_packages: 0,
             rest: HashMap::new(),
         }
     }

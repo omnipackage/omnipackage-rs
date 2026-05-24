@@ -2,21 +2,26 @@ use crate::config::{Repository, RepositoryProvider, S3Config};
 use crate::logger::{Color, Logger, colorize};
 use crate::package::Package;
 use anyhow::{Context, Result};
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 mod artefacts;
 mod cloudflare;
 mod install_page;
 mod locking;
+mod retention;
 mod s3;
 
 use cloudflare::CloudflareApi;
 use s3::S3;
 
+pub use retention::prepopulate_with_retention;
+
 pub struct Publish {
     pub config: Repository,
     pub package: Box<dyn Package>,
     pub custom_install_page: Option<PathBuf>,
+    pub skip_upload: HashSet<PathBuf>,
 }
 
 const INSTALL_PAGE_NAME: &str = "install.html";
@@ -29,8 +34,8 @@ struct InstallPageBadge {
 }
 
 impl Publish {
-    pub fn new(package: Box<dyn Package>, config: Repository, custom_install_page: Option<PathBuf>) -> Self {
-        Self { package, config, custom_install_page }
+    pub fn new(package: Box<dyn Package>, config: Repository, custom_install_page: Option<PathBuf>, skip_upload: HashSet<PathBuf>) -> Self {
+        Self { package, config, custom_install_page, skip_upload }
     }
 
     pub fn run(&self) -> Result<(), anyhow::Error> {
@@ -78,14 +83,17 @@ impl Publish {
                 if !s3.bucket_exists()? {
                     return Err(anyhow::anyhow!("bucket '{}' does not exist", s3_config.bucket));
                 }
-                s3.upload_all(&dir)?;
+                s3.upload_all(&dir, &self.skip_upload)?;
                 s3.delete_deleted_files(&dir)?;
                 Ok(())
             }
             RepositoryProvider::LocalFs => {
                 let localfs_config = self.config.localfs();
                 let dst = localfs_config.repository_path().join(&self.package.distro().id);
-                artefacts::copy_dir_recursive(&dir, &dst)?;
+                artefacts::copy_dir_recursive(&dir, &dst, &self.skip_upload)?;
+                if self.config.retain_packages > 0 {
+                    artefacts::delete_dst_files_not_in_src(&dir, &dst)?;
+                }
                 Ok(())
             }
         }

@@ -4,7 +4,8 @@ use aws_sdk_s3::config::{BehaviorVersion, Credentials, Region, RequestChecksumCa
 use aws_sdk_s3::error::{DisplayErrorContext, SdkError};
 use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::{Client, Config};
-use std::path::Path;
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 mod probe;
@@ -125,7 +126,7 @@ impl S3 {
         })
     }
 
-    pub fn upload_all(&self, from: &Path) -> Result<(), anyhow::Error> {
+    pub fn upload_all(&self, from: &Path, skip: &HashSet<PathBuf>) -> Result<(), anyhow::Error> {
         block(async {
             let pattern = format!("{}/**/*", from.to_string_lossy());
             let entries = glob::glob(&pattern).with_context(|| format!("invalid glob pattern: {}", pattern))?;
@@ -133,6 +134,9 @@ impl S3 {
             for entry in entries {
                 let path = entry.context("glob error")?;
                 if !path.is_file() {
+                    continue;
+                }
+                if skip.contains(&path) {
                     continue;
                 }
 
