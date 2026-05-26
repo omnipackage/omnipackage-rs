@@ -31,6 +31,10 @@ pub struct InitArgs {
     #[arg(long)]
     pub description: Option<String>,
 
+    /// Retain this many previously published packages per repository (0 = disabled)
+    #[arg(long, default_value_t = 0)]
+    pub retain_packages: u32,
+
     /// Overwrite existing files in .omnipackage/
     #[arg(long)]
     pub force: bool,

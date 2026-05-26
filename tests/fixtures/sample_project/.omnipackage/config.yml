@@ -16,7 +16,7 @@ version_extractors:
   - name: "git"
     provider: "shell"
     shell:
-      command: printf '0~master.%s' $(git rev-list --count HEAD)
+      command: printf '0~master.%s.%s' $(git rev-list --count HEAD) $(date -u +%Y%m%d%H%M%S)
 
   - name: "stable"
     provider: "file"
@@ -37,6 +37,7 @@ repositories:
   - name: test repo on Cloudflare R2
     provider: s3
     gpg_private_key_base64: "${GPG_PRIVATE_KEY_BASE64}"
+    retain_packages: 2
     <<: *common
     s3:
       bucket: repositories-test
@@ -54,6 +55,7 @@ repositories:
     <<: *common
     gpg_private_key_base64: "${GPG_PRIVATE_KEY_BASE64}"
     provider: localfs
+    retain_packages: 2
     localfs:
       path: /tmp/omnipackage-repos
 

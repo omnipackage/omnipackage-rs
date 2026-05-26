@@ -274,6 +274,7 @@ mod tests {
             provider: RepositoryProvider::S3,
             gpg_private_key_base64: "".into(),
             package_name: "test123".into(),
+            retain_packages: 0,
             rest,
             s3: None,
             localfs: None,

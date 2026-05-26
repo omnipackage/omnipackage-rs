@@ -1,4 +1,5 @@
 use anyhow::Result;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
@@ -33,7 +34,7 @@ pub fn find_artefacts_in_repository_dir(artefacts: &[PathBuf], repository_dir: &
     Ok(results)
 }
 
-pub fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
+pub fn copy_dir_recursive(src: &Path, dst: &Path, skip: &HashSet<PathBuf>) -> Result<()> {
     std::fs::create_dir_all(dst)?;
 
     for entry in std::fs::read_dir(src)? {
@@ -42,12 +43,30 @@ pub fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
         let dst_path = dst.join(entry.file_name());
 
         if src_path.is_dir() {
-            copy_dir_recursive(&src_path, &dst_path)?;
-        } else {
+            copy_dir_recursive(&src_path, &dst_path, skip)?;
+        } else if !skip.contains(&src_path) {
             std::fs::copy(&src_path, &dst_path)?;
         }
     }
 
+    Ok(())
+}
+
+pub fn delete_dst_files_not_in_src(src: &Path, dst: &Path) -> Result<()> {
+    if !dst.exists() {
+        return Ok(());
+    }
+    for entry in std::fs::read_dir(dst)? {
+        let entry = entry?;
+        let dst_path = entry.path();
+        let src_path = src.join(entry.file_name());
+
+        if dst_path.is_dir() {
+            delete_dst_files_not_in_src(&src_path, &dst_path)?;
+        } else if !src_path.exists() {
+            std::fs::remove_file(&dst_path)?;
+        }
+    }
     Ok(())
 }
 

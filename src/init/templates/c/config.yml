@@ -48,12 +48,16 @@ repositories:
   - name: Local test
     gpg_private_key_base64: "${GPG_KEY}"
     provider: localfs
+    # number of previously published packages to keep (0 = only the latest build)
+    retain_packages: __INIT_RETAIN_PACKAGES__
     <<: *common
     localfs:
       path: "${HOME}/__INIT_PACKAGE_NAME__-repo"
 
   - name: Example bucket
     provider: s3
+    # number of previously published packages to keep (0 = only the latest build)
+    retain_packages: __INIT_RETAIN_PACKAGES__
     gpg_private_key_base64: "${GPG_KEY}"
     <<: *common
     s3:

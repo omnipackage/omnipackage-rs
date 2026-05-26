@@ -57,6 +57,7 @@ pub fn init(args: InitArgs) -> Result<()> {
     vars.insert(tokens::TODAY, tokens::today());
     vars.insert(tokens::VERSION_FILE, version_file);
     vars.insert(tokens::VERSION_REGEX, version_regex.to_string());
+    vars.insert(tokens::RETAIN_PACKAGES, args.retain_packages.to_string());
 
     let scaffold = scaffold::Scaffold {
         project_root: &project_root,
