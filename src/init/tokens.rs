@@ -8,6 +8,7 @@ pub const DESCRIPTION: &str = "__INIT_DESCRIPTION__";
 pub const TODAY: &str = "__INIT_TODAY__";
 pub const VERSION_FILE: &str = "__INIT_VERSION_FILE__";
 pub const VERSION_REGEX: &str = "__INIT_VERSION_REGEX__";
+pub const RETAIN_PACKAGES: &str = "__INIT_RETAIN_PACKAGES__";
 
 pub fn apply_tokens(content: &str, vars: &HashMap<&'static str, String>) -> String {
     let mut out = content.to_string();

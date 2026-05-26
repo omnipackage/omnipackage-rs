@@ -50,7 +50,8 @@ fn test_init_help() {
         .stdout(predicate::str::contains("--maintainer"))
         .stdout(predicate::str::contains("--type"))
         .stdout(predicate::str::contains("--force"))
-        .stdout(predicate::str::contains("--dry-run"));
+        .stdout(predicate::str::contains("--dry-run"))
+        .stdout(predicate::str::contains("--retain-packages"));
 }
 
 #[test]
@@ -102,6 +103,30 @@ fn init_rust_generates_parseable_config() {
     run_init(d.path(), "rust");
     assert_core_files(d.path());
     assert!(d.path().join(".omnipackage/install_rust.sh").exists());
+    assert_parses(d.path());
+}
+
+#[test]
+fn init_retain_packages_defaults_to_zero() {
+    let d = TempDir::new().unwrap();
+    fs::write(d.path().join("Cargo.toml"), "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n").unwrap();
+    run_init(d.path(), "rust");
+    let config = fs::read_to_string(d.path().join(".omnipackage/config.yml")).unwrap();
+    assert!(config.contains("retain_packages: 0"), "expected disabled default, got:\n{config}");
+    assert_parses(d.path());
+}
+
+#[test]
+fn init_retain_packages_flag_sets_value() {
+    let d = TempDir::new().unwrap();
+    fs::write(d.path().join("Cargo.toml"), "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n").unwrap();
+    Command::cargo_bin("omnipackage")
+        .unwrap()
+        .args(["init", d.path().to_str().unwrap(), "--type", "rust", "--maintainer", "T", "--email", "t@x", "--retain-packages", "3"])
+        .assert()
+        .success();
+    let config = fs::read_to_string(d.path().join(".omnipackage/config.yml")).unwrap();
+    assert!(config.contains("retain_packages: 3"), "expected retain_packages: 3, got:\n{config}");
     assert_parses(d.path());
 }
 
