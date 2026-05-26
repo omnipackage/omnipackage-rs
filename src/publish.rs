@@ -96,9 +96,10 @@ impl Publish {
                 let localfs_config = self.config.localfs();
                 let dst = localfs_config.repository_path().join(&self.package.distro().id);
                 artefacts::copy_dir_recursive(&dir, &dst, &self.skip_upload)?;
-                if self.config.retain_packages > 0 {
-                    artefacts::delete_dst_files_not_in_src(&dir, &dst)?;
-                }
+                // Mirror the S3 path (delete_deleted_files): always drop dst files absent from src.
+                // With retain_packages == 0, src holds only the current build, so old index and
+                // package files are removed; with > 0, retained packages were prepopulated into src.
+                artefacts::delete_dst_files_not_in_src(&dir, &dst)?;
                 Ok(())
             }
         }
