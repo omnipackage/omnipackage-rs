@@ -291,7 +291,10 @@ fn main() -> Result<(), anyhow::Error> {
 }
 
 fn default_build_dir() -> PathBuf {
-    std::env::temp_dir().join("omnipackage-build")
+    match std::env::var("OMNIPACKAGE_BUILD_DIR") {
+        Ok(dir) if !dir.is_empty() => PathBuf::from(dir),
+        _ => std::env::temp_dir().join("omnipackage-build"),
+    }
 }
 
 fn styles() -> Styles {

@@ -40,6 +40,28 @@ fn test_build_dir_default() {
 }
 
 #[test]
+fn test_build_dir_env_var() {
+    Command::cargo_bin("omnipackage")
+        .unwrap()
+        .env("OMNIPACKAGE_BUILD_DIR", "/tmp/my-build-dir")
+        .args(["build", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("/tmp/my-build-dir"));
+}
+
+#[test]
+fn test_build_dir_env_var_empty_falls_back_to_default() {
+    Command::cargo_bin("omnipackage")
+        .unwrap()
+        .env("OMNIPACKAGE_BUILD_DIR", "")
+        .args(["build", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(std::env::temp_dir().to_string_lossy().as_ref()));
+}
+
+#[test]
 fn test_init_help() {
     Command::cargo_bin("omnipackage")
         .unwrap()
