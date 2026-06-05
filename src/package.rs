@@ -160,8 +160,12 @@ pub trait Package {
 
     fn prepare_build_dir(&self) -> Result<PathBuf, anyhow::Error> {
         let dir = self.distro_build_dir();
-        if dir.exists() {
-            std::fs::remove_dir_all(&dir)?;
+        if dir.exists() && std::fs::remove_dir_all(&dir).is_err() {
+            // leftovers created in-container under non-root UIDs map to host subuids and cannot
+            // be removed natively — remove them as root inside a container instead
+            crate::shell::Command::container(container_rm_args(&dir, &self.distro().image))
+                .run()
+                .with_context(|| format!("cannot clean build dir {}", dir.display()))?;
         }
         std::fs::create_dir_all(&dir)?;
         Ok(dir)
@@ -182,5 +186,35 @@ pub trait Package {
 
     fn s3_in_bucket_distro_path(&self, s3_config: &S3Config) -> String {
         PathBuf::from(s3_config.path_in_bucket.as_deref().unwrap_or("")).join(&self.distro().id).to_string_lossy().to_string()
+    }
+}
+
+fn container_rm_args(dir: &Path, image: &str) -> Vec<String> {
+    vec![
+        "run".to_string(),
+        "--rm".to_string(),
+        "--entrypoint".to_string(),
+        "/bin/sh".to_string(),
+        "--mount".to_string(),
+        format!("type=bind,source={},target=/cleanup", dir.display()),
+        image.to_string(),
+        "-c".to_string(),
+        "rm -rf /cleanup/* /cleanup/.[!.]* /cleanup/..?*".to_string(),
+    ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_container_rm_args() {
+        let args = container_rm_args(Path::new("/tmp/builddir"), "debian:12");
+
+        assert_eq!(args[0], "run");
+        assert!(args.contains(&"--rm".to_string()));
+        assert!(args.contains(&"type=bind,source=/tmp/builddir,target=/cleanup".to_string()));
+        assert!(args.contains(&"debian:12".to_string()));
+        assert_eq!(args.last().unwrap(), "rm -rf /cleanup/* /cleanup/.[!.]* /cleanup/..?*");
     }
 }
