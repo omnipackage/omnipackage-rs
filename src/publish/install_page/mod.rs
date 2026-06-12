@@ -32,13 +32,18 @@ pub fn upsert(existing_page_html: &str, repositories: &Repositories, config: &Re
 fn render_badge(repositories: &Repositories, config: &RepoConfig) -> Result<String, anyhow::Error> {
     let mut vars = config.to_template_vars();
 
-    let (rpm_count, deb_count) = repositories.iter().fold((0, 0), |(rpm, deb), r| match r.get("package_type").map(|t| t.as_str()) {
-        Some("rpm") => (rpm + 1, deb),
-        Some("deb") => (rpm, deb + 1),
-        _ => (rpm, deb),
+    let (rpm_count, deb_count, pacman_count) = repositories.iter().fold((0, 0, 0), |(rpm, deb, pacman), r| match r.get("package_type").map(|t| t.as_str()) {
+        Some("rpm") => (rpm + 1, deb, pacman),
+        Some("deb") => (rpm, deb + 1, pacman),
+        Some("pacman") => (rpm, deb, pacman + 1),
+        _ => (rpm, deb, pacman),
     });
 
-    vars.extend(badge_vars(config.name.clone(), format!("{rpm_count} RPM {deb_count} DEB")));
+    let mut aux = format!("{rpm_count} RPM {deb_count} DEB");
+    if pacman_count > 0 {
+        aux.push_str(&format!(" {pacman_count} PAC"));
+    }
+    vars.extend(badge_vars(config.name.clone(), aux));
 
     Template::from_content(BADGE_TEMPLATE_SVG)?.render(vars)
 }
@@ -293,5 +298,26 @@ mod tests {
 
         let repos2 = parse(&result.install_page).unwrap();
         assert_eq!(repos2.len(), 24);
+    }
+
+    #[test]
+    fn test_badge_counts_pacman() {
+        let repo_conf = RepoConfig {
+            name: "title".into(),
+            provider: RepositoryProvider::S3,
+            gpg_private_key_base64: "".into(),
+            package_name: "pkg".into(),
+            retain_packages: 0,
+            rest: HashMap::new(),
+            s3: None,
+            localfs: None,
+        };
+        let repos: Repositories = vec![
+            Repository::from([("distro_id".to_string(), "arch".to_string()), ("package_type".to_string(), "pacman".to_string())]),
+            Repository::from([("distro_id".to_string(), "fedora_40".to_string()), ("package_type".to_string(), "rpm".to_string())]),
+        ];
+
+        let badge = render_badge(&repos, &repo_conf).unwrap();
+        assert!(badge.contains("1 RPM 0 DEB 1 PAC"), "badge missing pacman count: {badge}");
     }
 }

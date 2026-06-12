@@ -30,6 +30,22 @@ debian: &debian
     - "sudo apt-get update"
     - "sudo apt-get install %{package_name}"
 
+arch: &arch
+  package_type: "pacman"
+  setup:
+    - "pacman -Sy --noconfirm --needed base-devel sudo rsync %{build_dependencies}"
+    - "useradd -m -s /bin/bash builder 2>/dev/null || true"
+    - "echo 'builder ALL=(ALL) NOPASSWD:SETENV: ALL' > /etc/sudoers.d/builder"
+  setup_repo:
+    - "pacman -Sy --noconfirm --needed gnupg"
+  cleanup:
+    - "pacman -Scc --noconfirm"
+  install_steps:
+    - "curl -fsSL %{url}/public.key | sudo pacman-key --add -"
+    - "sudo pacman-key --lsign-key $(curl -fsSL %{url}/public.key | gpg --show-keys --with-colons | awk -F: '/^fpr/{print $10; exit}')"
+    - "printf '[%{project_slug}]\\nSigLevel = Required DatabaseOptional\\nServer = %{url}\\n' | sudo tee -a /etc/pacman.conf"
+    - "sudo pacman -Sy %{package_name}"
+
 redhat: &redhat
   package_type: "rpm"
   setup:
@@ -265,3 +281,15 @@ distros:
     setup_repo:
       - "dnf install -y --allowerasing createrepo rpm-sign gpg"
     image_info_url: "https://hub.docker.com/r/rockylinux/rockylinux"
+
+  - id: "arch"
+    name: "Arch Linux"
+    image: "archlinux:latest"
+    <<: *arch
+    image_info_url: "https://hub.docker.com/_/archlinux"
+
+  - id: "manjaro"
+    name: "Manjaro"
+    image: "manjarolinux/base:latest"
+    <<: *arch
+    image_info_url: "https://hub.docker.com/r/manjarolinux/base"

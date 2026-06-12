@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 pub mod deb;
+pub mod pacman;
 pub mod rpm;
 
 impl Clone for Box<dyn Package> {
@@ -26,6 +27,7 @@ pub fn make_package(
     match distro.package_type {
         PackageType::Deb => Ok(Box::new(deb::Deb::new(distro.clone(), source_dir, job_variables, distro_build_dir, image_cache, ignore_source_files))),
         PackageType::Rpm => Ok(Box::new(rpm::Rpm::new(distro.clone(), source_dir, job_variables, distro_build_dir, image_cache, ignore_source_files))),
+        PackageType::Pacman => Ok(Box::new(pacman::Pacman::new(distro.clone(), source_dir, job_variables, distro_build_dir, image_cache, ignore_source_files))),
     }
 }
 
@@ -72,10 +74,7 @@ pub trait Package {
     }
 
     fn artefacts(&self) -> Vec<PathBuf> {
-        let ext = match self.distro().package_type {
-            PackageType::Rpm => "rpm",
-            PackageType::Deb => "deb",
-        };
+        let ext = self.distro().package_type.extension();
 
         let stage = self.setup_stages();
         let dir = if stage.contains(&SetupStage::Repository) {

@@ -50,6 +50,11 @@ pub struct DebConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct PacmanConfig {
+    pub pkgbuild_template: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum AnyValue {
     String(String),
@@ -72,6 +77,7 @@ pub struct Build {
     pub before_build_script: Option<String>,
     pub rpm: Option<RpmConfig>,
     pub deb: Option<DebConfig>,
+    pub pacman: Option<PacmanConfig>,
     #[serde(flatten, default)]
     pub rest: HashMap<String, AnyValue>,
 }
@@ -367,6 +373,12 @@ mod tests {
         let deb_build = config.builds.iter().find(|b| b.distro == "debian_12").unwrap();
         assert!(deb_build.deb.is_some());
         assert!(deb_build.rpm.is_none());
+
+        let pacman_build = config.builds.iter().find(|b| b.distro == "arch").unwrap();
+        assert!(pacman_build.pacman.is_some());
+        assert!(pacman_build.rpm.is_none());
+        assert!(pacman_build.deb.is_none());
+        assert_eq!(pacman_build.pacman.as_ref().unwrap().pkgbuild_template, ".omnipackage/PKGBUILD.liquid");
 
         // verify merge key resolution — fields from anchors are present
         let simple_rpm = config.builds.iter().find(|b| b.distro == "fedora_38").unwrap();
