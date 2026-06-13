@@ -33,9 +33,10 @@ debian: &debian
 arch: &arch
   package_type: "pacman"
   setup:
-    - "pacman -Sy --noconfirm --needed base-devel sudo rsync %{build_dependencies}"
+    # -Syu, not -Sy: partial upgrades break shared-library sonames on rolling distros.
+    - "pacman -Syu --noconfirm --needed base-devel sudo rsync %{build_dependencies}"
   setup_repo:
-    - "pacman -Sy --noconfirm --needed gnupg"
+    - "pacman -Syu --noconfirm --needed gnupg"
   cleanup:
     - "pacman -Scc --noconfirm"
   install_steps:
