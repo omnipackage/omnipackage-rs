@@ -61,6 +61,15 @@ pub fn login_to_registry(image_cache_config: ImageCache, logger: Logger, log_pat
     cmd.run()
 }
 
+/// Build the Dockerfile `RUN` line that bakes `commands` into the cached image.
+/// Commands are joined with ` && ` and wrapped in a single-quoted `bash -c '…'`.
+/// Embedded single quotes are escaped as `'\''` so a command like arch's
+/// `echo 'builder ALL=(ALL)…'` doesn't close the wrapper early and break shell parsing.
+fn run_command(commands: &[String]) -> String {
+    let joined = commands.join(" && ").replace('\'', r"'\''");
+    format!("--mount=type=bind,from=src,target=/source,readonly bash -c '{}'", joined)
+}
+
 fn refresh_distro(args: PrimeArgs, build_config: Build, image_cache_config: ImageCache) -> Result<(), anyhow::Error> {
     let distro = Distros::get().by_id(&build_config.distro);
     let temp_dir = args.job.build_dir.join(format!("{}-{}", build_config.package_name, build_config.distro));
@@ -80,7 +89,7 @@ fn refresh_distro(args: PrimeArgs, build_config: Build, image_cache_config: Imag
     }
     commands.extend(distro.cleanup.clone());
 
-    let runcmd = format!("--mount=type=bind,from=src,target=/source,readonly bash -c '{}'", commands.join(" && "));
+    let runcmd = run_command(&commands);
 
     let dockerfile = format!(
         "FROM {base_image}\n\
@@ -111,4 +120,47 @@ fn refresh_distro(args: PrimeArgs, build_config: Build, image_cache_config: Imag
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn run_command_joins_and_escapes_single_quotes() {
+        // arch's setup line carries single quotes + parens, which is what broke the wrapper.
+        let commands = vec![
+            "pacman -Sy --noconfirm --needed base-devel".to_string(),
+            "echo 'builder ALL=(ALL) NOPASSWD:SETENV: ALL' > /etc/sudoers.d/builder".to_string(),
+        ];
+
+        let runcmd = run_command(&commands);
+
+        assert!(runcmd.starts_with("--mount=type=bind,from=src,target=/source,readonly bash -c '"));
+        assert!(runcmd.ends_with('\''));
+        assert!(runcmd.contains("base-devel && echo"), "commands should be joined with ` && `: {runcmd}");
+        // each embedded single quote becomes '\'' so it doesn't close the wrapper early
+        assert!(runcmd.contains(r"echo '\''builder ALL=(ALL) NOPASSWD:SETENV: ALL'\''"), "single quotes not escaped: {runcmd}");
+    }
+
+    // The wrapper is single-quoted, so its argument must parse back to the exact join under a
+    // POSIX shell — this is precisely what failed for arch before the escaping was added.
+    #[cfg(unix)]
+    #[test]
+    fn run_command_arg_round_trips_through_shell() {
+        let commands = vec![
+            "pacman -Sy base-devel".to_string(),
+            "echo 'builder ALL=(ALL) NOPASSWD:SETENV: ALL' > /etc/sudoers.d/builder".to_string(),
+        ];
+
+        let runcmd = run_command(&commands);
+        // drop the buildkit `--mount` flag and `bash -c `, leaving the single-quoted argument
+        let arg = runcmd.strip_prefix("--mount=type=bind,from=src,target=/source,readonly bash -c ").expect("runcmd prefix");
+
+        // `printf %s <single-quoted-arg>` is inert (no command runs) and must reproduce the join
+        let out = std::process::Command::new("/bin/sh").arg("-c").arg(format!("printf %s {arg}")).output().expect("run /bin/sh");
+
+        assert!(out.status.success(), "shell failed to parse the wrapped argument: {}", String::from_utf8_lossy(&out.stderr));
+        assert_eq!(String::from_utf8_lossy(&out.stdout), commands.join(" && "));
+    }
 }
