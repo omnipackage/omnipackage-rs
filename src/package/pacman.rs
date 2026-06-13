@@ -87,8 +87,10 @@ impl Package for Pacman {
             format!("rsync -a{rsync_excludes} /source/ /work/{source_folder_name}/"),
             "cd /work".to_string(),
             format!("tar -cvzf {source_folder_name}.tar.gz {source_folder_name}/"),
-            // don't emit a separate -debug package (matches the rpm spec's `%define debug_package %{nil}`)
-            "echo 'OPTIONS+=(!debug)' >> /etc/makepkg.conf".to_string(),
+            // !debug: don't emit a separate -debug package (matches the rpm spec's `%define debug_package %{nil}`).
+            // !lto: makepkg enables LTO by default, which breaks crates that link prebuilt C/assembly objects
+            // (e.g. aws-lc-sys: `undefined symbol: aws_lc_*_SHA512`); the rpm/deb paths don't LTO either.
+            "echo 'OPTIONS+=(!debug !lto)' >> /etc/makepkg.conf".to_string(),
             "chown -R builder:builder /work /output".to_string(),
             // -E preserves the injected build secrets (the distro sudoers grants SETENV);
             // HOME/PKGDEST are set inline so makepkg writes to a builder-writable home and
