@@ -90,7 +90,18 @@ deb: &deb
 # Distros to build for. Delete any you don't ship — each one slows down
 # `omnipackage build` by one container run. Add per-distro overrides
 # (build_dependencies, runtime_dependencies, before_build_script) inline.
+# Arch Linux / Manjaro: build with makepkg from PKGBUILD.liquid.
+pacman: &pacman
+  <<: *common
+  build_dependencies: ["gcc", "make"]
+  pacman:
+    pkgbuild_template: ".omnipackage/PKGBUILD.liquid"
+
 builds:
+  - distro: "arch"
+    <<: *pacman
+  - distro: "manjaro"
+    <<: *pacman
   - distro: "opensuse_15.3"
     <<: *rpm
   - distro: "opensuse_15.4"

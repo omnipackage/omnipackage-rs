@@ -78,7 +78,18 @@ deb: &deb
 # names vary across distro generations. AlmaLinux/RockyLinux are absent here
 # because webkit2gtk-4.1 isn't available there — add only if you can satisfy
 # the deps yourself.
+# Arch Linux / Manjaro: build with makepkg from PKGBUILD.liquid.
+pacman: &pacman
+  <<: *common
+  build_dependencies: ["rust", "base-devel", "webkit2gtk-4.1", "curl", "wget", "openssl", "gtk3", "librsvg"]
+  pacman:
+    pkgbuild_template: ".omnipackage/PKGBUILD.liquid"
+
 builds:
+  - distro: "arch"
+    <<: *pacman
+  - distro: "manjaro"
+    <<: *pacman
   - distro: "opensuse_15.4"
     build_dependencies: ["make", "webkit2gtk3-soup2-devel", "webkit2gtk3-devel", "libopenssl-devel", "curl", "wget", "file", "libappindicator3-1", "librsvg-devel", "glib2-devel", "libsoup-devel", "libjavascriptcoregtk-4_1-0"]
     before_build_script: ".omnipackage/install_rust.sh"

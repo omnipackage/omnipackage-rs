@@ -76,7 +76,18 @@ deb: &deb
   build_dependencies: ["curl", "libpcre2-dev", "libevent-dev"]
   before_build_script: ".omnipackage/install_crystal.sh"
 
+# Arch Linux / Manjaro: build with makepkg from PKGBUILD.liquid.
+pacman: &pacman
+  <<: *common
+  build_dependencies: ["crystal", "shards"]
+  pacman:
+    pkgbuild_template: ".omnipackage/PKGBUILD.liquid"
+
 builds:
+  - distro: "arch"
+    <<: *pacman
+  - distro: "manjaro"
+    <<: *pacman
   - distro: "opensuse_15.3"
     <<: *rpm
   - distro: "opensuse_15.4"

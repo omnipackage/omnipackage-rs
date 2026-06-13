@@ -76,7 +76,18 @@ deb: &deb
   deb:
     debian_templates: ".omnipackage/deb"
 
+# Arch Linux / Manjaro: build with makepkg from PKGBUILD.liquid.
+pacman: &pacman
+  <<: *common
+  build_dependencies: ["go"]
+  pacman:
+    pkgbuild_template: ".omnipackage/PKGBUILD.liquid"
+
 builds:
+  - distro: "arch"
+    <<: *pacman
+  - distro: "manjaro"
+    <<: *pacman
   - distro: "opensuse_15.3"
     <<: *rpm
   - distro: "opensuse_15.4"

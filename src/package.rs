@@ -27,7 +27,14 @@ pub fn make_package(
     match distro.package_type {
         PackageType::Deb => Ok(Box::new(deb::Deb::new(distro.clone(), source_dir, job_variables, distro_build_dir, image_cache, ignore_source_files))),
         PackageType::Rpm => Ok(Box::new(rpm::Rpm::new(distro.clone(), source_dir, job_variables, distro_build_dir, image_cache, ignore_source_files))),
-        PackageType::Pacman => Ok(Box::new(pacman::Pacman::new(distro.clone(), source_dir, job_variables, distro_build_dir, image_cache, ignore_source_files))),
+        PackageType::Pacman => Ok(Box::new(pacman::Pacman::new(
+            distro.clone(),
+            source_dir,
+            job_variables,
+            distro_build_dir,
+            image_cache,
+            ignore_source_files,
+        ))),
     }
 }
 

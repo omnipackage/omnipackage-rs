@@ -16,14 +16,14 @@
 # so there's no stale-state concern — clean up by `rm -rf $TMP_ROOT` when
 # you're done.
 #
-# Defaults: 8 project types × 7 distros (one recent per family) = 56 builds.
+# Defaults: 8 project types × 8 distros (one recent per family) = 64 builds.
 # Plan on ~2 hours for a full clean run; subsequent runs are faster if you
 # kept the omnipackage image cache primed.
 
 set -euo pipefail
 
 TYPES_DEFAULT="c cpp cmake rust go python ruby crystal"
-DISTROS_DEFAULT="opensuse_16.0 fedora_42 debian_13 ubuntu_24.04 almalinux_10 rockylinux_9 mageia_9"
+DISTROS_DEFAULT="opensuse_16.0 fedora_42 debian_13 ubuntu_24.04 almalinux_10 rockylinux_9 mageia_9 arch"
 
 TYPES="${TYPES:-$TYPES_DEFAULT}"
 DISTROS="${DISTROS:-$DISTROS_DEFAULT}"
@@ -60,6 +60,8 @@ distro_image() {
         almalinux_10)           echo "almalinux:10" ;;
         rockylinux_9)           echo "rockylinux/rockylinux:9" ;;
         mageia_9)               echo "mageia:9" ;;
+        arch)                   echo "archlinux:latest" ;;
+        manjaro)                echo "manjarolinux/base:latest" ;;
         *) echo "unknown distro: $1" >&2; exit 1 ;;
     esac
 }
@@ -67,6 +69,7 @@ distro_image() {
 distro_pkg_type() {
     case "$1" in
         debian_*|ubuntu_*) echo "deb" ;;
+        arch|manjaro)      echo "pkg.tar.zst" ;;
         *)                 echo "rpm" ;;
     esac
 }
@@ -84,6 +87,12 @@ distro_install_cmd() {
         mageia_*)
             # Mageia 9 ships dnf alongside urpmi; either works on a local rpm.
             echo "dnf install -y --nogpgcheck /pkg.rpm"
+            ;;
+        arch|manjaro)
+            # LocalFileSigLevel defaults to Optional, so installing an unsigned
+            # local file is allowed — we mount only the package, not its .sig.
+            # -Sy refreshes the sync db so any declared runtime deps resolve.
+            echo "pacman -Sy --noconfirm && pacman -U --noconfirm /pkg.pkg.tar.zst"
             ;;
         *)
             # fedora, almalinux, rockylinux
