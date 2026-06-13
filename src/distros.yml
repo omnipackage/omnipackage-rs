@@ -34,8 +34,6 @@ arch: &arch
   package_type: "pacman"
   setup:
     - "pacman -Sy --noconfirm --needed base-devel sudo rsync %{build_dependencies}"
-    - "useradd -m -s /bin/bash builder 2>/dev/null || true"
-    - "echo 'builder ALL=(ALL) NOPASSWD:SETENV: ALL' > /etc/sudoers.d/builder"
   setup_repo:
     - "pacman -Sy --noconfirm --needed gnupg"
   cleanup:

@@ -128,10 +128,10 @@ mod tests {
 
     #[test]
     fn run_command_joins_and_escapes_single_quotes() {
-        // arch's setup line carries single quotes + parens, which is what broke the wrapper.
+        // a single-quoted command (sudoers-style) with parens is what would break the wrapper.
         let commands = vec![
             "pacman -Sy --noconfirm --needed base-devel".to_string(),
-            "echo 'builder ALL=(ALL) NOPASSWD:SETENV: ALL' > /etc/sudoers.d/builder".to_string(),
+            "echo 'omnibuild ALL=(ALL) NOPASSWD:SETENV: ALL' > /etc/sudoers.d/omnibuild".to_string(),
         ];
 
         let runcmd = run_command(&commands);
@@ -140,17 +140,17 @@ mod tests {
         assert!(runcmd.ends_with('\''));
         assert!(runcmd.contains("base-devel && echo"), "commands should be joined with ` && `: {runcmd}");
         // each embedded single quote becomes '\'' so it doesn't close the wrapper early
-        assert!(runcmd.contains(r"echo '\''builder ALL=(ALL) NOPASSWD:SETENV: ALL'\''"), "single quotes not escaped: {runcmd}");
+        assert!(runcmd.contains(r"echo '\''omnibuild ALL=(ALL) NOPASSWD:SETENV: ALL'\''"), "single quotes not escaped: {runcmd}");
     }
 
     // The wrapper is single-quoted, so its argument must parse back to the exact join under a
-    // POSIX shell — this is precisely what failed for arch before the escaping was added.
+    // POSIX shell — single-quoted commands would otherwise break it.
     #[cfg(unix)]
     #[test]
     fn run_command_arg_round_trips_through_shell() {
         let commands = vec![
             "pacman -Sy base-devel".to_string(),
-            "echo 'builder ALL=(ALL) NOPASSWD:SETENV: ALL' > /etc/sudoers.d/builder".to_string(),
+            "echo 'omnibuild ALL=(ALL) NOPASSWD:SETENV: ALL' > /etc/sudoers.d/omnibuild".to_string(),
         ];
 
         let runcmd = run_command(&commands);

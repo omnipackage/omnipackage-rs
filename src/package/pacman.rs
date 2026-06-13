@@ -81,8 +81,10 @@ impl Package for Pacman {
             }
         }
         let rsync_excludes: String = self.ignore_source_files.iter().map(|p| format!(" --exclude='{p}'")).collect();
-        // makepkg refuses to run as root, so build it as the unprivileged `builder` user
-        // (created by the distro setup). Everything else runs as the container's root user.
+        // makepkg refuses to run as root, so build as an unprivileged user. It's created here (not in
+        // the distro setup) so it also exists on cached images, with a dedicated name that won't collide
+        // with a `builder` user some base images already ship (e.g. manjaro, whose builder home isn't
+        // even /home/builder). Everything else runs as the container's root user.
         self.commands.extend([
             format!("rsync -a{rsync_excludes} /source/ /work/{source_folder_name}/"),
             "cd /work".to_string(),
@@ -91,11 +93,14 @@ impl Package for Pacman {
             // !lto: makepkg enables LTO by default, which breaks crates that link prebuilt C/assembly objects
             // (e.g. aws-lc-sys: `undefined symbol: aws_lc_*_SHA512`); the rpm/deb paths don't LTO either.
             "echo 'OPTIONS+=(!debug !lto)' >> /etc/makepkg.conf".to_string(),
-            "chown -R builder:builder /work /output".to_string(),
-            // -E preserves the injected build secrets (the distro sudoers grants SETENV);
-            // HOME/PKGDEST are set inline so makepkg writes to a builder-writable home and
-            // drops the package into the bind-mounted output dir.
-            "sudo -E -u builder bash -c 'cd /work && HOME=/home/builder PKGDEST=/output makepkg -f --nodeps'".to_string(),
+            // -m gives omnibuild a fresh /home/omnibuild it owns (cargo needs a writable ~/.cargo).
+            "useradd -m -s /bin/bash omnibuild 2>/dev/null || true".to_string(),
+            // NOPASSWD:SETENV lets the `sudo -E` below carry the injected build secrets through.
+            "echo 'omnibuild ALL=(ALL) NOPASSWD:SETENV: ALL' > /etc/sudoers.d/omnibuild".to_string(),
+            "chown -R omnibuild:omnibuild /work /output".to_string(),
+            // HOME/PKGDEST are set inline so makepkg writes to omnibuild's home and drops the
+            // package into the bind-mounted output dir.
+            "sudo -E -u omnibuild bash -c 'cd /work && HOME=/home/omnibuild PKGDEST=/output makepkg -f --nodeps'".to_string(),
         ]);
 
         self.build_output_dir = output_path;
@@ -326,7 +331,8 @@ mod tests {
         let commands = pacman.commands();
         assert!(!commands.is_empty());
         assert!(commands.iter().any(|c| c.contains("makepkg")));
-        assert!(commands.iter().any(|c| c.contains("-u builder")));
+        assert!(commands.iter().any(|c| c.contains("useradd") && c.contains("omnibuild")));
+        assert!(commands.iter().any(|c| c.contains("-u omnibuild")));
         assert!(commands.iter().any(|c| c.contains("rsync") && c.contains("/source/ /work/")));
     }
 
