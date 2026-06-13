@@ -8,6 +8,17 @@ use std::sync::OnceLock;
 pub enum PackageType {
     Rpm,
     Deb,
+    Pacman,
+}
+
+impl PackageType {
+    pub fn extension(&self) -> &'static str {
+        match self {
+            PackageType::Rpm => "rpm",
+            PackageType::Deb => "deb",
+            PackageType::Pacman => "pkg.tar.zst",
+        }
+    }
 }
 
 impl std::fmt::Display for PackageType {
@@ -15,6 +26,7 @@ impl std::fmt::Display for PackageType {
         match self {
             PackageType::Rpm => write!(f, "rpm"),
             PackageType::Deb => write!(f, "deb"),
+            PackageType::Pacman => write!(f, "pacman"),
         }
     }
 }
@@ -68,6 +80,12 @@ impl Distro {
         }
         if matches("mageia") {
             return "Mageia";
+        }
+        if matches("manjaro") {
+            return "Manjaro";
+        }
+        if matches("arch") {
+            return "Arch Linux";
         }
 
         "Other"
@@ -242,6 +260,8 @@ mod tests {
         assert_eq!(distro_with_id_name("alma_9", "x").family(), "AlmaLinux");
         assert_eq!(distro_with_id_name("rocky_9", "x").family(), "Rocky Linux");
         assert_eq!(distro_with_id_name("mageia_9", "x").family(), "Mageia");
+        assert_eq!(distro_with_id_name("arch", "Arch Linux").family(), "Arch Linux");
+        assert_eq!(distro_with_id_name("manjaro", "Manjaro").family(), "Manjaro");
     }
 
     #[test]
@@ -252,6 +272,26 @@ mod tests {
 
     #[test]
     fn test_family_unknown_returns_other() {
-        assert_eq!(distro_with_id_name("arch_rolling", "Arch Linux").family(), "Other");
+        assert_eq!(distro_with_id_name("gentoo", "Gentoo").family(), "Other");
+    }
+
+    #[test]
+    fn test_package_type_extension() {
+        assert_eq!(PackageType::Rpm.extension(), "rpm");
+        assert_eq!(PackageType::Deb.extension(), "deb");
+        assert_eq!(PackageType::Pacman.extension(), "pkg.tar.zst");
+    }
+
+    #[test]
+    fn test_arch_distro_is_pacman() {
+        let distros = Distros::get();
+        let arch = distros.iter().find(|d| d.id == "arch").unwrap();
+        assert_eq!(arch.package_type, PackageType::Pacman);
+        assert!(!arch.setup.is_empty());
+        assert!(!arch.setup_repo.is_empty());
+        assert!(!arch.install_steps.is_empty());
+
+        let manjaro = distros.iter().find(|d| d.id == "manjaro").unwrap();
+        assert_eq!(manjaro.package_type, PackageType::Pacman);
     }
 }

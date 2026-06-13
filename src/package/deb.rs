@@ -292,6 +292,7 @@ mod tests {
             before_build_script: None,
             rpm: None,
             deb: Some(DebConfig { debian_templates }),
+            pacman: None,
             rest: HashMap::new(),
         }
     }

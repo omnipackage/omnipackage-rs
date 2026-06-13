@@ -12,7 +12,7 @@ This is a **manual developer tool** — not run by `cargo test`.
 bash tests/e2e/run.sh
 ```
 
-Defaults: 8 project types × 7 distros (one recent per family) = 56 builds.
+Defaults: 8 project types × 8 distros (one recent per family) = 64 builds.
 Plan on ~2 hours for a full clean run.
 
 ## Knobs
@@ -20,7 +20,7 @@ Plan on ~2 hours for a full clean run.
 | Env var      | Default                              | Notes                                          |
 |--------------|--------------------------------------|------------------------------------------------|
 | `TYPES`      | `c cpp cmake rust go python ruby crystal` | Restrict to a subset for faster runs       |
-| `DISTROS`    | `opensuse_tumbleweed fedora_42 debian_13 ubuntu_24.04 almalinux_10 rockylinux_9 mageia_9` | Restrict distros |
+| `DISTROS`    | `opensuse_16.0 fedora_42 debian_13 ubuntu_24.04 almalinux_10 rockylinux_9 mageia_9 arch` | Restrict distros |
 | `RUNTIME`    | `podman`                             | Set to `docker` if you don't have podman       |
 | `VERBOSE`    | `0`                                  | `1` streams build output instead of capturing  |
 | `TMP_ROOT`   | `/tmp/omnipackage-e2e`               | Where workdir/build_dir/repo/logs go — point elsewhere if `/tmp` is small (a full run can use 5–20 GB). All artifacts stay there for inspection; clean up with `rm -rf $TMP_ROOT`. |
@@ -51,7 +51,7 @@ TYPES=python DISTROS=debian_13 VERBOSE=1 bash tests/e2e/run.sh
    `<tmpdir>/.env` so the publish stage has a key to sign with.
 5. `omnipackage release <tmpdir> --repository "Local test" --distros <distros>`
    — exercises build + publish + signing end-to-end.
-6. Locate artifact in `<repo_dir>/<distro>/**/*.{rpm,deb}`.
+6. Locate artifact in `<repo_dir>/<distro>/**/*.{rpm,deb,pkg.tar.zst}`.
 7. Spin up fresh distro container, mount artifact, install via the distro's
    native package manager (so runtime deps get pulled), run
    `helloworld-<type>`, grep for `hello from <type> 1.2.3`.
@@ -67,6 +67,7 @@ TYPES=python DISTROS=debian_13 VERBOSE=1 bash tests/e2e/run.sh
 | AlmaLinux  | `almalinux_10`         | `almalinux:10`       |
 | Rocky      | `rockylinux_9`         | `rockylinux/rockylinux:9` |
 | Mageia     | `mageia_9`             | `mageia:9`           |
+| Arch Linux | `arch`                 | `archlinux:latest`   |
 
 ## What it does NOT cover
 
@@ -84,7 +85,7 @@ Everything from a run lives under `$TMP_ROOT/<type>/`:
 <type>/
   source/    fixture + .omnipackage/ (rendered config) + .env
   build/     per-distro container output (rpmbuild / debuild trees)
-  repo/      localfs repo with the published .rpm/.deb under <distro>/
+  repo/      localfs repo with the published .rpm/.deb/.pkg.tar.zst under <distro>/
   logs/      init.log, gpg.log, release.log, <distro>.verify.log
 ```
 

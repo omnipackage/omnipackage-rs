@@ -98,6 +98,12 @@ deb: &deb
   deb:
     debian_templates: ".omnipackage/deb"
 
+pacman: &pacman
+  <<: *common
+  build_dependencies: ["gcc", "make"]
+  pacman:
+    pkgbuild_template: ".omnipackage/PKGBUILD.liquid"
+
 builds:
   - distro: "opensuse_15.3"
     <<: *rpm
@@ -188,6 +194,12 @@ builds:
 
   - distro: "mageia_cauldron"
     <<: *rpm
+
+  - distro: "arch"
+    <<: *pacman
+
+  - distro: "manjaro"
+    <<: *pacman
 
 ignore_source_files:
   - .git

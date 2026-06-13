@@ -81,7 +81,18 @@ deb: &deb
 # Ruby is too old. The example uses install_ruby.sh / install_ruby_rh8.sh to
 # build a vendored Ruby — uncomment those per-distro overrides if you need
 # them.
+# Arch Linux / Manjaro: build with makepkg from PKGBUILD.liquid.
+pacman: &pacman
+  <<: *common
+  build_dependencies: ["ruby"]
+  pacman:
+    pkgbuild_template: ".omnipackage/PKGBUILD.liquid"
+
 builds:
+  - distro: "arch"
+    <<: *pacman
+  - distro: "manjaro"
+    <<: *pacman
   - distro: "opensuse_15.3"
     <<: *rpm
   - distro: "opensuse_15.4"

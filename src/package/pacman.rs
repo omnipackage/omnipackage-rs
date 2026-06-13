@@ -1,15 +1,15 @@
 use crate::config::{Build, ImageCache, Repository};
 use crate::distros::Distro;
-use crate::gpg::{Gpg, Key};
+use crate::gpg::Key;
 use crate::job_variables::JobVariables;
 use crate::package::{Package, SetupStage};
 use crate::template::{Template, Var};
 use anyhow::{Context, Result};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
-pub struct Rpm {
+pub struct Pacman {
     pub distro: Distro,
     pub source_dir: PathBuf,
     pub job_variables: JobVariables,
@@ -24,7 +24,7 @@ pub struct Rpm {
     gpgkey: Option<Key>,
 }
 
-impl Rpm {
+impl Pacman {
     pub fn new(distro: Distro, source_dir: PathBuf, job_variables: JobVariables, distro_build_dir: PathBuf, image_cache: Option<ImageCache>, ignore_source_files: Vec<String>) -> Self {
         Self {
             distro,
@@ -41,44 +41,38 @@ impl Rpm {
         }
     }
 
-    fn write_repo_file(&self, repo_dir: &Path, project_slug: &str, distro_name: &str, distro_url: &str) -> Result<(), anyhow::Error> {
-        let content = format!(
-            "[{project_slug}]\n\
-             name={project_slug} ({distro_name})\n\
-             type=rpm-md\n\
-             baseurl={distro_url}\n\
-             gpgcheck=1\n\
-             gpgkey={distro_url}/repodata/repomd.xml.key\n\
-             enabled=1\n"
-        );
-
-        Ok(std::fs::write(repo_dir.join(format!("{}.repo", project_slug)), content)?)
+    // Working dir for makepkg (PKGBUILD + extracted source). Bind-mounted to /work.
+    fn work_path(&self) -> PathBuf {
+        self.distro_build_dir().join("work")
     }
 
+    // Where makepkg drops the built package (PKGDEST). Bind-mounted to /output.
     fn output_path(&self) -> PathBuf {
-        self.distro_build_dir()
+        self.distro_build_dir().join("output")
     }
 }
 
-impl Package for Rpm {
+impl Package for Pacman {
     fn setup_build(&mut self, config: Build) -> Result<(), anyhow::Error> {
         self.prepare_build_dir()?;
-        let specfile_path_template_path = config.rpm.clone().ok_or_else(|| anyhow::anyhow!("rpm config is missing"))?.spec_template;
+        let pkgbuild_template_path = config.pacman.clone().ok_or_else(|| anyhow::anyhow!("pacman config is missing"))?.pkgbuild_template;
 
-        let rpmbuild_path = self.output_path();
-        std::fs::create_dir_all(&rpmbuild_path).with_context(|| format!("cannot create directory {}", rpmbuild_path.display()))?;
+        let work_path = self.work_path();
+        let output_path = self.output_path();
+        std::fs::create_dir_all(&work_path).with_context(|| format!("cannot create directory {}", work_path.display()))?;
+        std::fs::create_dir_all(&output_path).with_context(|| format!("cannot create directory {}", output_path.display()))?;
 
         let source_folder_name = format!("{}-{}", config.package_name, self.job_variables.version);
-        let specfile_name = format!("{}-{}.spec", source_folder_name, self.distro.id);
 
         let mut template_vars: HashMap<String, Var> = self.job_variables.to_template_vars();
         template_vars.extend(config.to_template_vars());
         template_vars.insert("source_folder_name".to_string(), source_folder_name.clone().into());
-        let template = Template::from_file(self.source_dir.join(&specfile_path_template_path))?;
-        template.render_to_file(template_vars, rpmbuild_path.join(&specfile_name))?;
+        let template = Template::from_file(self.source_dir.join(&pkgbuild_template_path))?;
+        template.render_to_file(template_vars, work_path.join("PKGBUILD"))?;
 
         self.mounts.insert(self.source_dir.to_string_lossy().to_string(), "/source".to_string());
-        self.mounts.insert(self.output_path().to_string_lossy().to_string(), "/root/rpmbuild".to_string());
+        self.mounts.insert(work_path.to_string_lossy().to_string(), "/work".to_string());
+        self.mounts.insert(output_path.to_string_lossy().to_string(), "/output".to_string());
 
         if self.image_cache.is_none() {
             self.commands.extend(self.distro.setup(&config.build_dependencies));
@@ -87,17 +81,22 @@ impl Package for Rpm {
             }
         }
         let rsync_excludes: String = self.ignore_source_files.iter().map(|p| format!(" --exclude='{p}'")).collect();
+        // makepkg refuses to run as root, so build it as the unprivileged `builder` user
+        // (created by the distro setup). Everything else runs as the container's root user.
         self.commands.extend([
-            "rpmdev-setuptree".to_string(),
-            "rm -rf /root/rpmbuild/SOURCES/*".to_string(),
-            format!("rsync -a{rsync_excludes} /source/ /root/rpmbuild/SOURCES/{source_folder_name}/"),
-            "cd /root/rpmbuild/SOURCES/".to_string(),
+            format!("rsync -a{rsync_excludes} /source/ /work/{source_folder_name}/"),
+            "cd /work".to_string(),
             format!("tar -cvzf {source_folder_name}.tar.gz {source_folder_name}/"),
-            format!("cd /root/rpmbuild/SOURCES/{source_folder_name}/"),
-            format!("QA_RPATHS=$(( 0x0001|0x0010|0x0002|0x0004|0x0008|0x0020 )) rpmbuild --clean -bb /root/rpmbuild/{specfile_name}"),
+            // don't emit a separate -debug package (matches the rpm spec's `%define debug_package %{nil}`)
+            "echo 'OPTIONS+=(!debug)' >> /etc/makepkg.conf".to_string(),
+            "chown -R builder:builder /work /output".to_string(),
+            // -E preserves the injected build secrets (the distro sudoers grants SETENV);
+            // HOME/PKGDEST are set inline so makepkg writes to a builder-writable home and
+            // drops the package into the bind-mounted output dir.
+            "sudo -E -u builder bash -c 'cd /work && HOME=/home/builder PKGDEST=/output makepkg -f --nodeps'".to_string(),
         ]);
 
-        self.build_output_dir = rpmbuild_path.join("RPMS");
+        self.build_output_dir = output_path;
         self.setup_stages.push(SetupStage::Build);
 
         Ok(())
@@ -107,31 +106,30 @@ impl Package for Rpm {
         let gpgkey = self.prepare_gpgkey(&config)?;
         let (home_dir, repo_dir) = self.prepare_repository(&gpgkey)?;
 
-        let key_id = Gpg::new().key_id(&gpgkey.priv_key)?;
-
         self.mounts.insert(home_dir.to_string_lossy().to_string(), "/omnipackage".to_string());
         self.mounts.insert(repo_dir.to_string_lossy().to_string(), "/repo".to_string());
-        self.mounts.insert(self.output_path().to_string_lossy().to_string(), "/root/rpmbuild".to_string());
+        self.mounts.insert(self.output_path().to_string_lossy().to_string(), "/output".to_string());
 
         if self.image_cache.is_none() {
             self.commands.extend(self.distro.setup_repo.clone());
         }
         self.commands.extend(self.import_gpg_keys_commands());
+        // public.key stays in the repo root (written by prepare_repository) — install_steps
+        // fetch it from there. The repo db is named after the project slug so pacman finds it
+        // at `Server/<slug>.db`.
+        let db_name = format!("{}.db.tar.gz", config.project_slug());
         self.commands.extend([
             "cd /repo".to_string(),
-            "cp /root/rpmbuild/RPMS/**/*.rpm /repo/".to_string(),
-            "rpm --import public.key".to_string(),
-            format!("rpm --define '_signature gpg' --define '_gpg_name {key_id}' --addsign *.rpm"),
-            "createrepo --retain-old-md=0 --compatibility .".to_string(),
-            "gpg --no-tty --batch --detach-sign --armor --verbose --yes --always-trust repodata/repomd.xml".to_string(),
-            "mv public.key repodata/repomd.xml.key".to_string(),
+            "cp /output/*.pkg.tar.zst /repo/".to_string(),
+            r#"for f in *.pkg.tar.zst; do gpg --no-tty --batch --yes --detach-sign --no-armor "$f"; done"#.to_string(),
+            format!("repo-add -s -v {db_name} *.pkg.tar.zst"),
         ]);
 
-        self.build_output_dir = repo_dir.clone();
+        self.build_output_dir = repo_dir;
         self.setup_stages.push(SetupStage::Repository);
         self.gpgkey = Some(gpgkey);
 
-        self.write_repo_file(&repo_dir, &config.project_slug(), &self.distro.name, &self.distro_url(&config))
+        Ok(())
     }
 
     fn clone_box(&self) -> Box<dyn Package> {
@@ -178,7 +176,7 @@ impl Package for Rpm {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{Build, Repository, RepositoryProvider, RpmConfig, S3Config};
+    use crate::config::{Build, PacmanConfig, Repository, RepositoryProvider, S3Config};
     use crate::distros::Distros;
     use crate::gpg::Gpg;
     use crate::job_variables::JobVariables;
@@ -195,31 +193,31 @@ mod tests {
     }
 
     fn make_distro() -> Distro {
-        Distros::get().by_id("fedora_38")
+        Distros::get().by_id("arch")
     }
 
     fn make_job_variables() -> JobVariables {
         JobVariables::new("1.2.3".to_string())
     }
 
-    fn make_rpm(dir: &tempfile::TempDir) -> Rpm {
-        make_rpm_with_ignores(dir, vec![])
+    fn make_pacman(dir: &tempfile::TempDir) -> Pacman {
+        make_pacman_with_ignores(dir, vec![])
     }
 
-    fn make_rpm_with_ignores(dir: &tempfile::TempDir, ignore_source_files: Vec<String>) -> Rpm {
+    fn make_pacman_with_ignores(dir: &tempfile::TempDir, ignore_source_files: Vec<String>) -> Pacman {
         let source_dir = dir.path().join("source");
         let build_dir = dir.path().join("build");
         std::fs::create_dir_all(&source_dir).unwrap();
         std::fs::create_dir_all(&build_dir).unwrap();
-        Rpm::new(make_distro(), source_dir, make_job_variables(), build_dir, None, ignore_source_files)
+        Pacman::new(make_distro(), source_dir, make_job_variables(), build_dir, None, ignore_source_files)
     }
 
     fn make_build_config(dir: &tempfile::TempDir) -> Build {
-        let spec_template = "myapp.spec.liquid";
-        std::fs::write(dir.path().join("source").join(spec_template), "Name: {{ package_name }}\nVersion: {{ version }}\n").unwrap();
+        let pkgbuild_template = "PKGBUILD.liquid";
+        std::fs::write(dir.path().join("source").join(pkgbuild_template), "pkgname={{ package_name }}\npkgver={{ version }}\n").unwrap();
 
         Build {
-            distro: "fedora_38".to_string(),
+            distro: "arch".to_string(),
             package_name: "myapp".to_string(),
             maintainer: "Test <test@test.com>".to_string(),
             homepage: "https://example.com".to_string(),
@@ -227,18 +225,17 @@ mod tests {
             build_dependencies: vec!["gcc".to_string(), "make".to_string()],
             runtime_dependencies: vec![],
             before_build_script: None,
-            rpm: Some(RpmConfig {
-                spec_template: spec_template.to_string(),
-            }),
+            rpm: None,
             deb: None,
-            pacman: None,
+            pacman: Some(PacmanConfig {
+                pkgbuild_template: pkgbuild_template.to_string(),
+            }),
             rest: HashMap::new(),
         }
     }
 
     fn make_repository_config(gpg_private_key: &str) -> Repository {
         use base64::{Engine, engine::general_purpose};
-        let encoded = general_purpose::STANDARD.encode(gpg_private_key);
         Repository {
             name: "test-repo".to_string(),
             provider: RepositoryProvider::S3,
@@ -255,7 +252,7 @@ mod tests {
                 cloudflare_zone_id: None,
                 cloudflare_api_token: None,
             }),
-            gpg_private_key_base64: encoded,
+            gpg_private_key_base64: general_purpose::STANDARD.encode(gpg_private_key),
             package_name: "myapp".to_string(),
             retain_packages: 0,
             rest: HashMap::new(),
@@ -267,15 +264,15 @@ mod tests {
     #[test]
     fn test_new_initializes_fields() {
         let dir = tempfile::tempdir().unwrap();
-        let rpm = make_rpm(&dir);
+        let pacman = make_pacman(&dir);
 
-        assert_eq!(rpm.distro().id, "fedora_38");
-        assert_eq!(rpm.job_variables.version, "1.2.3");
-        assert!(rpm.mounts().is_empty());
-        assert!(rpm.commands().is_empty());
-        assert!(rpm.setup_stages().is_empty());
-        assert!(rpm.gpgkey().is_none());
-        assert_eq!(rpm.build_output_dir(), rpm.distro_build_dir());
+        assert_eq!(pacman.distro().id, "arch");
+        assert_eq!(pacman.job_variables.version, "1.2.3");
+        assert!(pacman.mounts().is_empty());
+        assert!(pacman.commands().is_empty());
+        assert!(pacman.setup_stages().is_empty());
+        assert!(pacman.gpgkey().is_none());
+        assert_eq!(pacman.build_output_dir(), pacman.distro_build_dir());
     }
 
     // ── setup_build() ────────────────────────────────────────────────────────
@@ -283,73 +280,64 @@ mod tests {
     #[test]
     fn test_setup_build_creates_output_dir() {
         let dir = tempfile::tempdir().unwrap();
-        let mut rpm = make_rpm(&dir);
-        let config = make_build_config(&dir);
+        let mut pacman = make_pacman(&dir);
 
-        rpm.setup_build(config).unwrap();
+        pacman.setup_build(make_build_config(&dir)).unwrap();
 
-        // build_output_dir points to RPMS/ which is created by rpmbuild at runtime,
-        // but the parent rpmbuild dir is created by setup_build
-        assert!(rpm.build_output_dir().parent().unwrap().exists());
+        assert!(pacman.build_output_dir().exists());
     }
 
     #[test]
-    fn test_setup_build_renders_spec_file() {
+    fn test_setup_build_renders_pkgbuild() {
         let dir = tempfile::tempdir().unwrap();
-        let mut rpm = make_rpm(&dir);
-        let config = make_build_config(&dir);
+        let mut pacman = make_pacman(&dir);
 
-        rpm.setup_build(config).unwrap();
+        pacman.setup_build(make_build_config(&dir)).unwrap();
 
-        let spec_files: Vec<_> = std::fs::read_dir(rpm.distro_build_dir())
-            .unwrap()
-            .filter_map(Result::ok)
-            .filter(|e| e.path().extension().map(|x| x == "spec").unwrap_or(false))
-            .collect();
-
-        assert_eq!(spec_files.len(), 1);
-        let content = std::fs::read_to_string(spec_files[0].path()).unwrap();
-        assert!(content.contains("Name: myapp"));
-        assert!(content.contains("Version: 1.2.3"));
+        let pkgbuild = pacman.distro_build_dir().join("work").join("PKGBUILD");
+        assert!(pkgbuild.exists());
+        let content = std::fs::read_to_string(pkgbuild).unwrap();
+        assert!(content.contains("pkgname=myapp"));
+        assert!(content.contains("pkgver=1.2.3"));
     }
 
     #[test]
     fn test_setup_build_adds_mounts() {
         let dir = tempfile::tempdir().unwrap();
-        let mut rpm = make_rpm(&dir);
-        let config = make_build_config(&dir);
+        let mut pacman = make_pacman(&dir);
 
-        rpm.setup_build(config).unwrap();
+        pacman.setup_build(make_build_config(&dir)).unwrap();
 
-        let mounts = rpm.mounts();
+        let mounts = pacman.mounts();
         assert!(mounts.values().any(|v| v == "/source"));
-        assert!(mounts.values().any(|v| v == "/root/rpmbuild"));
+        assert!(mounts.values().any(|v| v == "/work"));
+        assert!(mounts.values().any(|v| v == "/output"));
     }
 
     #[test]
     fn test_setup_build_adds_commands() {
         let dir = tempfile::tempdir().unwrap();
-        let mut rpm = make_rpm(&dir);
-        let config = make_build_config(&dir);
+        let mut pacman = make_pacman(&dir);
 
-        rpm.setup_build(config).unwrap();
+        pacman.setup_build(make_build_config(&dir)).unwrap();
 
-        let commands = rpm.commands();
+        let commands = pacman.commands();
         assert!(!commands.is_empty());
-        assert!(commands.iter().any(|c| c.contains("rpmbuild")));
-        assert!(commands.iter().any(|c| c.contains("rpmdev-setuptree")));
+        assert!(commands.iter().any(|c| c.contains("makepkg")));
+        assert!(commands.iter().any(|c| c.contains("-u builder")));
+        assert!(commands.iter().any(|c| c.contains("rsync") && c.contains("/source/ /work/")));
     }
 
     #[test]
     fn test_setup_build_adds_distro_setup_commands() {
         let dir = tempfile::tempdir().unwrap();
-        let mut rpm = make_rpm(&dir);
+        let mut pacman = make_pacman(&dir);
         let config = make_build_config(&dir);
         let distro_setup = make_distro().setup(&config.build_dependencies.clone());
 
-        rpm.setup_build(config).unwrap();
+        pacman.setup_build(config).unwrap();
 
-        let commands = rpm.commands();
+        let commands = pacman.commands();
         for expected in &distro_setup {
             assert!(commands.contains(expected), "missing distro setup command: {}", expected);
         }
@@ -358,71 +346,69 @@ mod tests {
     #[test]
     fn test_setup_build_adds_build_to_stages() {
         let dir = tempfile::tempdir().unwrap();
-        let mut rpm = make_rpm(&dir);
+        let mut pacman = make_pacman(&dir);
 
-        rpm.setup_build(make_build_config(&dir)).unwrap();
+        pacman.setup_build(make_build_config(&dir)).unwrap();
 
-        assert!(rpm.setup_stages().contains(&SetupStage::Build));
+        assert!(pacman.setup_stages().contains(&SetupStage::Build));
     }
 
     #[test]
-    fn test_setup_build_sets_build_output_dir_to_rpms() {
+    fn test_setup_build_sets_build_output_dir_to_output() {
         let dir = tempfile::tempdir().unwrap();
-        let mut rpm = make_rpm(&dir);
+        let mut pacman = make_pacman(&dir);
 
-        rpm.setup_build(make_build_config(&dir)).unwrap();
+        pacman.setup_build(make_build_config(&dir)).unwrap();
 
-        assert!(rpm.build_output_dir().ends_with("RPMS"));
+        assert!(pacman.build_output_dir().ends_with("output"));
     }
 
     #[test]
-    fn test_setup_build_fails_without_rpm_config() {
+    fn test_setup_build_fails_without_pacman_config() {
         let dir = tempfile::tempdir().unwrap();
-        let mut rpm = make_rpm(&dir);
+        let mut pacman = make_pacman(&dir);
         let mut config = make_build_config(&dir);
-        config.rpm = None;
+        config.pacman = None;
 
-        assert!(rpm.setup_build(config).is_err());
+        assert!(pacman.setup_build(config).is_err());
     }
 
     #[test]
     fn test_setup_build_passes_ignore_source_files_to_rsync() {
         let dir = tempfile::tempdir().unwrap();
         let ignores = vec![".git".to_string(), "node_modules".to_string(), "*.log".to_string()];
-        let mut rpm = make_rpm_with_ignores(&dir, ignores);
+        let mut pacman = make_pacman_with_ignores(&dir, ignores);
 
-        rpm.setup_build(make_build_config(&dir)).unwrap();
+        pacman.setup_build(make_build_config(&dir)).unwrap();
 
-        let rsync_cmd = rpm.commands().into_iter().find(|c| c.starts_with("rsync ")).expect("rsync command not found");
+        let rsync_cmd = pacman.commands().into_iter().find(|c| c.starts_with("rsync ")).expect("rsync command not found");
         assert!(rsync_cmd.contains("--exclude='.git'"));
         assert!(rsync_cmd.contains("--exclude='node_modules'"));
         assert!(rsync_cmd.contains("--exclude='*.log'"));
-        assert!(rsync_cmd.contains("/source/ /root/rpmbuild/SOURCES/"));
+        assert!(rsync_cmd.contains("/source/ /work/"));
     }
 
     #[test]
     fn test_setup_build_no_excludes_when_ignore_source_files_empty() {
         let dir = tempfile::tempdir().unwrap();
-        let mut rpm = make_rpm(&dir);
+        let mut pacman = make_pacman(&dir);
 
-        rpm.setup_build(make_build_config(&dir)).unwrap();
+        pacman.setup_build(make_build_config(&dir)).unwrap();
 
-        let rsync_cmd = rpm.commands().into_iter().find(|c| c.starts_with("rsync ")).expect("rsync command not found");
+        let rsync_cmd = pacman.commands().into_iter().find(|c| c.starts_with("rsync ")).expect("rsync command not found");
         assert!(!rsync_cmd.contains("--exclude"));
-        let tar_cmd = rpm.commands().into_iter().find(|c| c.contains("tar -cvzf")).expect("tar command not found");
-        assert!(!tar_cmd.contains("--exclude"));
     }
 
     #[test]
     fn test_setup_build_with_before_build_script() {
         let dir = tempfile::tempdir().unwrap();
-        let mut rpm = make_rpm(&dir);
+        let mut pacman = make_pacman(&dir);
         let mut config = make_build_config(&dir);
         config.before_build_script = Some("build.sh".to_string());
 
-        rpm.setup_build(config).unwrap();
+        pacman.setup_build(config).unwrap();
 
-        assert!(rpm.commands().iter().any(|c| c.contains("build.sh")));
+        assert!(pacman.commands().iter().any(|c| c.contains("build.sh")));
     }
 
     // ── setup_repository() ───────────────────────────────────────────────────
@@ -433,12 +419,12 @@ mod tests {
             return;
         }
         let dir = tempfile::tempdir().unwrap();
-        let mut rpm = make_rpm(&dir);
+        let mut pacman = make_pacman(&dir);
         let gpg_key = Gpg::new().generate_keys("Test", "test@example.com").unwrap();
 
-        rpm.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
+        pacman.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
 
-        assert!(rpm.setup_stages().contains(&SetupStage::Repository));
+        assert!(pacman.setup_stages().contains(&SetupStage::Repository));
     }
 
     #[test]
@@ -447,12 +433,12 @@ mod tests {
             return;
         }
         let dir = tempfile::tempdir().unwrap();
-        let mut rpm = make_rpm(&dir);
+        let mut pacman = make_pacman(&dir);
         let gpg_key = Gpg::new().generate_keys("Test", "test@example.com").unwrap();
 
-        rpm.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
+        pacman.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
 
-        assert!(rpm.gpgkey().is_some());
+        assert!(pacman.gpgkey().is_some());
     }
 
     #[test]
@@ -461,14 +447,15 @@ mod tests {
             return;
         }
         let dir = tempfile::tempdir().unwrap();
-        let mut rpm = make_rpm(&dir);
+        let mut pacman = make_pacman(&dir);
         let gpg_key = Gpg::new().generate_keys("Test", "test@example.com").unwrap();
 
-        rpm.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
+        pacman.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
 
-        let mounts = rpm.mounts();
+        let mounts = pacman.mounts();
         assert!(mounts.values().any(|v| v == "/omnipackage"));
         assert!(mounts.values().any(|v| v == "/repo"));
+        assert!(mounts.values().any(|v| v == "/output"));
     }
 
     #[test]
@@ -477,33 +464,14 @@ mod tests {
             return;
         }
         let dir = tempfile::tempdir().unwrap();
-        let mut rpm = make_rpm(&dir);
+        let mut pacman = make_pacman(&dir);
         let gpg_key = Gpg::new().generate_keys("Test", "test@example.com").unwrap();
 
-        rpm.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
+        pacman.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
 
-        let commands = rpm.commands();
-        assert!(commands.iter().any(|c| c.contains("createrepo")));
-        assert!(commands.iter().any(|c| c.contains("--addsign")));
-        assert!(commands.iter().any(|c| c.contains("gpg")));
-    }
-
-    #[test]
-    fn test_setup_repository_writes_repo_file() {
-        if !gpg_available() {
-            return;
-        }
-        let dir = tempfile::tempdir().unwrap();
-        let mut rpm = make_rpm(&dir);
-        let gpg_key = Gpg::new().generate_keys("Test", "test@example.com").unwrap();
-
-        rpm.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
-
-        let repo_file = rpm.build_output_dir().join("myapp.repo");
-        assert!(repo_file.exists());
-        let content = std::fs::read_to_string(repo_file).unwrap();
-        assert!(content.contains("[myapp]"));
-        assert!(content.contains("gpgcheck=1"));
+        let commands = pacman.commands();
+        assert!(commands.iter().any(|c| c.contains("repo-add") && c.contains("myapp.db.tar.gz")));
+        assert!(commands.iter().any(|c| c.contains("--detach-sign")));
     }
 
     #[test]
@@ -512,13 +480,13 @@ mod tests {
             return;
         }
         let dir = tempfile::tempdir().unwrap();
-        let mut rpm = make_rpm(&dir);
+        let mut pacman = make_pacman(&dir);
         let gpg_key = Gpg::new().generate_keys("Test", "test@example.com").unwrap();
 
-        rpm.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
+        pacman.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
 
-        let home_dir = rpm.distro_build_dir().join("home");
-        let repo_dir = rpm.build_output_dir();
+        let home_dir = pacman.distro_build_dir().join("home");
+        let repo_dir = pacman.build_output_dir();
         assert!(home_dir.join("key.priv").exists());
         assert!(repo_dir.join("public.key").exists());
     }
@@ -526,13 +494,13 @@ mod tests {
     #[test]
     fn test_setup_repository_fails_with_invalid_gpg_key() {
         let dir = tempfile::tempdir().unwrap();
-        let mut rpm = make_rpm(&dir);
+        let mut pacman = make_pacman(&dir);
 
         use base64::{Engine, engine::general_purpose};
         let mut config = make_repository_config("dummy");
         config.gpg_private_key_base64 = general_purpose::STANDARD.encode("not a real key");
 
-        assert!(rpm.setup_repository(config).is_err());
+        assert!(pacman.setup_repository(config).is_err());
     }
 
     // ── clone_box() ──────────────────────────────────────────────────────────
@@ -540,32 +508,12 @@ mod tests {
     #[test]
     fn test_clone_box() {
         let dir = tempfile::tempdir().unwrap();
-        let rpm = make_rpm(&dir);
-        let boxed: Box<dyn Package> = Box::new(rpm);
+        let pacman = make_pacman(&dir);
+        let boxed: Box<dyn Package> = Box::new(pacman);
         let cloned = boxed.clone();
 
         assert_eq!(cloned.distro().id, boxed.distro().id);
         assert_eq!(cloned.source_dir(), boxed.source_dir());
         assert_eq!(cloned.build_output_dir(), boxed.build_output_dir());
-    }
-
-    // ── write_repo_file() ────────────────────────────────────────────────────
-
-    #[test]
-    fn test_write_repo_file_content() {
-        let dir = tempfile::tempdir().unwrap();
-        let rpm = make_rpm(&dir);
-        let repo_dir = dir.path().join("repo");
-        std::fs::create_dir_all(&repo_dir).unwrap();
-
-        rpm.write_repo_file(&repo_dir, "myapp", "Fedora 38", "https://cdn.example.com/fedora_38").unwrap();
-
-        let content = std::fs::read_to_string(repo_dir.join("myapp.repo")).unwrap();
-        assert!(content.contains("[myapp]"));
-        assert!(content.contains("name=myapp (Fedora 38)"));
-        assert!(content.contains("baseurl=https://cdn.example.com/fedora_38"));
-        assert!(content.contains("gpgcheck=1"));
-        assert!(content.contains("enabled=1"));
-        assert!(content.contains("type=rpm-md"));
     }
 }

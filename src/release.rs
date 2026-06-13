@@ -186,6 +186,7 @@ mod tests {
             before_build_script: None,
             rpm: None,
             deb: None,
+            pacman: None,
             rest: HashMap::new(),
         }
     }

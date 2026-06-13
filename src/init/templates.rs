@@ -48,6 +48,11 @@ fn per_type(t: ProjectType) -> Vec<TemplateFile> {
                 executable: false,
             },
             TemplateFile {
+                dest: "PKGBUILD.liquid",
+                content: include_str!("templates/c/PKGBUILD.liquid"),
+                executable: false,
+            },
+            TemplateFile {
                 dest: "specfile.spec.liquid",
                 content: include_str!("templates/c/specfile.spec.liquid"),
                 executable: false,
@@ -62,6 +67,12 @@ fn per_type(t: ProjectType) -> Vec<TemplateFile> {
             TemplateFile {
                 dest: "config.yml",
                 content: include_str!("templates/cpp/config.yml"),
+                executable: false,
+            },
+            // Build commands identical to plain C — reuse that file.
+            TemplateFile {
+                dest: "PKGBUILD.liquid",
+                content: include_str!("templates/c/PKGBUILD.liquid"),
                 executable: false,
             },
             // Build commands identical to plain C — reuse those files.
@@ -83,6 +94,11 @@ fn per_type(t: ProjectType) -> Vec<TemplateFile> {
                 executable: false,
             },
             TemplateFile {
+                dest: "PKGBUILD.liquid",
+                content: include_str!("templates/cmake/PKGBUILD.liquid"),
+                executable: false,
+            },
+            TemplateFile {
                 dest: "specfile.spec.liquid",
                 content: include_str!("templates/cmake/specfile.spec.liquid"),
                 executable: false,
@@ -97,6 +113,11 @@ fn per_type(t: ProjectType) -> Vec<TemplateFile> {
             TemplateFile {
                 dest: "config.yml",
                 content: include_str!("templates/rust/config.yml"),
+                executable: false,
+            },
+            TemplateFile {
+                dest: "PKGBUILD.liquid",
+                content: include_str!("templates/rust/PKGBUILD.liquid"),
                 executable: false,
             },
             TemplateFile {
@@ -122,6 +143,11 @@ fn per_type(t: ProjectType) -> Vec<TemplateFile> {
                 executable: false,
             },
             TemplateFile {
+                dest: "PKGBUILD.liquid",
+                content: include_str!("templates/go/PKGBUILD.liquid"),
+                executable: false,
+            },
+            TemplateFile {
                 dest: "specfile.spec.liquid",
                 content: include_str!("templates/go/specfile.spec.liquid"),
                 executable: false,
@@ -144,6 +170,11 @@ fn per_type(t: ProjectType) -> Vec<TemplateFile> {
                 executable: false,
             },
             TemplateFile {
+                dest: "PKGBUILD.liquid",
+                content: include_str!("templates/python/PKGBUILD.liquid"),
+                executable: false,
+            },
+            TemplateFile {
                 dest: "specfile.spec.liquid",
                 content: include_str!("templates/python/specfile.spec.liquid"),
                 executable: false,
@@ -163,6 +194,12 @@ fn per_type(t: ProjectType) -> Vec<TemplateFile> {
             TemplateFile {
                 dest: "config.yml",
                 content: include_str!("templates/ruby/config.yml"),
+                executable: false,
+            },
+            // install.sh-based build identical to Python — reuse that file.
+            TemplateFile {
+                dest: "PKGBUILD.liquid",
+                content: include_str!("templates/python/PKGBUILD.liquid"),
                 executable: false,
             },
             TemplateFile {
@@ -188,6 +225,11 @@ fn per_type(t: ProjectType) -> Vec<TemplateFile> {
                 executable: false,
             },
             TemplateFile {
+                dest: "PKGBUILD.liquid",
+                content: include_str!("templates/crystal/PKGBUILD.liquid"),
+                executable: false,
+            },
+            TemplateFile {
                 dest: "specfile.spec.liquid",
                 content: include_str!("templates/crystal/specfile.spec.liquid"),
                 executable: false,
@@ -207,6 +249,12 @@ fn per_type(t: ProjectType) -> Vec<TemplateFile> {
             TemplateFile {
                 dest: "config.yml",
                 content: include_str!("templates/electron/config.yml"),
+                executable: false,
+            },
+            // install.sh-based build identical to Python — reuse that file.
+            TemplateFile {
+                dest: "PKGBUILD.liquid",
+                content: include_str!("templates/python/PKGBUILD.liquid"),
                 executable: false,
             },
             TemplateFile {
@@ -237,6 +285,11 @@ fn per_type(t: ProjectType) -> Vec<TemplateFile> {
                 executable: false,
             },
             TemplateFile {
+                dest: "PKGBUILD.liquid",
+                content: include_str!("templates/tauri/PKGBUILD.liquid"),
+                executable: false,
+            },
+            TemplateFile {
                 dest: "specfile.spec.liquid",
                 content: include_str!("templates/tauri/specfile.spec.liquid"),
                 executable: false,
@@ -256,6 +309,11 @@ fn per_type(t: ProjectType) -> Vec<TemplateFile> {
             TemplateFile {
                 dest: "config.yml",
                 content: include_str!("templates/generic/config.yml"),
+                executable: false,
+            },
+            TemplateFile {
+                dest: "PKGBUILD.liquid",
+                content: include_str!("templates/generic/PKGBUILD.liquid"),
                 executable: false,
             },
             TemplateFile {

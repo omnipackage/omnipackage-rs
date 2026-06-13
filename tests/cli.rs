@@ -33,6 +33,7 @@ fn test_build_help() {
 fn test_build_dir_default() {
     Command::cargo_bin("omnipackage")
         .unwrap()
+        .env_remove("OMNIPACKAGE_BUILD_DIR")
         .args(["build", "--help"])
         .assert()
         .success()
@@ -116,6 +117,7 @@ fn assert_core_files(dir: &std::path::Path) {
     assert!(omni.join("deb/changelog.liquid").exists(), "deb/changelog.liquid");
     assert!(omni.join("deb/compat.liquid").exists(), "deb/compat.liquid");
     assert!(omni.join("deb/rules.liquid").exists(), "deb/rules.liquid");
+    assert!(omni.join("PKGBUILD.liquid").exists(), "PKGBUILD.liquid");
 }
 
 #[test]
@@ -125,6 +127,11 @@ fn init_rust_generates_parseable_config() {
     run_init(d.path(), "rust");
     assert_core_files(d.path());
     assert!(d.path().join(".omnipackage/install_rust.sh").exists());
+    // pacman support: config carries the anchor + arch/manjaro builds.
+    let config = fs::read_to_string(d.path().join(".omnipackage/config.yml")).unwrap();
+    assert!(config.contains("pkgbuild_template"), "config should reference pkgbuild_template, got:\n{config}");
+    assert!(config.contains("distro: \"arch\""), "config should add arch build, got:\n{config}");
+    assert!(config.contains("distro: \"manjaro\""), "config should add manjaro build, got:\n{config}");
     assert_parses(d.path());
 }
 

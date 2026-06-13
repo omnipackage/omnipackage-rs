@@ -1,5 +1,4 @@
 use crate::config::{Repository, RepositoryProvider};
-use crate::distros::PackageType;
 use crate::package::Package;
 use anyhow::Result;
 use std::collections::HashSet;
@@ -20,10 +19,7 @@ pub fn prepopulate_with_retention(config: &Repository, package: &dyn Package) ->
     std::fs::create_dir_all(&dir)?;
     download_existing(config, package, &dir)?;
 
-    let ext = match package.distro().package_type {
-        PackageType::Rpm => "rpm",
-        PackageType::Deb => "deb",
-    };
+    let ext = package.distro().package_type.extension();
 
     let stats = prune_by_mtime(&dir, ext, config.retain_packages as usize)?;
     Ok(Some(stats))
