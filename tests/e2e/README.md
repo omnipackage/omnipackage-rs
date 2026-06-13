@@ -51,7 +51,7 @@ TYPES=python DISTROS=debian_13 VERBOSE=1 bash tests/e2e/run.sh
    `<tmpdir>/.env` so the publish stage has a key to sign with.
 5. `omnipackage release <tmpdir> --repository "Local test" --distros <distros>`
    — exercises build + publish + signing end-to-end.
-6. Locate artifact in `<repo_dir>/<distro>/**/*.{rpm,deb}`.
+6. Locate artifact in `<repo_dir>/<distro>/**/*.{rpm,deb,pkg.tar.zst}`.
 7. Spin up fresh distro container, mount artifact, install via the distro's
    native package manager (so runtime deps get pulled), run
    `helloworld-<type>`, grep for `hello from <type> 1.2.3`.
@@ -85,7 +85,7 @@ Everything from a run lives under `$TMP_ROOT/<type>/`:
 <type>/
   source/    fixture + .omnipackage/ (rendered config) + .env
   build/     per-distro container output (rpmbuild / debuild trees)
-  repo/      localfs repo with the published .rpm/.deb under <distro>/
+  repo/      localfs repo with the published .rpm/.deb/.pkg.tar.zst under <distro>/
   logs/      init.log, gpg.log, release.log, <distro>.verify.log
 ```
 

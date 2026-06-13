@@ -33,7 +33,7 @@ common: &common
   package_name: omnipackage
   maintainer: "Oleg Antonyan <oleg.b.antonyan@gmail.com>"
   homepage: https://omnipackage.org/
-  description: Build and distribute RPM & DEB packages easily
+  description: Build and distribute RPM, DEB & Arch packages easily
 
 repositories:
   - name: "master"
@@ -80,6 +80,15 @@ deb: &deb
   runtime_dependencies: ["podman | docker", "gpg"]
   deb:
     debian_templates: ".omnipackage/deb"
+
+pacman: &pacman
+  <<: *common
+  # pacman can't express "podman OR docker" in depends() like rpm/deb can, so we
+  # hard-depend on the preferred runtime (podman) and offer docker via optdepends.
+  build_dependencies: ["rust"]
+  runtime_dependencies: ["gnupg", "podman"]
+  pacman:
+    pkgbuild_template: ".omnipackage/PKGBUILD.liquid"
 
 builds:
   - distro: "opensuse_15.3"
@@ -241,6 +250,12 @@ builds:
     build_dependencies: ["curl", "gcc", "make"]
     before_build_script: ".omnipackage/install_rust.sh"
     <<: *rpm
+
+  - distro: "arch"
+    <<: *pacman
+
+  - distro: "manjaro"
+    <<: *pacman
 
 ignore_source_files:
   - .git

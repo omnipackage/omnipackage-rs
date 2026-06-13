@@ -141,7 +141,7 @@ mod tests {
 
         let entries = parse(&html).expect("cannot extract data");
 
-        assert_eq!(entries.len(), 22);
+        assert_eq!(entries.len(), 23);
 
         let first = &entries[0];
         assert_eq!(first["distro_id"], "opensuse_15.5");
@@ -152,10 +152,17 @@ mod tests {
             "zypper addrepo --refresh https://repositories.omnipackage.org/oleg/mpz/opensuse-15-5/mpz.repo\nzypper refresh\nzypper install mpz"
         );
 
-        let last = &entries[21];
-        assert_eq!(last["distro_id"], "mageia_cauldron");
-        assert_eq!(last["distro_name"], "Mageia Cauldron");
-        assert_eq!(last["download_url"], "https://repositories.omnipackage.org/oleg/mpz/mageia-cauldron/mpz-2.0.3-1.mga10.x86_64.rpm");
+        let mageia = &entries[21];
+        assert_eq!(mageia["distro_id"], "mageia_cauldron");
+        assert_eq!(mageia["distro_name"], "Mageia Cauldron");
+        assert_eq!(mageia["download_url"], "https://repositories.omnipackage.org/oleg/mpz/mageia-cauldron/mpz-2.0.3-1.mga10.x86_64.rpm");
+
+        // pacman entry: compound .pkg.tar.zst extension and pacman-key install flow
+        let arch = &entries[22];
+        assert_eq!(arch["distro_id"], "arch");
+        assert_eq!(arch["distro_name"], "Arch Linux");
+        assert!(arch["download_url"].ends_with(".pkg.tar.zst"), "arch download_url: {}", arch["download_url"]);
+        assert!(arch["install_steps"].contains("pacman-key"), "arch install_steps: {}", arch["install_steps"]);
 
         // assert all entries have the required keys
         let required_keys = ["distro_id", "distro_name", "install_steps", "gpg_key", "download_url"];
@@ -175,7 +182,11 @@ mod tests {
         // assert all download_urls end with .rpm or .deb
         for entry in &entries {
             let url = &entry["download_url"];
-            assert!(url.ends_with(".rpm") || url.ends_with(".deb"), "entry '{}' has unexpected download_url: {url}", entry["distro_id"]);
+            assert!(
+                url.ends_with(".rpm") || url.ends_with(".deb") || url.ends_with(".pkg.tar.zst"),
+                "entry '{}' has unexpected download_url: {url}",
+                entry["distro_id"]
+            );
         }
     }
 
@@ -238,7 +249,7 @@ mod tests {
         let injected = render(&repos, None).expect("cannot render");
         let repos2 = parse(&injected).expect("cannot parse after render");
 
-        assert_eq!(repos2.len(), 23);
+        assert_eq!(repos2.len(), 24);
         assert_eq!(
             repos2.iter().find(|repo| repo.get("distro_id").is_some_and(|v| v == "debian_14")).unwrap().get("distro_name").unwrap(),
             &"Debian 14".to_string()
@@ -297,7 +308,7 @@ mod tests {
         println!("{}", result.badge);
 
         let repos2 = parse(&result.install_page).unwrap();
-        assert_eq!(repos2.len(), 24);
+        assert_eq!(repos2.len(), 25);
     }
 
     #[test]

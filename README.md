@@ -2,7 +2,7 @@
 
 ## OmniPackage CLI
 
-Build and distribute RPM & DEB packages [easily](https://omnipackage.org/about).
+Build and distribute RPM, DEB & Arch packages [easily](https://omnipackage.org/about).
 
 ## Documentation
 
