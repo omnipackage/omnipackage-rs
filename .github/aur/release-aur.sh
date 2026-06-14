@@ -17,7 +17,7 @@ echo '--- PKGBUILD ---'; cat "$BUILD_DIR/PKGBUILD"
 echo '--- .SRCINFO ---'; cat "$BUILD_DIR/.SRCINFO"
 
 KEYFILE="$(mktemp)"
-printf '%s' "$AUR_SSH_PRIVATE_KEY" > "$KEYFILE"
+printf '%s\n' "$AUR_SSH_PRIVATE_KEY" | tr -d '\r' > "$KEYFILE"
 chmod 600 "$KEYFILE"
 export GIT_SSH_COMMAND="ssh -i $KEYFILE -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=accept-new"
 
