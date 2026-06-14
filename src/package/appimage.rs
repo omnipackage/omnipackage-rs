@@ -138,8 +138,11 @@ impl Package for Appimage {
             // match. zsync needs the absolute public URL, only known here.
             let update_url = format!("{}/{appimage_name}.zsync", self.distro_url(&config).trim_end_matches('/'));
             let arch = appimage_arch();
+            // cd /repo: appimagetool delegates to `zsyncmake` without -o, which writes the
+            // .zsync to the CWD (not next to the AppImage), so the sidecar must be generated
+            // inside /repo to be uploaded. test -f fails the build if it wasn't produced.
             self.commands.push(format!(
-                "APPIMAGE_EXTRACT_AND_RUN=1 ARCH={arch} appimagetool -u \"zsync|{update_url}\" /work/AppDir /repo/{appimage_name}"
+                "cd /repo && APPIMAGE_EXTRACT_AND_RUN=1 ARCH={arch} appimagetool -u \"zsync|{update_url}\" /work/AppDir /repo/{appimage_name} && test -f /repo/{appimage_name}.zsync"
             ));
         } else {
             self.commands.push("cp /output/*.AppImage /repo/".to_string());
@@ -388,6 +391,9 @@ mod tests {
         assert!(zsync_cmd.contains("zsync|"));
         assert!(zsync_cmd.contains(&format!("{name}.zsync")));
         assert!(zsync_cmd.contains(&format!("/work/AppDir /repo/{name}")));
+        // zsyncmake writes the sidecar to the CWD, so it must run in /repo; the guard fails the build if it didn't.
+        assert!(zsync_cmd.contains("cd /repo &&"));
+        assert!(zsync_cmd.contains(&format!("test -f /repo/{name}.zsync")));
     }
 
     #[test]
