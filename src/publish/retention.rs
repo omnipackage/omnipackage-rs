@@ -1,4 +1,5 @@
 use crate::config::{Repository, RepositoryProvider};
+use crate::distros::PackageType;
 use crate::package::Package;
 use anyhow::Result;
 use std::collections::HashSet;
@@ -12,6 +13,12 @@ pub struct RetentionStats {
 
 pub fn prepopulate_with_retention(config: &Repository, package: &dyn Package) -> Result<Option<RetentionStats>> {
     if config.retain_packages == 0 {
+        return Ok(None);
+    }
+    // AppImage uses a single version-less filename, overwritten every build. There are no older
+    // versions to retain, and retaining would prepopulate the just-overwritten file into skip_upload
+    // — stranding the freshly built binary in the bucket while its regenerated .zsync gets uploaded.
+    if package.distro().package_type == PackageType::Appimage {
         return Ok(None);
     }
 
@@ -144,5 +151,37 @@ mod tests {
         assert_eq!(stats.kept, 1);
         assert_eq!(stats.removed, 2);
         assert!(sub.join("c.deb").exists());
+    }
+
+    #[test]
+    fn prepopulate_skips_appimage_even_with_retention() {
+        use crate::config::RepositoryProvider;
+        use crate::distros::Distros;
+        use crate::job_variables::JobVariables;
+        use crate::package::appimage::Appimage;
+        use std::collections::HashMap;
+
+        let dir = tempfile::tempdir().unwrap();
+        let pkg = Appimage::new(
+            Distros::get().by_id("appimage"),
+            dir.path().join("src"),
+            JobVariables::new("1.0.0".to_string()),
+            dir.path().join("build"),
+            None,
+            vec![],
+        );
+        let config = Repository {
+            name: "r".to_string(),
+            provider: RepositoryProvider::S3,
+            localfs: None,
+            s3: None,
+            gpg_private_key_base64: String::new(),
+            package_name: "myapp".to_string(),
+            retain_packages: 2,
+            rest: HashMap::new(),
+        };
+
+        // version-less rolling filename: retention must be a no-op, else skip_upload strands the new binary
+        assert!(prepopulate_with_retention(&config, &pkg).unwrap().is_none());
     }
 }
