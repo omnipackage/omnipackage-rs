@@ -1,0 +1,35 @@
+#!/bin/bash -e
+# AppImage recipe rendered at build time. {{ vars }} come from config.yml.
+# Contract: runs with CWD /work, source copy is at /work/src, and must populate /work/AppDir.
+# omnipackage then runs appimagetool on /work/AppDir.
+# Maintainer: {{ maintainer }}
+
+cd /work/src
+make
+
+APPDIR=/work/AppDir
+install -d -m755 "$APPDIR/usr/bin"
+install -m755 sample_project "$APPDIR/usr/bin/{{ package_name }}"
+
+# Desktop entry (required by appimagetool), at the AppDir root.
+cat > "$APPDIR/{{ package_name }}.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name={{ package_name }}
+Exec={{ package_name }}
+Icon={{ package_name }}
+Categories=Utility;
+Terminal=true
+EOF
+
+# Icon (required by appimagetool): a 1x1 PNG placeholder named after the Icon= key.
+printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' | base64 -d > "$APPDIR/{{ package_name }}.png"
+ln -sf "{{ package_name }}.png" "$APPDIR/.DirIcon"
+
+# AppRun entry point. {{ package_name }} is rendered by liquid before the shell runs.
+cat > "$APPDIR/AppRun" <<'EOF'
+#!/bin/bash
+HERE="$(dirname "$(readlink -f "${0}")")"
+exec "$HERE/usr/bin/{{ package_name }}" "$@"
+EOF
+chmod +x "$APPDIR/AppRun"

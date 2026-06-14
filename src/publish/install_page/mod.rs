@@ -32,16 +32,22 @@ pub fn upsert(existing_page_html: &str, repositories: &Repositories, config: &Re
 fn render_badge(repositories: &Repositories, config: &RepoConfig) -> Result<String, anyhow::Error> {
     let mut vars = config.to_template_vars();
 
-    let (rpm_count, deb_count, pacman_count) = repositories.iter().fold((0, 0, 0), |(rpm, deb, pacman), r| match r.get("package_type").map(|t| t.as_str()) {
-        Some("rpm") => (rpm + 1, deb, pacman),
-        Some("deb") => (rpm, deb + 1, pacman),
-        Some("pacman") => (rpm, deb, pacman + 1),
-        _ => (rpm, deb, pacman),
-    });
+    let (rpm_count, deb_count, pacman_count, appimage_count) = repositories
+        .iter()
+        .fold((0, 0, 0, 0), |(rpm, deb, pacman, appimage), r| match r.get("package_type").map(|t| t.as_str()) {
+            Some("rpm") => (rpm + 1, deb, pacman, appimage),
+            Some("deb") => (rpm, deb + 1, pacman, appimage),
+            Some("pacman") => (rpm, deb, pacman + 1, appimage),
+            Some("appimage") => (rpm, deb, pacman, appimage + 1),
+            _ => (rpm, deb, pacman, appimage),
+        });
 
     let mut aux = format!("{rpm_count} RPM {deb_count} DEB");
     if pacman_count > 0 {
         aux.push_str(&format!(" {pacman_count} PAC"));
+    }
+    if appimage_count > 0 {
+        aux.push_str(&format!(" {appimage_count} APP"));
     }
     vars.extend(badge_vars(config.name.clone(), aux));
 
@@ -309,6 +315,27 @@ mod tests {
 
         let repos2 = parse(&result.install_page).unwrap();
         assert_eq!(repos2.len(), 25);
+    }
+
+    #[test]
+    fn test_badge_counts_appimage() {
+        let repo_conf = RepoConfig {
+            name: "title".into(),
+            provider: RepositoryProvider::S3,
+            gpg_private_key_base64: "".into(),
+            package_name: "pkg".into(),
+            retain_packages: 0,
+            rest: HashMap::new(),
+            s3: None,
+            localfs: None,
+        };
+        let repos: Repositories = vec![
+            Repository::from([("distro_id".to_string(), "appimage".to_string()), ("package_type".to_string(), "appimage".to_string())]),
+            Repository::from([("distro_id".to_string(), "fedora_40".to_string()), ("package_type".to_string(), "rpm".to_string())]),
+        ];
+
+        let badge = render_badge(&repos, &repo_conf).unwrap();
+        assert!(badge.contains("1 RPM 0 DEB 1 APP"), "badge missing appimage count: {badge}");
     }
 
     #[test]

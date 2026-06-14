@@ -237,6 +237,7 @@ mod tests {
             pacman: Some(PacmanConfig {
                 pkgbuild_template: pkgbuild_template.to_string(),
             }),
+            appimage: None,
             rest: HashMap::new(),
         }
     }

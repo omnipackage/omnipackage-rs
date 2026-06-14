@@ -1,18 +1,19 @@
 ---
 name: omnipackage
 description: >
-  Use when packaging a project as native Linux RPM/DEB/pacman with omnipackage —
-  scaffolding or filling the .omnipackage/ config, building/publishing packages
-  across distros (Fedora, openSUSE, Debian, Ubuntu, Arch, Manjaro, …), or debugging
-  omnipackage build failures. Triggers: "omnipackage", ".omnipackage", "package for
-  Linux", "build rpm/deb", "PKGBUILD/Arch/pacman", "omnipackage init/build/release".
+  Use when packaging a project as native Linux RPM/DEB/pacman or an AppImage with
+  omnipackage — scaffolding or filling the .omnipackage/ config, building/publishing
+  packages across distros (Fedora, openSUSE, Debian, Ubuntu, Arch, Manjaro, …), or
+  debugging omnipackage build failures. Triggers: "omnipackage", ".omnipackage",
+  "package for Linux", "build rpm/deb", "PKGBUILD/Arch/pacman", "AppImage",
+  "omnipackage init/build/release".
 ---
 
 # omnipackage
 
-`omnipackage` builds native RPM, DEB, and pacman packages for many Linux distros by compiling
-the project inside a per-distro container (Fedora, openSUSE, RHEL-clones, Mageia, Debian,
-Ubuntu, Arch, Manjaro). Config lives in `.omnipackage/`:
+`omnipackage` builds native RPM, DEB, and pacman packages — plus self-contained AppImages — for
+many Linux distros by compiling the project inside a per-distro container (Fedora, openSUSE,
+RHEL-clones, Mageia, Debian, Ubuntu, Arch, Manjaro). Config lives in `.omnipackage/`:
 
 ```
 .omnipackage/
@@ -24,6 +25,7 @@ Ubuntu, Arch, Manjaro). Config lives in `.omnipackage/`:
     changelog.liquid
     compat.liquid
   PKGBUILD.liquid           # pacman/Arch build (Liquid); normal build()/package() PKGBUILD
+  appimage.sh.liquid        # AppImage recipe (Liquid+bash): populates AppDir — see AppImage below
 ```
 
 Templates are [Liquid](https://shopify.github.io/liquid/) rendered at build time:
@@ -97,6 +99,67 @@ Key points:
   (CPM/FetchContent/Go modules/cargo). omnipackage containers have network.
 - **Valid distro IDs:** run `omnipackage info --list-distros`, or see
   <https://docs.omnipackage.org/distros/>.
+
+## AppImage
+
+A `distro: "appimage"` build (`package_type: appimage`) reuses the same pipeline: it compiles in
+an `ubuntu:22.04` container and emits one self-contained `<name>-<arch>.AppImage` to the same S3
+repo. No GPG (nothing to sign). Optional per-build `zsync: true` embeds a delta-update URL — that
+needs the public repo URL, so it only takes effect on `release`, not a bare `build`.
+
+```yaml
+appimage: &appimage
+  <<: *common
+  build_dependencies: [ ... apt packages your build + bundling need ... ]
+  appimage:
+    recipe_template: ".omnipackage/appimage.sh.liquid"
+    zsync: true
+builds:
+  - { distro: "appimage", <<: *appimage }
+```
+
+**Recipe contract** (`recipe_template`, a Liquid+bash script): runs with CWD `/work`, a writable
+source copy at `/work/src`, and must populate `/work/AppDir` (binary, `*.desktop`, icon,
+`AppRun`). omnipackage then runs `appimagetool /work/AppDir /output/<name>-<arch>.AppImage` (and
+re-runs it with `-u "zsync|…"` into the repo when `zsync: true`). `appimagetool` is preinstalled;
+detect arch in the recipe with `$(uname -m)` (the `%{arch}` placeholder is only substituted in the
+distro's setup steps, not the recipe).
+
+Gotcha: omnipackage invokes the recipe as `bash <file>`, so a `#!/bin/bash -e` shebang is **dead**
+— put `set -eo pipefail` as the first line, or a mid-recipe failure sails past and resurfaces as a
+confusing appimagetool "Desktop file not found".
+
+### Qt apps — bundling so it RUNS and plays audio
+
+The hard part. Bundle with `linuxdeploy` + `linuxdeploy-plugin-qt` (fetch both in the recipe —
+they're app-specific, not part of the distro setup). Non-obvious gotchas, each hit in practice:
+
+- **Don't use apt Qt.** `ubuntu:22.04` ships Qt 6.2, whose QtMultimedia is GStreamer-only and
+  near-impossible to self-contain. Install modern Qt via `aqtinstall` (`pip3 install aqtinstall;
+  aqt install-qt linux desktop 6.8.1 linux_gcc_64 -m qtmultimedia qtimageformats`) — official Qt
+  ships the **FFmpeg multimedia backend + `libav*` libs**. Point CMake at it with
+  `-DCMAKE_PREFIX_PATH=$QTDIR` and linuxdeploy with `QMAKE=$QTDIR/bin/qmake`.
+- **Multimedia plugin isn't auto-deployed** → `export EXTRA_QT_PLUGINS=multimedia`.
+- **FFmpeg libs aren't auto-deployed on Linux** → pass each to linuxdeploy with
+  `--library=$QTDIR/lib/libav*.so* …` to bundle + rpath-patch them. (Decoding is bundled; audio
+  OUTPUT uses the host's PulseAudio/PipeWire/ALSA — don't bundle those.)
+- **Only the xcb (X11) platform plugin is deployed** — already fine on Wayland via XWayland. For
+  NATIVE Wayland add `EXTRA_PLATFORM_PLUGINS="libqwayland-egl.so;libqwayland-generic.so"` and the
+  integration dirs to `EXTRA_QT_PLUGINS`
+  (`wayland-shell-integration;wayland-decoration-client;wayland-graphics-integration-client`) —
+  shell-integration is what makes the window actually appear on GNOME/KDE. The wayland client
+  plugins ship in the **base** aqt desktop install; there is **no separate `qtwayland` aqt module**
+  for 6.8 (passing one errors).
+- **`build_dependencies`** are the system libs the app + Qt plugins link, so linuxdeploy can find &
+  bundle them: GL/EGL, dbus, glib, fontconfig/freetype, the full xcb + Xlib-extension set
+  (libxcb-*, libxrandr2, libxext6, libxrender1, libxi6, libxfixes3, libxcursor1, libxdamage1,
+  libxcomposite1, libxtst6, libxinerama1, libsm6, libice6), wayland (libwayland-client0/egl1/cursor0),
+  audio (libpulse0, libasound2), plus build tooling (g++, cmake, git, python3-pip). When linuxdeploy
+  aborts with `Could not find dependency: libfoo.so.N`, add that lib's apt package and rebuild.
+- glibc floor = the build container (2.35 on ubuntu:22.04), regardless of which Qt you bundle.
+
+Working reference: mpz's [`appimage.sh.liquid`](https://github.com/olegantonyan/mpz/blob/master/.omnipackage/appimage.sh.liquid)
+and the `appimage` anchor in its `config.yml`.
 
 ## Reference
 

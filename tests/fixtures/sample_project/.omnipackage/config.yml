@@ -104,6 +104,13 @@ pacman: &pacman
   pacman:
     pkgbuild_template: ".omnipackage/PKGBUILD.liquid"
 
+appimage: &appimage
+  <<: *common
+  build_dependencies: ["build-essential"]
+  appimage:
+    recipe_template: ".omnipackage/appimage.sh.liquid"
+    zsync: true
+
 builds:
   - distro: "opensuse_15.3"
     <<: *rpm
@@ -200,6 +207,9 @@ builds:
 
   - distro: "manjaro"
     <<: *pacman
+
+  - distro: "appimage"
+    <<: *appimage
 
 ignore_source_files:
   - .git
