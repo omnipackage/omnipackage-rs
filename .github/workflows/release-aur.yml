@@ -16,7 +16,7 @@ jobs:
     container: archlinux:latest
     steps:
       - run: pacman -Syu --noconfirm --needed git openssh base-devel pacman-contrib sudo curl
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: useradd -m builder
       - name: Push to AUR
         env:

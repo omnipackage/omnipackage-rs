@@ -6,10 +6,10 @@ Build and distribute RPM, DEB & Arch packages [easily](https://omnipackage.org/a
 
 ## Installation
 
-- [Stable](https://repositories.omnipackage.org/omnipackage-rs/stable/install.html) (recommended for most users)
+- [Stable binaries](https://repositories.omnipackage.org/omnipackage-rs/stable/install.html) (recommended for most users)
 - [Unstable builds from master](https://repositories.omnipackage.org/omnipackage-rs/master/install.html)
+- [AUR](https://aur.archlinux.org/packages/omnipackage) (Arch Linux users who prefer AUR)
 - From sources `cargo build --release`
-
 
 ## Documentation
 
