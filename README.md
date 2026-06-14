@@ -4,12 +4,24 @@
 
 Build and distribute RPM, DEB & Arch packages [easily](https://omnipackage.org/about).
 
-## Documentation
-
-Visit https://docs.omnipackage.org
-
 ## Installation
 
 - [Stable](https://repositories.omnipackage.org/omnipackage-rs/stable/install.html) (recommended for most users)
 - [Unstable builds from master](https://repositories.omnipackage.org/omnipackage-rs/master/install.html)
 - From sources `cargo build --release`
+
+
+## Documentation
+
+Visit https://docs.omnipackage.org
+
+## Use with AI agents
+
+**Claude Code** — install the omnipackage skill as a plugin (auto-triggers on packaging tasks, auto-updates):
+
+```
+/plugin marketplace add omnipackage/omnipackage-rs
+/plugin install omnipackage@omnipackage
+```
+
+**Any other agent** — point it at the full docs in one file: https://docs.omnipackage.org/llms-full.txt
