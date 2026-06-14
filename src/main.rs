@@ -36,6 +36,7 @@ struct GlobalOpts {
 #[derive(Parser)]
 #[command(version = version(), about)]
 #[command(styles = styles())]
+#[command(after_help = "Full documentation: https://docs.omnipackage.org/")]
 struct Cli {
     #[command(flatten)]
     global: GlobalOpts,
