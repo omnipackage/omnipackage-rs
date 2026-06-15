@@ -87,16 +87,83 @@ builds:
 ```
 
 Key points:
-- **`version_extractors`** regex runs against the **whole file**; use one capture group and a
-  unique prefix (e.g. `project(` to avoid matching `cmake_minimum_required(VERSION 3.21)`).
+- **`version_extractors`** is a required top-level field with three providers — `file` (regex
+  over a file; runs against the **whole file**, use one capture group + a unique prefix like
+  `project(` to dodge `cmake_minimum_required(VERSION 3.21)`), `shell` (trimmed stdout), and
+  `constant` (hardcoded). See Field notes for the git-describe/CI pattern.
 - **`runtime_dependencies` is usually empty** — `rpmbuild`/`dpkg-shlibdeps` auto-detect linked
-  libraries. List only `dlopen`ed libs (QML modules!), external tools, fonts/themes.
-- **`before_build_script`** runs in-container before the build — enable extra repos (EPEL/CRB)
-  or install a newer toolchain.
+  libraries. List only `dlopen`ed libs (QML modules! PCSC CCID driver! pcscd daemon), external
+  tools, fonts/themes.
+- **`before_build_script`** runs in-container before the build — install a newer toolchain or
+  enable extra repos (EPEL/CRB). **But it runs AFTER `build_dependencies` are installed**, so
+  packages from a repo disabled by default (RHEL CRB/PowerTools) can't be plain
+  `build_dependencies` — enable the repo and `dnf install` them inside the script. See Field notes.
 - **The build needs network + git** at configure time if the project fetches deps
   (CPM/FetchContent/Go modules/cargo). omnipackage containers have network.
 - **Valid distro IDs:** run `omnipackage info --list-distros`, or see
   <https://docs.omnipackage.org/distros/>.
+
+## Field notes
+
+Hard-won specifics the docs don't spell out. (Example domain: a Go + Fyne cgo GUI app linking
+PCSC/smartcard + OpenGL/X11 — i.e. the trickiest case, mixing cgo, a toolchain newer than distros
+ship, and libs whose names diverge wildly.)
+
+**Go / cgo desktop apps.** `omnipackage init` detects `go.mod` and scaffolds Go templates +
+`install_go.sh` (distro go is often too old for modern `go.mod`).
+- The scaffolded version_extractor reads `version.go` (`Version = "x.y.z"`); projects without that
+  file fail at version resolution — switch the provider.
+- Build with `export GOTOOLCHAIN=auto` (fetches the exact `go 1.xx` from `go.mod` at build time;
+  needs network — containers have it). Don't rely on the distro go matching `go.mod`.
+- `install_go.sh`'s curl download breaks on images with a broken libcurl (seen on **Tumbleweed**:
+  `undefined symbol: ngtcp2_...`). Fix: install distro `go`/`golang` instead, and let
+  `GOTOOLCHAIN=auto` upgrade it. Make the script accept distro go when `>= 1.21`, else download.
+- **`GOSUMDB=off`** on some distros (**Mageia**) blocks the GOTOOLCHAIN toolchain download
+  (`checksum database disabled by GOSUMDB=off`). Force it back in the build env:
+  `export GOSUMDB=sum.golang.org` and `export GOPROXY=https://proxy.golang.org,direct`.
+- In `debian/rules`: set `GOPATH`/`GOCACHE` inside the build tree (HOME may be read-only), and add
+  `override_dh_dwz:` + `override_dh_auto_test:` for stripped (`-ldflags "-s -w"`) Go binaries.
+- A plain `go build` binary + installing the `.desktop`/icon yourself is enough — no `fyne package`.
+
+**Per-family package names** (the names that actually bit, for PCSC + OpenGL/X11):
+
+| need | Debian/Ubuntu | Fedora | RHEL clones | openSUSE | Mageia | Arch |
+|------|---------------|--------|-------------|----------|--------|------|
+| go | `golang-go` | `golang` | `golang` | `go` | `golang` | `go` |
+| pkg-config | `pkg-config` | `pkgconf-pkg-config` | `pkgconf-pkg-config` | `pkg-config` | `pkgconf` | `pkgconf` |
+| Mesa GL dev | `libgl1-mesa-dev` | `mesa-libGL-devel` | `mesa-libGL-devel` | `Mesa-libGL-devel` | `lib64mesagl-devel` | `mesa` |
+| X11 dev (Fyne/glfw) | `xorg-dev` | `libX{11,cursor,randr,inerama,i,xf86vm}-devel` | same (CRB) | same (capital X) | `lib64x{11,cursor,…}-devel` | `libx11 libxcursor …` |
+| pcsc dev | `libpcsclite-dev` | `pcsc-lite-devel` | `pcsc-lite-devel` (CRB) | `pcsc-lite-devel` | `lib64pcsclite-devel` | `pcsclite` |
+| pcscd daemon (runtime) | `pcscd` | `pcsc-lite` | `pcsc-lite` | `pcsc-lite` | `pcsc-lite` | `pcsclite` |
+| CCID driver (runtime, dlopen'd) | `libccid` | `pcsc-lite-ccid` | `pcsc-lite-ccid` | **`pcsc-ccid`** | `ccid` | `ccid` |
+
+Traps: openSUSE's CCID driver is `pcsc-ccid`, **not** `pcsc-lite-ccid` (Fedora's name) — both build
+fine but the openSUSE package won't install. The pcscd daemon + CCID driver are dlopen'd at runtime,
+so they're **never** auto-detected — always explicit `runtime_dependencies`. Verify any uncertain
+name in seconds: `docker run --rm <image> <dnf|zypper|pacman> ... search/list <pkg>`.
+
+**RHEL clones (Alma/Rocky).** X11 + pcsc-lite `-devel` live in CRB (disabled by default), and
+build_dependencies install *before* `before_build_script` — so put only base packages
+(`gcc gcc-c++ git curl`) in `build_dependencies` and install the `-devel` libs (+`golang`) in the
+script after `dnf config-manager --set-enabled crb || ... powertools` and `dnf install epel-release`.
+rpmbuild only checks listed `BuildRequires`, so libs the script installs (absent from
+build_dependencies) still satisfy cgo.
+
+**deb compat floor.** Targeting old Ubuntu (20.04 = debhelper 12) means `Build-Depends: debhelper
+(>= 13)` / `compat 13` fails with *"Unmet build dependencies"*. Use **12** (works Ubuntu 20.04 →
+Debian 13); explicit `override_dh_*` rules don't depend on the compat level.
+
+**Version from git tag + CI.** Mirror a release pipeline with a `shell` extractor:
+`command: "git describe --tags --abbrev=0 2>/dev/null | tail -c +2 | grep . || echo 0.0.0"` (strips
+`v`, falls back so tagless local checkouts still build). The extractor runs **host-side before
+staging**, so `.git` is available even though it's excluded from the container. In GitHub Actions
+the default shallow checkout has no tags → `git describe` returns nothing; set `actions/checkout`
+`fetch-depth: 0` + `fetch-tags: true`, **and** ensure the tags exist on the checked-out remote (a
+fork created without tags has none — `git push origin --tags`).
+
+**Misc.** Verify a `.deb` on a non-Debian host (no `dpkg`): `ar x pkg.deb` then
+`tar --zstd -tf data.tar.*` (extract `control` from `control.tar.*` for Depends). Build many distros
+in **waves of ~3** — parallel cgo/Qt compiles can OOM.
 
 ## Reference
 
