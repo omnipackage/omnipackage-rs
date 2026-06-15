@@ -45,6 +45,23 @@ arch: &arch
     - "printf '\\n[%{project_slug}]\\nSigLevel = Required DatabaseOptional\\nServer = %{url}\\n' | sudo tee -a /etc/pacman.conf"
     - "sudo pacman -Sy %{package_name}"
 
+appimage: &appimage
+  package_type: "appimage"
+  setup:
+    - "DEBIAN_FRONTEND=noninteractive apt-get update"
+    - "DEBIAN_FRONTEND=noninteractive apt-get install -y curl file desktop-file-utils zsync rsync %{build_dependencies}"
+    # appimagetool ships as an AppImage; FUSE is absent in containers, so extract-and-run (set in the appimage package impl).
+    - "curl -fsSL https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-%{arch}.AppImage -o /usr/local/bin/appimagetool"
+    - "chmod +x /usr/local/bin/appimagetool"
+  cleanup:
+    - "DEBIAN_FRONTEND=noninteractive apt-get clean && rm -rf /var/lib/apt/lists/*"
+  install_steps:
+    # $(uname -m) runs on the end user's machine and matches the published filename's arch
+    # (x86_64/aarch64). Avoids the install page needing any appimage-specific substitution.
+    - "curl -fSL %{url}/%{package_name}-$(uname -m).AppImage -o %{package_name}.AppImage"
+    - "chmod +x %{package_name}.AppImage"
+    - "./%{package_name}.AppImage"
+
 redhat: &redhat
   package_type: "rpm"
   setup:
@@ -292,3 +309,13 @@ distros:
     image: "manjarolinux/base:latest"
     <<: *arch
     image_info_url: "https://hub.docker.com/r/manjarolinux/base"
+
+  - id: "appimage"
+    name: "AppImage"
+    # Build base trades off "old glibc -> max forward-compat" against "apt repos still alive"
+    # (setup installs the user's build deps via apt). EOL bases with dead repos break the build.
+    # ubuntu:22.04 (glibc 2.35, LTS+ESM, repos alive to 2027+) is the current floor;
+    # debian:11/ubuntu:20.04 have older glibc but their repos die ~2026.
+    image: "ubuntu:22.04"
+    <<: *appimage
+    image_info_url: "https://hub.docker.com/_/ubuntu"

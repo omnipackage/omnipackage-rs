@@ -6,6 +6,7 @@ use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+pub mod appimage;
 pub mod deb;
 pub mod pacman;
 pub mod rpm;
@@ -28,6 +29,14 @@ pub fn make_package(
         PackageType::Deb => Ok(Box::new(deb::Deb::new(distro.clone(), source_dir, job_variables, distro_build_dir, image_cache, ignore_source_files))),
         PackageType::Rpm => Ok(Box::new(rpm::Rpm::new(distro.clone(), source_dir, job_variables, distro_build_dir, image_cache, ignore_source_files))),
         PackageType::Pacman => Ok(Box::new(pacman::Pacman::new(
+            distro.clone(),
+            source_dir,
+            job_variables,
+            distro_build_dir,
+            image_cache,
+            ignore_source_files,
+        ))),
+        PackageType::Appimage => Ok(Box::new(appimage::Appimage::new(
             distro.clone(),
             source_dir,
             job_variables,

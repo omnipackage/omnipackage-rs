@@ -187,6 +187,7 @@ mod tests {
             rpm: None,
             deb: None,
             pacman: None,
+            appimage: None,
             rest: HashMap::new(),
         }
     }

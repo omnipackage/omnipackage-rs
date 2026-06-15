@@ -55,6 +55,13 @@ pub struct PacmanConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct AppimageConfig {
+    pub recipe_template: String,
+    #[serde(default)]
+    pub zsync: bool,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum AnyValue {
     String(String),
@@ -78,6 +85,7 @@ pub struct Build {
     pub rpm: Option<RpmConfig>,
     pub deb: Option<DebConfig>,
     pub pacman: Option<PacmanConfig>,
+    pub appimage: Option<AppimageConfig>,
     #[serde(flatten, default)]
     pub rest: HashMap<String, AnyValue>,
 }
@@ -379,6 +387,12 @@ mod tests {
         assert!(pacman_build.rpm.is_none());
         assert!(pacman_build.deb.is_none());
         assert_eq!(pacman_build.pacman.as_ref().unwrap().pkgbuild_template, ".omnipackage/PKGBUILD.liquid");
+
+        let appimage_build = config.builds.iter().find(|b| b.distro == "appimage").unwrap();
+        assert!(appimage_build.rpm.is_none());
+        let appimage_cfg = appimage_build.appimage.as_ref().unwrap();
+        assert_eq!(appimage_cfg.recipe_template, ".omnipackage/appimage.sh.liquid");
+        assert!(appimage_cfg.zsync);
 
         // verify merge key resolution — fields from anchors are present
         let simple_rpm = config.builds.iter().find(|b| b.distro == "fedora_38").unwrap();

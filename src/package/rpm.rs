@@ -232,6 +232,7 @@ mod tests {
             }),
             deb: None,
             pacman: None,
+            appimage: None,
             rest: HashMap::new(),
         }
     }

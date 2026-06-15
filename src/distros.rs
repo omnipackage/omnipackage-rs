@@ -9,6 +9,7 @@ pub enum PackageType {
     Rpm,
     Deb,
     Pacman,
+    Appimage,
 }
 
 impl PackageType {
@@ -17,6 +18,7 @@ impl PackageType {
             PackageType::Rpm => "rpm",
             PackageType::Deb => "deb",
             PackageType::Pacman => "pkg.tar.zst",
+            PackageType::Appimage => "AppImage",
         }
     }
 }
@@ -27,6 +29,7 @@ impl std::fmt::Display for PackageType {
             PackageType::Rpm => write!(f, "rpm"),
             PackageType::Deb => write!(f, "deb"),
             PackageType::Pacman => write!(f, "pacman"),
+            PackageType::Appimage => write!(f, "appimage"),
         }
     }
 }
@@ -86,6 +89,9 @@ impl Distro {
         }
         if matches("arch") {
             return "Arch Linux";
+        }
+        if matches("appimage") {
+            return "AppImage";
         }
 
         "Other"
@@ -280,6 +286,18 @@ mod tests {
         assert_eq!(PackageType::Rpm.extension(), "rpm");
         assert_eq!(PackageType::Deb.extension(), "deb");
         assert_eq!(PackageType::Pacman.extension(), "pkg.tar.zst");
+        assert_eq!(PackageType::Appimage.extension(), "AppImage");
+    }
+
+    #[test]
+    fn test_appimage_distro_is_appimage() {
+        let distros = Distros::get();
+        let appimage = distros.iter().find(|d| d.id == "appimage").unwrap();
+        assert_eq!(appimage.package_type, PackageType::Appimage);
+        assert!(!appimage.setup.is_empty());
+        assert!(appimage.setup_repo.is_empty());
+        assert!(!appimage.install_steps.is_empty());
+        assert_eq!(appimage.family(), "AppImage");
     }
 
     #[test]

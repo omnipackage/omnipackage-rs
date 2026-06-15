@@ -293,6 +293,7 @@ mod tests {
             rpm: None,
             deb: Some(DebConfig { debian_templates }),
             pacman: None,
+            appimage: None,
             rest: HashMap::new(),
         }
     }
