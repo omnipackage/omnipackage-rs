@@ -246,6 +246,11 @@ builds:
     before_build_script: ".omnipackage/install_rust.sh"
     <<: *rpm
 
+  - distro: "mageia_10"
+    build_dependencies: ["curl", "gcc", "make"]
+    before_build_script: ".omnipackage/install_rust.sh"
+    <<: *rpm
+
   - distro: "mageia_cauldron"
     build_dependencies: ["curl", "gcc", "make"]
     before_build_script: ".omnipackage/install_rust.sh"

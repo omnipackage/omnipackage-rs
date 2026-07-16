@@ -235,6 +235,12 @@ distros:
     <<: *redhat
     image_info_url: "https://hub.docker.com/_/mageia"
 
+  - id: "mageia_10"
+    name: "Mageia 10"
+    image: "mageia:10"
+    <<: *redhat
+    image_info_url: "https://hub.docker.com/_/mageia"
+
   - id: "mageia_cauldron"
     name: "Mageia Cauldron"
     image: "mageia:cauldron"

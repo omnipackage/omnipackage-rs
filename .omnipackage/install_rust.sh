@@ -6,7 +6,7 @@ if cargo --version; then
     exit 0
 fi
 
-RUST_VERSION=1.95.0
+RUST_VERSION=1.97.0
 ARCH=$(uname -m)
 
 curl -O https://static.rust-lang.org/dist/rust-${RUST_VERSION}-${ARCH}-unknown-linux-gnu.tar.gz
