@@ -188,6 +188,15 @@
     color: var(--muted);
   }
 
+  .quick-install {
+    margin-top: 3rem;
+    padding-top: 1.75rem;
+    border-top: 1px solid var(--border);
+  }
+  .qi-title { font-size: 1.15rem; font-weight: 700; margin-bottom: .5rem; }
+  .qi-note { font-size: .85rem; color: var(--muted); margin: .4rem 0 .65rem; }
+  .qi-note a { color: var(--link); word-break: break-all; }
+
   .no-js-warning {
       background: #ffdddd;
       color: #900;
@@ -219,6 +228,17 @@
     </blockquote>
   </header>
   <div id="root"></div>
+
+  <section class="quick-install">
+    <h2 class="qi-title">Quick install</h2>
+    <p class="qi-note">Rather not pick a distribution by hand? This detects your distro and architecture, adds the repository, and installs {{ package_name }}:</p>
+    <div class="code-block">
+      <span class="code-scroll" id="curlCmd"></span>
+      <button class="copy-btn" id="curlCopy">Copy</button>
+    </div>
+    <p class="qi-note">Building tooling around this repository? The same package list is available as machine-readable JSON at <a id="jsonLink" href="#" target="_blank"></a>.</p>
+  </section>
+
   <footer>Powered by <a href="https://omnipackage.org" target="_blank">OmniPackage</a></footer>
 </div>
 
@@ -398,6 +418,24 @@ function timeAgo(iso) {
   const y = Math.floor(mo / 12);
   return y + ' year' + (y > 1 ? 's' : '') + ' ago';
 }
+
+const repoBase = location.href.replace(/install\.html.*$/, '');
+const installCmd = 'curl -fsSL ' + repoBase + 'install.sh | sh';
+document.getElementById('curlCmd').textContent = installCmd;
+
+const jsonUrl = repoBase + 'install.json';
+const jsonLink = document.getElementById('jsonLink');
+jsonLink.href = jsonUrl;
+jsonLink.textContent = jsonUrl;
+
+document.getElementById('curlCopy').addEventListener('click', e => {
+  const btn = e.currentTarget;
+  navigator.clipboard.writeText(installCmd).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
+  });
+});
 </script>
 </body>
 </html>
