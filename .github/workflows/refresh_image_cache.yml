@@ -22,5 +22,5 @@ jobs:
     with:
       arch: "aarch64"
       runs_on: "ubuntu-24.04-arm"
-      # archlinux:latest has no arm64 image (Arch ARM is a separate project)
-      skip_distros: '["arch"]'
+      # arch: no arm64 image. manjaro: Manjaro ARM repos frozen ~2024, cargo too old for edition2024
+      skip_distros: '["arch", "manjaro"]'
