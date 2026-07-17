@@ -189,13 +189,13 @@
   }
 
   .quick-install {
-    margin-top: 3rem;
-    padding-top: 1.75rem;
-    border-top: 1px solid var(--border);
+    margin-bottom: 2.25rem;
+    padding-bottom: 1.75rem;
+    border-bottom: 1px solid var(--border);
   }
-  .qi-title { font-size: 1.15rem; font-weight: 700; margin-bottom: .5rem; }
   .qi-note { font-size: .85rem; color: var(--muted); margin: .4rem 0 .65rem; }
   .qi-note a { color: var(--link); word-break: break-all; }
+  .json-note { margin-top: 2.5rem; }
 
   .no-js-warning {
       background: #ffdddd;
@@ -227,18 +227,18 @@
       <a href="{{ homepage }}" target="_blank">{{ homepage }}</a>
     </blockquote>
   </header>
-  <div id="root"></div>
 
   <section class="quick-install">
-    <h2 class="qi-title">Quick install</h2>
-    <p class="qi-note">Rather not pick a distribution by hand? This detects your distro and architecture, adds the repository, and installs {{ package_name }}:</p>
+    <p class="qi-note">One command detects your distribution, adds the repository, and installs {{ package_name }}:</p>
     <div class="code-block">
       <span class="code-scroll" id="curlCmd"></span>
       <button class="copy-btn" id="curlCopy">Copy</button>
     </div>
-    <p class="qi-note">Building tooling around this repository? The same package list is available as machine-readable JSON at <a id="jsonLink" href="#" target="_blank"></a>.</p>
+    <p class="qi-note">Prefer to set it up manually? Pick your distribution below.</p>
   </section>
 
+  <div id="root"></div>
+  <p class="qi-note json-note">Automating? The package list is also available as machine-readable JSON at <a id="jsonLink" href="#" target="_blank"></a>.</p>
   <footer>Powered by <a href="https://omnipackage.org" target="_blank">OmniPackage</a></footer>
 </div>
 
@@ -252,7 +252,7 @@
     </div>
     <div class="accordion-body">
       <div class="accordion-inner">
-        <div class="step-label">Installation steps</div>
+        <div class="step-label">Installation steps (run as root)</div>
         <div class="code-block">
           <span class="code-scroll acc-steps"></span>
           <button class="copy-btn">Copy</button>

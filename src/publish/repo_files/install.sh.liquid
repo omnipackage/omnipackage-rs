@@ -76,8 +76,20 @@ esac
 
 printf '%s will be installed on %s (%s) with:\n\n%s\n\n' "$PKG" "$DISTRO" "$REPO_ARCH" "$STEPS"
 
+NEED_SUDO=0
+if [ "$(id -u)" -ne 0 ]; then
+  echo "install.sh: installing $PKG requires root privileges."
+  command -v sudo >/dev/null 2>&1 || err "root privileges are required and sudo is not available; re-run this script as root"
+  NEED_SUDO=1
+fi
+
 if [ "$ASSUME_YES" -ne 1 ]; then
-  if { printf 'Proceed? [y/N] ' >/dev/tty && read -r ans </dev/tty; } 2>/dev/null; then
+  if [ "$NEED_SUDO" -eq 1 ]; then
+    prompt='Install as root via sudo? [y/N] '
+  else
+    prompt='Proceed? [y/N] '
+  fi
+  if { printf '%s' "$prompt" >/dev/tty && read -r ans </dev/tty; } 2>/dev/null; then
     case "$ans" in
       y|Y|yes|YES) ;;
       *) err "aborted" ;;
@@ -87,5 +99,9 @@ if [ "$ASSUME_YES" -ne 1 ]; then
   fi
 fi
 
-printf '%s\n' "$STEPS" | sh
+if [ "$NEED_SUDO" -eq 1 ]; then
+  printf '%s\n' "$STEPS" | sudo sh
+else
+  printf '%s\n' "$STEPS" | sh
+fi
 echo "install.sh: $PKG installed."

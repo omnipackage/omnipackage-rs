@@ -25,10 +25,10 @@ debian: &debian
   cleanup:
     - "DEBIAN_FRONTEND=noninteractive apt-get clean && rm -rf /var/lib/apt/lists/*"
   install_steps:
-    - "echo 'deb %{url} stable/' | sudo tee /etc/apt/sources.list.d/omnipackage_%{project_slug}.list"
-    - "curl -fsSL %{url}/stable/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/omnipackage_%{project_slug}.gpg > /dev/null"
-    - "sudo apt-get update"
-    - "sudo apt-get install %{package_name}"
+    - "echo 'deb %{url} stable/' | tee /etc/apt/sources.list.d/omnipackage_%{project_slug}.list"
+    - "curl -fsSL %{url}/stable/Release.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/omnipackage_%{project_slug}.gpg > /dev/null"
+    - "apt-get update"
+    - "apt-get install %{package_name}"
 
 arch: &arch
   package_type: "pacman"
@@ -40,10 +40,10 @@ arch: &arch
   cleanup:
     - "pacman -Scc --noconfirm"
   install_steps:
-    - "curl -fsSL %{url}/public.key | sudo pacman-key --add -"
-    - "sudo pacman-key --lsign-key $(curl -fsSL %{url}/public.key | gpg --show-keys --with-colons | awk -F: '/^fpr/{print $10; exit}')"
-    - "printf '\\n[%{project_slug}]\\nSigLevel = Required DatabaseOptional\\nServer = %{url}\\n' | sudo tee -a /etc/pacman.conf"
-    - "sudo pacman -Sy %{package_name}"
+    - "curl -fsSL %{url}/public.key | pacman-key --add -"
+    - "pacman-key --lsign-key $(curl -fsSL %{url}/public.key | gpg --show-keys --with-colons | awk -F: '/^fpr/{print $10; exit}')"
+    - "printf '\\n[%{project_slug}]\\nSigLevel = Required DatabaseOptional\\nServer = %{url}\\n' | tee -a /etc/pacman.conf"
+    - "pacman -Sy %{package_name}"
 
 redhat: &redhat
   package_type: "rpm"

@@ -43,6 +43,20 @@ mod tests {
         ]
     }
 
+    fn path_with_stub_sudo(dir: &std::path::Path) -> std::ffi::OsString {
+        use std::os::unix::fs::PermissionsExt;
+        let sudo = dir.join("sudo");
+        std::fs::write(&sudo, "#!/bin/sh\nexec \"$@\"\n").unwrap();
+        std::fs::set_permissions(&sudo, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let mut paths = vec![dir.to_path_buf()];
+        paths.extend(std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default()));
+        std::env::join_paths(paths).unwrap()
+    }
+
+    fn running_as_root() -> bool {
+        std::process::Command::new("id").arg("-u").output().map(|o| o.stdout.starts_with(b"0")).unwrap_or(false)
+    }
+
     #[test]
     fn test_render_structure() {
         let script = render(&script_fixture_distros(), "omnipackage", "https://example.test/stable", "x86_64").unwrap();
@@ -74,18 +88,50 @@ mod tests {
         let path = dir.path().join("install.sh");
         std::fs::write(&path, &script).unwrap();
 
-        let out = std::process::Command::new("sh").arg(&path).arg("-y").arg("--distro").arg("ubuntu_24.04").output().unwrap();
+        let out = std::process::Command::new("sh")
+            .arg(&path)
+            .arg("-y")
+            .arg("--distro")
+            .arg("ubuntu_24.04")
+            .env("PATH", path_with_stub_sudo(dir.path()))
+            .output()
+            .unwrap();
         assert!(out.status.success(), "script failed: {}", String::from_utf8_lossy(&out.stderr));
         let stdout = String::from_utf8_lossy(&out.stdout);
         assert!(stdout.contains("it works from ubuntu"), "steps not executed: {stdout}");
     }
 
     #[test]
+    fn test_reports_root_required_when_non_root() {
+        if running_as_root() {
+            return;
+        }
+        let script = render(&script_fixture_distros(), "omnipackage", "https://example.test/stable", "x86_64").unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("install.sh");
+        std::fs::write(&path, &script).unwrap();
+
+        let out = std::process::Command::new("sh")
+            .arg(&path)
+            .arg("--distro")
+            .arg("ubuntu_24.04")
+            .stdin(std::process::Stdio::null())
+            .output()
+            .unwrap();
+        assert!(!out.status.success(), "non-root without a tty should not proceed");
+        assert!(
+            String::from_utf8_lossy(&out.stdout).contains("requires root"),
+            "missing root notice: {}",
+            String::from_utf8_lossy(&out.stdout)
+        );
+    }
+
+    #[test]
     fn test_render_handles_pacman_quoting() {
-        let steps = "curl -fsSL https://example.test/stable/arch/public.key | sudo pacman-key --add -\n\
-             sudo pacman-key --lsign-key $(curl -fsSL https://example.test/stable/arch/public.key | gpg --show-keys --with-colons | awk -F: '/^fpr/{print $10; exit}')\n\
-             printf '\\n[omnipackage]\\nSigLevel = Required DatabaseOptional\\nServer = https://example.test/stable/arch\\n' | sudo tee -a /etc/pacman.conf\n\
-             sudo pacman -Sy omnipackage";
+        let steps = "curl -fsSL https://example.test/stable/arch/public.key | pacman-key --add -\n\
+             pacman-key --lsign-key $(curl -fsSL https://example.test/stable/arch/public.key | gpg --show-keys --with-colons | awk -F: '/^fpr/{print $10; exit}')\n\
+             printf '\\n[omnipackage]\\nSigLevel = Required DatabaseOptional\\nServer = https://example.test/stable/arch\\n' | tee -a /etc/pacman.conf\n\
+             pacman -Sy omnipackage";
         let repos: Repositories = vec![Repository::from([("distro_id".to_string(), "arch".to_string()), ("install_steps".to_string(), steps.to_string())])];
 
         let script = render(&repos, "omnipackage", "https://example.test/stable", "x86_64").unwrap();
