@@ -22,7 +22,6 @@ jobs:
         with:
           name: omnipackage-binary-e2e
           path: target/release/omnipackage
-          retention-days: 1
 
   list-distros:
     # Single source of truth for distros: DISTROS_DEFAULT in tests/e2e/run.sh.

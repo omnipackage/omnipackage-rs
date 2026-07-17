@@ -30,7 +30,6 @@ jobs:
         with:
           name: omnipackage-binary-${{ inputs.arch }}
           path: target/release/omnipackage
-          retention-days: 1
 
   list-distros:
     needs: bootstrap-binary
