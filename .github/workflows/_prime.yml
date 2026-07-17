@@ -1,12 +1,6 @@
 on:
   workflow_call:
     inputs:
-      repository:
-        required: true
-        type: string
-      version_extractor:
-        required: true
-        type: string
       arch:
         required: true
         type: string
@@ -51,12 +45,9 @@ jobs:
           all=$(omnipackage info --list-distros . --format json)
           echo "distros=$(jq -cn --argjson all "$all" --argjson skip "$SKIP" '$all - $skip')" >> "$GITHUB_OUTPUT"
 
-  release:
+  image_cache:
     needs: [bootstrap-binary, list-distros]
     runs-on: ${{ inputs.runs_on }}
-    concurrency:
-      group: omnipackage-${{ inputs.repository }}-${{ matrix.distro }}
-      cancel-in-progress: false
     strategy:
       fail-fast: false
       matrix:
@@ -74,4 +65,4 @@ jobs:
           echo "GITHUB_REGISTRY_USERNAME=${{ github.actor }}" >> .env
           echo "GITHUB_REGISTRY_PASSWORD=${{ secrets.GITHUB_TOKEN }}" >> .env
           echo "GITHUB_REGISTRY_NAMESPACE=${{ github.repository_owner }}" >> .env
-      - run:  omnipackage release . --build-dir $RUNNER_TEMP/_omp --repository "${{ inputs.repository }}" --distros "${{ matrix.distro }}" --version-extractor "${{ inputs.version_extractor }}" --image-cache github_${{ inputs.arch }}
+      - run:  omnipackage prime . --image-cache github_${{ inputs.arch }} --distros "${{ matrix.distro }}"

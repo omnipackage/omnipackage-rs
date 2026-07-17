@@ -6,9 +6,22 @@ on:
     types: [published]
 
 jobs:
-  run:
+  x86_64:
     uses: ./.github/workflows/_release-packages.yml
     secrets: inherit
     with:
       repository: "stable"
       version_extractor: "cargotoml"
+      arch: "x86_64"
+      runs_on: "ubuntu-24.04"
+
+  aarch64:
+    uses: ./.github/workflows/_release-packages.yml
+    secrets: inherit
+    with:
+      repository: "stable_aarch64"
+      version_extractor: "cargotoml"
+      arch: "aarch64"
+      runs_on: "ubuntu-24.04-arm"
+      # archlinux:latest has no arm64 image (Arch ARM is a separate project)
+      skip_distros: '["arch"]'
