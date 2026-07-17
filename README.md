@@ -6,8 +6,11 @@ Build and distribute RPM, DEB & Arch packages [easily](https://omnipackage.org/a
 
 ## Installation
 
-- [Stable binaries](https://repositories.omnipackage.org/omnipackage-rs/stable/install.html) (recommended for most users)
-- [Unstable builds from master](https://repositories.omnipackage.org/omnipackage-rs/master/install.html)
+| Channel | x86_64 | aarch64 |
+|---|---|---|
+| **Stable** (recommended for most users) | [Install](https://repositories.omnipackage.org/omnipackage-rs/stable/install.html) | [Install](https://repositories.omnipackage.org/omnipackage-rs/stable-aarch64/install.html) |
+| **Unstable** (builds from master) | [Install](https://repositories.omnipackage.org/omnipackage-rs/master/install.html) | [Install](https://repositories.omnipackage.org/omnipackage-rs/master-aarch64/install.html) |
+
 - [AUR](https://aur.archlinux.org/packages/omnipackage) (Arch Linux users who prefer AUR)
 - From sources `cargo build --release`
 

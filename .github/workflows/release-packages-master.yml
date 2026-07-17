@@ -4,6 +4,10 @@ on:
   workflow_dispatch:
   push:
     branches: [master]
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'
+      - 'plugins/**'
 
 jobs:
   x86_64:
