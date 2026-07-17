@@ -1,51 +1,20 @@
+use super::{Repositories, sorted_by_distro_order, upsert_repository};
 use crate::config::Repository as RepoConfig;
-use crate::distros::Distros;
-use crate::template::{Template, Var};
-use std::collections::HashMap;
+use crate::template::Template;
 
 const PAGE_TEMPLATE_HTML: &str = include_str!("install.html.liquid");
-const BADGE_TEMPLATE_SVG: &str = include_str!("badge.svg.liquid");
 
-pub type Repository = HashMap<String, String>;
-pub type Repositories = Vec<Repository>;
+pub fn upsert(existing_html: &str, entries: &Repositories, config: &RepoConfig, custom_template: Option<String>) -> Result<(String, Repositories), anyhow::Error> {
+    let mut repos = parse(existing_html).unwrap_or_default();
 
-#[derive(Debug, Clone)]
-pub struct Output {
-    pub install_page: String,
-    pub badge: String,
-}
-
-pub fn upsert(existing_page_html: &str, repositories: &Repositories, config: &RepoConfig, custom_template: Option<String>) -> Result<Output, anyhow::Error> {
-    let mut repos = parse(existing_page_html).unwrap_or_default();
-
-    repositories.iter().for_each(|repo| {
-        upsert_repository(&mut repos, repo.clone());
-    });
-
-    let template_html = render(&repos, custom_template)?;
-
-    let install_page = Template::from_content(&template_html)?.render(config.to_template_vars())?;
-    let badge = render_badge(&repos, config).unwrap_or_default();
-    Ok(Output { install_page, badge })
-}
-
-fn render_badge(repositories: &Repositories, config: &RepoConfig) -> Result<String, anyhow::Error> {
-    let mut vars = config.to_template_vars();
-
-    let (rpm_count, deb_count, pacman_count) = repositories.iter().fold((0, 0, 0), |(rpm, deb, pacman), r| match r.get("package_type").map(|t| t.as_str()) {
-        Some("rpm") => (rpm + 1, deb, pacman),
-        Some("deb") => (rpm, deb + 1, pacman),
-        Some("pacman") => (rpm, deb, pacman + 1),
-        _ => (rpm, deb, pacman),
-    });
-
-    let mut aux = format!("{rpm_count} RPM {deb_count} DEB");
-    if pacman_count > 0 {
-        aux.push_str(&format!(" {pacman_count} PAC"));
+    for entry in entries {
+        upsert_repository(&mut repos, entry.clone());
     }
-    vars.extend(badge_vars(config.name.clone(), aux));
 
-    Template::from_content(BADGE_TEMPLATE_SVG)?.render(vars)
+    let merged = sorted_by_distro_order(&repos);
+    let template_html = render(&repos, custom_template)?;
+    let html = Template::from_content(&template_html)?.render(config.to_template_vars())?;
+    Ok((html, merged))
 }
 
 fn parse(html: &str) -> Result<Repositories, anyhow::Error> {
@@ -58,9 +27,7 @@ fn render(repositories: &Repositories, custom_template: Option<String>) -> Resul
     let html: &str = custom_template.as_deref().unwrap_or(PAGE_TEMPLATE_HTML);
     let (start_pos, end_pos) = extract_json_bounds(html)?;
 
-    let ids = Distros::get().ids();
-    let mut sorted = repositories.clone();
-    sorted.sort_by_key(|repo| repo.get("distro_id").and_then(|id| ids.iter().position(|d| d == id)).unwrap_or(usize::MAX));
+    let sorted = sorted_by_distro_order(repositories);
     let json = serde_json::to_string_pretty(&sorted)?;
 
     let mut rendered = String::with_capacity(html.len() + json.len());
@@ -78,58 +45,12 @@ fn extract_json_bounds(html: &str) -> Result<(usize, usize), anyhow::Error> {
     Ok((start, end))
 }
 
-fn upsert_repository(repositories: &mut Repositories, data: Repository) {
-    let distro_id = data.get("distro_id").unwrap();
-
-    if let Some(repo) = repositories.iter_mut().find(|repo| repo.get("distro_id").is_some_and(|value| value == distro_id)) {
-        repo.extend(data);
-    } else {
-        repositories.push(data);
-    }
-}
-
-fn char_width_11(c: char) -> f64 {
-    match c {
-        ' ' => 4.0,
-        'i' | 'l' | 'I' | '.' | ',' | ':' | ';' | '|' | '!' | '\'' | '`' => 3.8,
-        'f' | 'j' | 't' | 'r' => 4.8,
-        'm' => 10.0,
-        'w' => 9.0,
-        'M' => 10.5,
-        'W' => 11.5,
-        c if c.is_ascii_digit() => 7.2,
-        c if c.is_ascii_lowercase() => 6.8,
-        c if c.is_ascii_uppercase() => 8.4,
-        _ => 7.3,
-    }
-}
-
-fn measure_text_width(text: &str) -> f64 {
-    text.chars().map(char_width_11).sum()
-}
-
-pub fn badge_vars(title: String, aux: String) -> HashMap<String, Var> {
-    let left_w = (25.4 + measure_text_width(&title)).ceil() as u32;
-    let right_w = (14.0 + measure_text_width(&aux)).ceil() as u32;
-    let total_w = left_w + right_w;
-    let aux_cx = left_w as f64 + right_w as f64 / 2.0;
-
-    let mut map = HashMap::new();
-    map.insert("TITLE".to_string(), title.into());
-    map.insert("AUX".to_string(), aux.into());
-    map.insert("LEFT_W".to_string(), left_w.to_string().into());
-    map.insert("RIGHT_W".to_string(), right_w.to_string().into());
-    map.insert("TOTAL_W".to_string(), total_w.to_string().into());
-    map.insert("TOTAL_W_1".to_string(), (total_w - 1).to_string().into());
-    map.insert("AUX_CX".to_string(), format!("{:.1}", aux_cx).into());
-    map
-}
-
 #[cfg(test)]
 mod tests {
+    use super::super::{Repositories, Repository, upsert_repository};
     use super::*;
-    use crate::config::AnyValue;
-    use crate::config::RepositoryProvider;
+    use crate::config::{AnyValue, RepositoryProvider};
+    use std::collections::HashMap;
 
     fn fixture() -> String {
         std::fs::read_to_string("tests/fixtures/install.html").expect("cannot read tests/fixtures/install.html")
@@ -157,14 +78,12 @@ mod tests {
         assert_eq!(mageia["distro_name"], "Mageia Cauldron");
         assert_eq!(mageia["download_url"], "https://repositories.omnipackage.org/oleg/mpz/mageia-cauldron/mpz-2.0.3-1.mga10.x86_64.rpm");
 
-        // pacman entry: compound .pkg.tar.zst extension and pacman-key install flow
         let arch = &entries[22];
         assert_eq!(arch["distro_id"], "arch");
         assert_eq!(arch["distro_name"], "Arch Linux");
         assert!(arch["download_url"].ends_with(".pkg.tar.zst"), "arch download_url: {}", arch["download_url"]);
         assert!(arch["install_steps"].contains("pacman-key"), "arch install_steps: {}", arch["install_steps"]);
 
-        // assert all entries have the required keys
         let required_keys = ["distro_id", "distro_name", "install_steps", "gpg_key", "download_url"];
         for entry in &entries {
             for key in &required_keys {
@@ -173,13 +92,11 @@ mod tests {
             }
         }
 
-        // assert all distro_ids are unique
         let mut ids: Vec<&str> = entries.iter().map(|e| e["distro_id"].as_str()).collect();
         ids.sort();
         ids.dedup();
         assert_eq!(ids.len(), entries.len(), "distro_ids are not unique");
 
-        // assert all download_urls end with .rpm or .deb
         for entry in &entries {
             let url = &entry["download_url"];
             assert!(
@@ -257,32 +174,33 @@ mod tests {
     }
 
     #[test]
-    fn test_mutate_upsert_all() {
+    fn test_upsert_renders_merged_page() {
         let html = fixture();
-        // let mut repos = parse(&html).expect("cannot parse");
 
-        let new_repo1 = Repository::from([
-            ("distro_id".to_string(), "debian_14".to_string()),
-            ("distro_name".to_string(), "Debian 14".to_string()),
-            ("install_steps".to_string(), "apt install mpz".to_string()),
-            ("gpg_key".to_string(), "pub rsa4096 2024-05-10 [SCEA]".to_string()),
-            (
-                "download_url".to_string(),
-                "https://repositories.omnipackage.org/oleg/mpz/debian-14/stable/mpz_2.0.3-0_amd64.deb".to_string(),
-            ),
-            ("package_type".to_string(), "rpm".into()),
-        ]);
-        let new_repo2 = Repository::from([
-            ("distro_id".to_string(), "debian_15".to_string()),
-            ("distro_name".to_string(), "Debian 15 LTS".to_string()),
-            ("install_steps".to_string(), "apt install mpz".to_string()),
-            ("gpg_key".to_string(), "pub rsa4096 2024-05-10 [SCEA]".to_string()),
-            (
-                "download_url".to_string(),
-                "https://repositories.omnipackage.org/oleg/mpz/debian-15/stable/mpz_2.0.3-0_amd64.deb".to_string(),
-            ),
-            ("package_type".to_string(), "deb".into()),
-        ]);
+        let new_repos: Repositories = vec![
+            Repository::from([
+                ("distro_id".to_string(), "debian_14".to_string()),
+                ("distro_name".to_string(), "Debian 14".to_string()),
+                ("install_steps".to_string(), "apt install mpz".to_string()),
+                ("gpg_key".to_string(), "pub rsa4096 2024-05-10 [SCEA]".to_string()),
+                (
+                    "download_url".to_string(),
+                    "https://repositories.omnipackage.org/oleg/mpz/debian-14/stable/mpz_2.0.3-0_amd64.deb".to_string(),
+                ),
+                ("package_type".to_string(), "deb".into()),
+            ]),
+            Repository::from([
+                ("distro_id".to_string(), "debian_15".to_string()),
+                ("distro_name".to_string(), "Debian 15 LTS".to_string()),
+                ("install_steps".to_string(), "apt install mpz".to_string()),
+                ("gpg_key".to_string(), "pub rsa4096 2024-05-10 [SCEA]".to_string()),
+                (
+                    "download_url".to_string(),
+                    "https://repositories.omnipackage.org/oleg/mpz/debian-15/stable/mpz_2.0.3-0_amd64.deb".to_string(),
+                ),
+                ("package_type".to_string(), "deb".into()),
+            ]),
+        ];
 
         let rest = HashMap::from([("homepage".to_string(), AnyValue::String("http://testpacka.ge".to_string()))]);
         let repo_conf = RepoConfig {
@@ -295,40 +213,14 @@ mod tests {
             s3: None,
             localfs: None,
         };
-        let new_repos: Repositories = vec![new_repo1, new_repo2];
-        let result = upsert(&html, &new_repos, &repo_conf, None).unwrap();
 
-        assert!(result.install_page.contains("Debian 14"));
-        assert!(result.install_page.contains("Debian 15 LTS"));
-        assert!(result.install_page.contains("http://testpacka.ge"));
+        let (page, merged) = upsert(&html, &new_repos, &repo_conf, None).unwrap();
 
-        assert!(result.badge.contains("1 RPM 1 DEB"));
-        assert!(result.badge.contains("this is badge title"));
+        assert!(page.contains("Debian 14"));
+        assert!(page.contains("Debian 15 LTS"));
+        assert!(page.contains("http://testpacka.ge"));
 
-        println!("{}", result.badge);
-
-        let repos2 = parse(&result.install_page).unwrap();
-        assert_eq!(repos2.len(), 25);
-    }
-
-    #[test]
-    fn test_badge_counts_pacman() {
-        let repo_conf = RepoConfig {
-            name: "title".into(),
-            provider: RepositoryProvider::S3,
-            gpg_private_key_base64: "".into(),
-            package_name: "pkg".into(),
-            retain_packages: 0,
-            rest: HashMap::new(),
-            s3: None,
-            localfs: None,
-        };
-        let repos: Repositories = vec![
-            Repository::from([("distro_id".to_string(), "arch".to_string()), ("package_type".to_string(), "pacman".to_string())]),
-            Repository::from([("distro_id".to_string(), "fedora_40".to_string()), ("package_type".to_string(), "rpm".to_string())]),
-        ];
-
-        let badge = render_badge(&repos, &repo_conf).unwrap();
-        assert!(badge.contains("1 RPM 0 DEB 1 PAC"), "badge missing pacman count: {badge}");
+        assert_eq!(parse(&page).unwrap().len(), 25);
+        assert_eq!(merged.len(), 25);
     }
 }

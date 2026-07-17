@@ -7,8 +7,8 @@ use std::path::PathBuf;
 
 mod artefacts;
 mod cloudflare;
-mod install_page;
 mod locking;
+mod repo_files;
 mod retention;
 mod s3;
 
@@ -25,6 +25,8 @@ pub struct Publish {
 }
 
 const INSTALL_PAGE_NAME: &str = "install.html";
+const INSTALL_JSON_NAME: &str = "install.json";
+const INSTALL_SCRIPT_NAME: &str = "install.sh";
 const BADGE_NAME: &str = "badge.svg";
 
 #[derive(Debug, Clone)]
@@ -146,7 +148,7 @@ impl Publish {
     fn update_install_page(&self) -> Result<InstallPageBadge, anyhow::Error> {
         let download_url = self.package_download_url()?;
 
-        let repo = install_page::Repository::from([
+        let entry = repo_files::Repository::from([
             ("distro_id".to_string(), self.package.distro().id.clone()),
             ("distro_name".to_string(), self.package.distro().name.clone()),
             ("distro_family".to_string(), self.package.distro().family().to_string()),
@@ -156,7 +158,7 @@ impl Publish {
             ("package_type".to_string(), self.package.distro().package_type.to_string()),
             ("timestamp".to_string(), chrono::Utc::now().to_rfc3339()),
         ]);
-        let repositories: install_page::Repositories = vec![repo];
+        let html_entries: repo_files::Repositories = vec![entry];
 
         match self.config.provider {
             RepositoryProvider::S3 => {
@@ -165,16 +167,28 @@ impl Publish {
                 let s3 = S3::new(s3_config, path.to_string_lossy().to_string());
 
                 let custom_template = self.custom_install_page.as_deref().map(std::fs::read_to_string).transpose()?;
+                let base_url = s3_config.base_bucket_url();
+                let arch = std::env::consts::ARCH;
+                let json_entries = enrich_for_json(&html_entries, arch, &self.config.package_name);
 
-                let mut latest_badge: Vec<u8> = Vec::new();
-                locking::put_with_retry(&s3, INSTALL_PAGE_NAME, "text/html", |existing_bytes| {
-                    let existing_html = String::from_utf8_lossy(existing_bytes).into_owned();
-                    let output = install_page::upsert(&existing_html, &repositories, &self.config, custom_template.clone())?;
-                    latest_badge = output.badge.into_bytes();
-                    Ok(output.install_page.into_bytes())
+                let mut html_distros: repo_files::Repositories = Vec::new();
+                locking::put_with_retry(&s3, INSTALL_PAGE_NAME, "text/html", |bytes| {
+                    let (html, merged) = repo_files::html::upsert(&String::from_utf8_lossy(bytes), &html_entries, &self.config, custom_template.clone())?;
+                    html_distros = merged;
+                    Ok(html.into_bytes())
+                })?;
+                let badge = repo_files::badge::render(&html_distros, &self.config)?;
+                s3.upload_file(BADGE_NAME, badge.into_bytes(), Some("image/svg+xml"))?;
+
+                let mut json_distros: repo_files::Repositories = Vec::new();
+                locking::put_with_retry(&s3, INSTALL_JSON_NAME, "application/json", |bytes| {
+                    let (json, merged) = repo_files::json::upsert(&String::from_utf8_lossy(bytes), &json_entries)?;
+                    json_distros = merged;
+                    Ok(json.into_bytes())
                 })?;
 
-                s3.upload_file(BADGE_NAME, latest_badge, Some("image/svg+xml"))?;
+                let script = repo_files::sh::render(&json_distros, &self.config.package_name, &base_url, arch)?;
+                locking::put_with_retry(&s3, INSTALL_SCRIPT_NAME, "text/x-shellscript", |_bytes| Ok(script.clone().into_bytes()))?;
 
                 let page_url = install_page_url(&self.config).ok_or_else(|| anyhow::anyhow!("install page url cannot be generated"))?;
                 let badge_url = format!("{}/{}", s3_config.base_bucket_url(), BADGE_NAME);
@@ -184,14 +198,27 @@ impl Publish {
             }
             RepositoryProvider::LocalFs => {
                 let localfs_config = self.config.localfs();
-                let path = localfs_config.repository_path().join(INSTALL_PAGE_NAME);
-                let existing_install_page = std::fs::read_to_string(&path).unwrap_or_default();
+                let repo_dir = localfs_config.repository_path();
                 let custom_template = self.custom_install_page.as_deref().map(std::fs::read_to_string).transpose()?;
-                let output = install_page::upsert(&existing_install_page, &repositories, &self.config, custom_template)?;
-                std::fs::write(&path, output.install_page)?;
+                let base_url = repo_dir.to_string_lossy().into_owned();
+                let arch = std::env::consts::ARCH;
+                let json_entries = enrich_for_json(&html_entries, arch, &self.config.package_name);
+
+                let page_path = repo_dir.join(INSTALL_PAGE_NAME);
+                let existing_html = std::fs::read_to_string(&page_path).unwrap_or_default();
+                let (html, _) = repo_files::html::upsert(&existing_html, &html_entries, &self.config, custom_template)?;
+                std::fs::write(&page_path, html)?;
+
+                let json_path = repo_dir.join(INSTALL_JSON_NAME);
+                let existing_json = std::fs::read_to_string(&json_path).unwrap_or_default();
+                let (json, json_distros) = repo_files::json::upsert(&existing_json, &json_entries)?;
+                std::fs::write(&json_path, json)?;
+
+                let script = repo_files::sh::render(&json_distros, &self.config.package_name, &base_url, arch)?;
+                std::fs::write(repo_dir.join(INSTALL_SCRIPT_NAME), script)?;
 
                 Ok(InstallPageBadge {
-                    page_url: path.to_string_lossy().to_string(),
+                    page_url: page_path.to_string_lossy().to_string(),
                     badge_md: "".to_string(),
                 })
             }
@@ -205,6 +232,18 @@ impl Publish {
 
         Ok(format!("{}/{}", self.distro_url().trim_end_matches('/'), package_file.relative_path.display()))
     }
+}
+
+fn enrich_for_json(entries: &repo_files::Repositories, arch: &str, package_name: &str) -> repo_files::Repositories {
+    entries
+        .iter()
+        .map(|e| {
+            let mut m = e.clone();
+            m.insert("arch".to_string(), arch.to_string());
+            m.insert("package_name".to_string(), package_name.to_string());
+            m
+        })
+        .collect()
 }
 
 pub fn install_page_url(repository: &Repository) -> Option<String> {
