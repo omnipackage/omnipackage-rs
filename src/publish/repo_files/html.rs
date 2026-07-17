@@ -1,23 +1,15 @@
-use super::{Repositories, sorted_by_distro_order, upsert_repository};
+use super::{Repositories, sorted_by_distro_order};
 use crate::config::Repository as RepoConfig;
 use crate::template::Template;
 
 const PAGE_TEMPLATE_HTML: &str = include_str!("install.html.liquid");
 
-pub fn upsert(existing_html: &str, entries: &Repositories, config: &RepoConfig, custom_template: Option<String>) -> Result<(String, Repositories), anyhow::Error> {
-    let mut repos = parse(existing_html).unwrap_or_default();
-
-    for entry in entries {
-        upsert_repository(&mut repos, entry.clone());
-    }
-
-    let merged = sorted_by_distro_order(&repos);
-    let template_html = render(&repos, custom_template)?;
-    let html = Template::from_content(&template_html)?.render(config.to_template_vars())?;
-    Ok((html, merged))
+pub(crate) fn render_page(repositories: &Repositories, config: &RepoConfig, custom_template: Option<String>) -> Result<String, anyhow::Error> {
+    let template_html = render(repositories, custom_template)?;
+    Template::from_content(&template_html)?.render(config.to_template_vars())
 }
 
-fn parse(html: &str) -> Result<Repositories, anyhow::Error> {
+pub(crate) fn parse(html: &str) -> Result<Repositories, anyhow::Error> {
     let (start, end) = extract_json_bounds(html)?;
     let json = html[start..end].trim();
     Ok(serde_json::from_str(json)?)
@@ -174,7 +166,7 @@ mod tests {
     }
 
     #[test]
-    fn test_upsert_renders_merged_page() {
+    fn test_render_page_merged() {
         let html = fixture();
 
         let new_repos: Repositories = vec![
@@ -214,13 +206,16 @@ mod tests {
             localfs: None,
         };
 
-        let (page, merged) = upsert(&html, &new_repos, &repo_conf, None).unwrap();
+        let mut repos = parse(&html).expect("cannot parse");
+        for repo in new_repos {
+            upsert_repository(&mut repos, repo);
+        }
+        let page = render_page(&repos, &repo_conf, None).unwrap();
 
         assert!(page.contains("Debian 14"));
         assert!(page.contains("Debian 15 LTS"));
         assert!(page.contains("http://testpacka.ge"));
 
         assert_eq!(parse(&page).unwrap().len(), 25);
-        assert_eq!(merged.len(), 25);
     }
 }

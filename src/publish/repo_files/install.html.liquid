@@ -330,7 +330,6 @@ function renderAccordion(distro) {
   acc.querySelector('.acc-download').href        = distro.download_url;
   acc.querySelector('.acc-download').textContent = pkg;
 
-  // Some package types (e.g. AppImage) have no GPG key; drop the GPG section entirely.
   if (distro.gpg_key) {
     acc.querySelector('.acc-gpg').textContent = distro.gpg_key;
   } else {
@@ -398,7 +397,6 @@ familyOrder.forEach(family => {
   col.className = 'family-accordions';
   byFamily[family].forEach(d => col.appendChild(renderAccordion(d)));
 
-  // group.appendChild(title);
   group.appendChild(logo);
   group.appendChild(col);
   root.appendChild(group);
