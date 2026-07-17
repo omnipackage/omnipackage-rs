@@ -2,9 +2,7 @@ name: Release packages - master
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
+  push:
     branches: [master]
 
 jobs:

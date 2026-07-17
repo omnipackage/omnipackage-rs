@@ -10,7 +10,12 @@ permissions:
 
 jobs:
   bootstrap-binary:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { arch: x86_64, runs_on: ubuntu-24.04 }
+          - { arch: aarch64, runs_on: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.runs_on }}
     steps:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -18,19 +23,19 @@ jobs:
       - run: cargo build --release
       - uses: actions/upload-artifact@v6
         with:
-          name: omnipackage-binary
+          name: omnipackage-binary-${{ matrix.arch }}
           path: target/release/omnipackage
           retention-days: 1
 
   list-distros:
     needs: bootstrap-binary
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       distros: ${{ steps.get-distros.outputs.distros }}
     steps:
       - uses: actions/download-artifact@v8
         with:
-          name: omnipackage-binary
+          name: omnipackage-binary-x86_64
           path: /usr/local/bin
       - run: chmod +x /usr/local/bin/omnipackage
       - uses: actions/checkout@v6
@@ -39,17 +44,24 @@ jobs:
 
   image_cache:
     needs: [bootstrap-binary, list-distros]
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runs_on }}
     strategy:
       fail-fast: false
       matrix:
         distro: ${{ fromJson(needs.list-distros.outputs.distros) }}
+        arch: [x86_64, aarch64]
+        include:
+          - { arch: x86_64, runs_on: ubuntu-24.04 }
+          - { arch: aarch64, runs_on: ubuntu-24.04-arm }
+        exclude:
+          # archlinux:latest has no arm64 image (Arch ARM is a separate project)
+          - { distro: arch, arch: aarch64 }
     steps:
       - uses: actions/checkout@v6
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq podman gpg
       - uses: actions/download-artifact@v8
         with:
-          name: omnipackage-binary
+          name: omnipackage-binary-${{ matrix.arch }}
           path: /usr/local/bin
       - run: chmod +x /usr/local/bin/omnipackage
       - run: |
@@ -57,4 +69,4 @@ jobs:
           echo "GITHUB_REGISTRY_USERNAME=${{ github.actor }}" >> .env
           echo "GITHUB_REGISTRY_PASSWORD=${{ secrets.GITHUB_TOKEN }}" >> .env
           echo "GITHUB_REGISTRY_NAMESPACE=${{ github.repository_owner }}" >> .env
-      - run:  omnipackage prime . --image-cache github --distros "${{ matrix.distro }}"
+      - run:  omnipackage prime . --image-cache github_${{ matrix.arch }} --distros "${{ matrix.distro }}"

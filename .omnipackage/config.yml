@@ -11,9 +11,18 @@ version_extractors:
       regex: 'version = "(.+)"'
 
 image_caches:
-  - name: github
+  - name: github_x86_64
     provider: registry
     image_tag: omnipackage-rs-latest
+    registry:
+      url: ghcr.io
+      namespace: "${GITHUB_REGISTRY_NAMESPACE}"
+      username: "${GITHUB_REGISTRY_USERNAME}"
+      password: "${GITHUB_REGISTRY_PASSWORD}"
+
+  - name: github_aarch64
+    provider: registry
+    image_tag: omnipackage-rs-aarch64-latest
     registry:
       url: ghcr.io
       namespace: "${GITHUB_REGISTRY_NAMESPACE}"
@@ -54,6 +63,24 @@ repositories:
       cloudflare_zone_id: "${CLOUDFLARE_ZONE_ID}"
       cloudflare_api_token: "${CLOUDFLARE_API_TOKEN}"
 
+  - name: "master_aarch64"
+    provider: s3
+    gpg_private_key_base64: "${GPG_PRIVATE_KEY_BASE64}"
+    <<: *common
+    description: Unstable builds from master branch (aarch64)
+    retain_packages: 3
+    s3:
+      bucket: repositories
+      path_in_bucket: "omnipackage-rs/master-aarch64"
+      bucket_public_url: "https://repositories.omnipackage.org"
+      endpoint: "${CLOUDFLARE_R2_ENDPOINT}"
+      access_key_id: "${CLOUDFLARE_R2_ACCESS_KEY_ID}"
+      secret_access_key: "${CLOUDFLARE_R2_SECRET_ACCESS_KEY}"
+      region: auto
+      force_path_style: true
+      cloudflare_zone_id: "${CLOUDFLARE_ZONE_ID}"
+      cloudflare_api_token: "${CLOUDFLARE_API_TOKEN}"
+
   - name: "stable"
     provider: s3
     gpg_private_key_base64: "${GPG_PRIVATE_KEY_BASE64}"
@@ -62,6 +89,22 @@ repositories:
     s3:
       bucket: repositories
       path_in_bucket: "omnipackage-rs/stable"
+      bucket_public_url: "https://repositories.omnipackage.org"
+      endpoint: "${CLOUDFLARE_R2_ENDPOINT}"
+      access_key_id: "${CLOUDFLARE_R2_ACCESS_KEY_ID}"
+      secret_access_key: "${CLOUDFLARE_R2_SECRET_ACCESS_KEY}"
+      region: auto
+      force_path_style: true
+
+  - name: "stable_aarch64"
+    provider: s3
+    gpg_private_key_base64: "${GPG_PRIVATE_KEY_BASE64}"
+    <<: *common
+    description: Stable builds (aarch64)
+    retain_packages: 2
+    s3:
+      bucket: repositories
+      path_in_bucket: "omnipackage-rs/stable-aarch64"
       bucket_public_url: "https://repositories.omnipackage.org"
       endpoint: "${CLOUDFLARE_R2_ENDPOINT}"
       access_key_id: "${CLOUDFLARE_R2_ACCESS_KEY_ID}"
