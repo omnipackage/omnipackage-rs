@@ -1,4 +1,4 @@
-[![CI](https://github.com/omnipackage/omnipackage-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/omnipackage/omnipackage-rs/actions/workflows/ci.yml) [![OmniPackage repositories badge](https://repositories.omnipackage.org/omnipackage-rs/stable/badge.svg)](https://repositories.omnipackage.org/omnipackage-rs/stable/install.html) [![OmniPackage repositories badge](https://repositories.omnipackage.org/omnipackage-rs/master/badge.svg)](https://repositories.omnipackage.org/omnipackage-rs/master/install.html)
+[![CI](https://github.com/omnipackage/omnipackage-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/omnipackage/omnipackage-rs/actions/workflows/ci.yml)
 
 ## OmniPackage CLI
 
@@ -8,8 +8,8 @@ Build and distribute RPM, DEB & Arch packages [easily](https://omnipackage.org/a
 
 | Channel | x86_64 | aarch64 |
 |---|---|---|
-| **Stable** (recommended for most users) | [Install](https://repositories.omnipackage.org/omnipackage-rs/stable/install.html) | [Install](https://repositories.omnipackage.org/omnipackage-rs/stable-aarch64/install.html) |
-| **Unstable** (builds from master) | [Install](https://repositories.omnipackage.org/omnipackage-rs/master/install.html) | [Install](https://repositories.omnipackage.org/omnipackage-rs/master-aarch64/install.html) |
+| **Stable** (recommended for most users) | [![stable repository](https://repositories.omnipackage.org/omnipackage-rs/stable/badge.svg)](https://repositories.omnipackage.org/omnipackage-rs/stable/install.html) | [![stable aarch64 repository](https://repositories.omnipackage.org/omnipackage-rs/stable-aarch64/badge.svg)](https://repositories.omnipackage.org/omnipackage-rs/stable-aarch64/install.html) |
+| **Unstable** (builds from master) | [![master repository](https://repositories.omnipackage.org/omnipackage-rs/master/badge.svg)](https://repositories.omnipackage.org/omnipackage-rs/master/install.html) | [![master aarch64 repository](https://repositories.omnipackage.org/omnipackage-rs/master-aarch64/badge.svg)](https://repositories.omnipackage.org/omnipackage-rs/master-aarch64/install.html) |
 
 - [AUR](https://aur.archlinux.org/packages/omnipackage) (Arch Linux users who prefer AUR)
 - From sources `cargo build --release`
