@@ -100,8 +100,9 @@ Key points:
   `build_dependencies` — enable the repo and `dnf install` them inside the script. See Field notes.
 - **The build needs network + git** at configure time if the project fetches deps
   (CPM/FetchContent/Go modules/cargo). omnipackage containers have network.
-- **Valid distro IDs:** run `omnipackage info --list-distros`, or see
-  <https://docs.omnipackage.org/distros/>.
+- **Valid distro IDs:** <https://docs.omnipackage.org/distros/> (authoritative: `src/distros.yml`).
+  `omnipackage info --list-distros` prints the project's *configured* distros, not all valid IDs
+  (`--format json` feeds a CI matrix).
 
 ## Field notes
 
@@ -116,8 +117,8 @@ ship, and libs whose names diverge wildly.)
 - Build with `export GOTOOLCHAIN=auto` (fetches the exact `go 1.xx` from `go.mod` at build time;
   needs network — containers have it). Don't rely on the distro go matching `go.mod`.
 - `install_go.sh`'s curl download breaks on images with a broken libcurl (seen on **Tumbleweed**:
-  `undefined symbol: ngtcp2_...`). Fix: install distro `go`/`golang` instead, and let
-  `GOTOOLCHAIN=auto` upgrade it. Make the script accept distro go when `>= 1.21`, else download.
+  `undefined symbol: ngtcp2_...`). The scaffolded script skips the download when any distro go is
+  installed — add distro `go`/`golang` to `build_dependencies` and let `GOTOOLCHAIN=auto` upgrade it.
 - **`GOSUMDB=off`** on some distros (**Mageia**) blocks the GOTOOLCHAIN toolchain download
   (`checksum database disabled by GOSUMDB=off`). Force it back in the build env:
   `export GOSUMDB=sum.golang.org` and `export GOPROXY=https://proxy.golang.org,direct`.
@@ -161,9 +162,11 @@ the default shallow checkout has no tags → `git describe` returns nothing; set
 `fetch-depth: 0` + `fetch-tags: true`, **and** ensure the tags exist on the checked-out remote (a
 fork created without tags has none — `git push origin --tags`).
 
-**Misc.** Verify a `.deb` on a non-Debian host (no `dpkg`): `ar x pkg.deb` then
+**Misc.** Debug a failing distro interactively: `omnipackage portal <distro_id>` drops you into
+that distro's container. Verify a `.deb` on a non-Debian host (no `dpkg`): `ar x pkg.deb` then
 `tar --zstd -tf data.tar.*` (extract `control` from `control.tar.*` for Depends). Build many distros
-in **waves of ~3** — parallel cgo/Qt compiles can OOM.
+in **waves of ~3** — parallel cgo/Qt compiles can OOM. Builds run on the host's native arch (an
+ARM64 host yields aarch64 packages; Arch is x86_64-only) and repositories are per-architecture.
 
 ## Reference
 
@@ -177,7 +180,8 @@ Full, current documentation (this skill is intentionally thin — read the docs 
 - **Templates** (Liquid variables, per-distro custom fields): <https://docs.omnipackage.org/guides/templates/>
 - **Configuration** (`config.yml` schema): <https://docs.omnipackage.org/configuration/>
 - **CLI reference**: <https://docs.omnipackage.org/cli/>
-- **CI/CD** (GitHub Actions matrix): <https://docs.omnipackage.org/guides/cicd/>
+- **CI/CD** (GitHub Actions matrix; install the CLI with `uses: omnipackage/omnipackage-rs@stable`;
+  image-cache priming with `omnipackage prime`): <https://docs.omnipackage.org/guides/cicd/>
 - Reference configs: [mpz](https://github.com/olegantonyan/mpz/tree/master/.omnipackage),
   [rssguard](https://github.com/olegantonyan/rssguard/tree/master/.omnipackage),
   [pulsar (Electron)](https://github.com/olegantonyan/pulsar/tree/master/.omnipackage).
