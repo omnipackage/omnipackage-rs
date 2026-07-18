@@ -2,7 +2,7 @@ name: 'Install omnipackage'
 description: 'Install the omnipackage CLI (build & distribute RPM, DEB & Arch packages)'
 branding:
   icon: 'package'
-  color: 'purple'
+  color: 'green'
 
 outputs:
   version:
