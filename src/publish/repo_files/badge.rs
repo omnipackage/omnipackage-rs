@@ -56,7 +56,6 @@ fn badge_vars(title: String, aux: String) -> HashMap<String, Var> {
     map.insert("LEFT_W".to_string(), left_w.to_string().into());
     map.insert("RIGHT_W".to_string(), right_w.to_string().into());
     map.insert("TOTAL_W".to_string(), total_w.to_string().into());
-    map.insert("TOTAL_W_1".to_string(), (total_w - 1).to_string().into());
     map.insert("AUX_CX".to_string(), format!("{:.1}", aux_cx).into());
     map
 }
