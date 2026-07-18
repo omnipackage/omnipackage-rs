@@ -1,5 +1,6 @@
 use crate::config::S3Config;
 use anyhow::{Context, Result};
+use aws_sdk_s3::config::retry::RetryConfig;
 use aws_sdk_s3::config::{BehaviorVersion, Credentials, Region, RequestChecksumCalculation, ResponseChecksumValidation};
 use aws_sdk_s3::error::{DisplayErrorContext, SdkError};
 use aws_sdk_s3::primitives::ByteStream;
@@ -57,6 +58,7 @@ fn build_client(config: &S3Config) -> Client {
         .request_checksum_calculation(RequestChecksumCalculation::WhenRequired)
         .response_checksum_validation(ResponseChecksumValidation::WhenRequired)
         .behavior_version(BehaviorVersion::latest())
+        .retry_config(RetryConfig::adaptive().with_max_attempts(10))
         .build();
 
     Client::from_conf(s3_config)
