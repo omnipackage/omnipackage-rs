@@ -1,7 +1,7 @@
 [package]
 name = "omnipackage"
 description = "Build and distribute RPM, DEB & Arch packages easily"
-version = "0.1.17"
+version = "0.1.18"
 edition = "2024"
 rust-version = "1.95"
 authors = ["Oleg Antonyan <oleg.b.antonyan@gmail.com>"]
