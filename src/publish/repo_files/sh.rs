@@ -111,7 +111,10 @@ mod tests {
         let path = dir.path().join("install.sh");
         std::fs::write(&path, &script).unwrap();
 
-        let out = std::process::Command::new("sh")
+        // setsid: run without a controlling tty so the script's /dev/tty confirm prompt fails instead of blocking
+        let out = std::process::Command::new("setsid")
+            .arg("-w")
+            .arg("sh")
             .arg(&path)
             .arg("--distro")
             .arg("ubuntu_24.04")
