@@ -188,6 +188,15 @@
     color: var(--muted);
   }
 
+  .quick-install {
+    margin-bottom: 2.25rem;
+    padding-bottom: 1.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .qi-note { font-size: .85rem; color: var(--muted); margin: .4rem 0 .65rem; }
+  .qi-note a { color: var(--link); word-break: break-all; }
+  .json-note { margin-top: 2.5rem; }
+
   .no-js-warning {
       background: #ffdddd;
       color: #900;
@@ -218,7 +227,18 @@
       <a href="{{ homepage }}" target="_blank">{{ homepage }}</a>
     </blockquote>
   </header>
+
+  <section class="quick-install">
+    <p class="qi-note">One command detects your distribution, adds the repository, and installs {{ package_name }}:</p>
+    <div class="code-block">
+      <span class="code-scroll" id="curlCmd"></span>
+      <button class="copy-btn" id="curlCopy">Copy</button>
+    </div>
+    <p class="qi-note">Prefer to set it up manually? Pick your distribution below.</p>
+  </section>
+
   <div id="root"></div>
+  <p class="qi-note json-note">Automating? The package list is also available as machine-readable JSON at <a id="jsonLink" href="#" target="_blank"></a>.</p>
   <footer>Powered by <a href="https://omnipackage.org" target="_blank">OmniPackage</a></footer>
 </div>
 
@@ -232,7 +252,7 @@
     </div>
     <div class="accordion-body">
       <div class="accordion-inner">
-        <div class="step-label">Installation steps</div>
+        <div class="step-label">Installation steps (run as root)</div>
         <div class="code-block">
           <span class="code-scroll acc-steps"></span>
           <button class="copy-btn">Copy</button>
@@ -310,7 +330,6 @@ function renderAccordion(distro) {
   acc.querySelector('.acc-download').href        = distro.download_url;
   acc.querySelector('.acc-download').textContent = pkg;
 
-  // Some package types (e.g. AppImage) have no GPG key; drop the GPG section entirely.
   if (distro.gpg_key) {
     acc.querySelector('.acc-gpg').textContent = distro.gpg_key;
   } else {
@@ -378,7 +397,6 @@ familyOrder.forEach(family => {
   col.className = 'family-accordions';
   byFamily[family].forEach(d => col.appendChild(renderAccordion(d)));
 
-  // group.appendChild(title);
   group.appendChild(logo);
   group.appendChild(col);
   root.appendChild(group);
@@ -398,6 +416,24 @@ function timeAgo(iso) {
   const y = Math.floor(mo / 12);
   return y + ' year' + (y > 1 ? 's' : '') + ' ago';
 }
+
+const repoBase = location.href.replace(/install\.html.*$/, '');
+const installCmd = 'curl -fsSL ' + repoBase + 'install.sh | sh';
+document.getElementById('curlCmd').textContent = installCmd;
+
+const jsonUrl = repoBase + 'install.json';
+const jsonLink = document.getElementById('jsonLink');
+jsonLink.href = jsonUrl;
+jsonLink.textContent = jsonUrl;
+
+document.getElementById('curlCopy').addEventListener('click', e => {
+  const btn = e.currentTarget;
+  navigator.clipboard.writeText(installCmd).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
+  });
+});
 </script>
 </body>
 </html>

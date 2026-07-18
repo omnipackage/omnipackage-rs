@@ -5,25 +5,30 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const MAX_RETRY_ATTEMPTS: u32 = 10;
 
-pub fn put_with_retry<F>(s3: &S3, key: &str, content_type: &str, mut build_body: F) -> Result<()>
+pub type DerivedFile = (&'static str, &'static str, Vec<u8>);
+
+pub fn commit_anchored<F>(s3: &S3, anchor_key: &str, anchor_content_type: &str, mut build: F) -> Result<()>
 where
-    F: FnMut(&[u8]) -> Result<Vec<u8>>,
+    F: FnMut(&[u8]) -> Result<(Vec<u8>, Vec<DerivedFile>)>,
 {
     if !s3.supports_if_match() {
         Logger::new().warn(format!(
-            "S3 endpoint does not honor If-Match on PUT; {} update may race under parallel publishes (last writer wins)",
-            key
+            "S3 endpoint does not honor If-Match on PUT; {} and its derived files may race under parallel publishes (last writer wins)",
+            anchor_key
         ));
-        let existing = s3.download_file(key).unwrap_or_default();
-        let body = build_body(&existing)?;
-        s3.upload_file(key, body, Some(content_type))?;
+        let existing = s3.download_file(anchor_key).unwrap_or_default();
+        let (anchor_body, derived) = build(&existing)?;
+        write_derived(s3, &derived)?;
+        s3.upload_file(anchor_key, anchor_body, Some(anchor_content_type))?;
         return Ok(());
     }
 
     for attempt in 0..MAX_RETRY_ATTEMPTS {
-        let (existing, etag) = s3.download_file_with_etag(key)?;
-        let body = build_body(&existing)?;
-        match s3.upload_file_if_match(key, body, Some(content_type), etag) {
+        let (existing, etag) = s3.download_file_with_etag(anchor_key)?;
+        let (anchor_body, derived) = build(&existing)?;
+        // derived files before the anchor CAS: the winner of the last anchor commit is then also the last writer of every derived file
+        write_derived(s3, &derived)?;
+        match s3.upload_file_if_match(anchor_key, anchor_body, Some(anchor_content_type), etag) {
             Ok(()) => return Ok(()),
             Err(UploadError::PreconditionFailed) => {
                 std::thread::sleep(retry_backoff(attempt));
@@ -33,7 +38,18 @@ where
         }
     }
 
-    Err(anyhow::anyhow!("failed to update {} after {} attempts due to repeated precondition failures", key, MAX_RETRY_ATTEMPTS))
+    Err(anyhow::anyhow!(
+        "failed to update {} after {} attempts due to repeated precondition failures",
+        anchor_key,
+        MAX_RETRY_ATTEMPTS
+    ))
+}
+
+fn write_derived(s3: &S3, derived: &[DerivedFile]) -> Result<()> {
+    for (key, content_type, body) in derived {
+        s3.upload_file(key, body.clone(), Some(content_type))?;
+    }
+    Ok(())
 }
 
 fn retry_backoff(attempt: u32) -> Duration {
