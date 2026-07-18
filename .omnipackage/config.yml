@@ -179,7 +179,8 @@ builds:
     <<: *rpm
 
   - distro: "fedora_41"
-    build_dependencies: ["rust", "cargo", "make"]
+    build_dependencies: ["curl", "gcc", "make"]
+    before_build_script: ".omnipackage/install_rust.sh"
     <<: *rpm
 
   - distro: "fedora_42"
