@@ -34,6 +34,11 @@ pub fn find_artefacts_in_repository_dir(artefacts: &[PathBuf], repository_dir: &
     Ok(results)
 }
 
+pub fn select_fresh_artefact(artefacts: &[PathBuf], skip: &HashSet<PathBuf>, repository_dir: &Path) -> Result<Option<ArtefactMatch>, anyhow::Error> {
+    let fresh: Vec<PathBuf> = artefacts.iter().filter(|p| !skip.contains(*p)).cloned().collect();
+    Ok(find_artefacts_in_repository_dir(&fresh, repository_dir)?.into_iter().next())
+}
+
 pub fn copy_dir_recursive(src: &Path, dst: &Path, skip: &HashSet<PathBuf>) -> Result<()> {
     std::fs::create_dir_all(dst)?;
 
@@ -106,5 +111,40 @@ mod tests {
         let artefacts = vec![PathBuf::from("/path/to/missing.txt")];
         let matches = find_artefacts_in_repository_dir(&artefacts, dir.path()).unwrap();
         assert!(matches.is_empty());
+    }
+
+    #[test]
+    fn select_fresh_skips_retained_old_package() {
+        let dir = tempdir().unwrap();
+        let old = dir.path().join("omnipackage-0.1.15-1.x86_64.rpm");
+        let new = dir.path().join("omnipackage-0.1.16-1.x86_64.rpm");
+        fs::write(&old, b"").unwrap();
+        fs::write(&new, b"").unwrap();
+
+        let artefacts = vec![old.clone(), new.clone()];
+        let skip = HashSet::from([old]);
+
+        let selected = select_fresh_artefact(&artefacts, &skip, dir.path()).unwrap().unwrap();
+        assert_eq!(selected.filename, "omnipackage-0.1.16-1.x86_64.rpm");
+    }
+
+    #[test]
+    fn select_fresh_returns_only_artefact_without_retention() {
+        let dir = tempdir().unwrap();
+        let only = dir.path().join("omnipackage-0.1.16-1.x86_64.rpm");
+        fs::write(&only, b"").unwrap();
+
+        let selected = select_fresh_artefact(&[only], &HashSet::new(), dir.path()).unwrap().unwrap();
+        assert_eq!(selected.filename, "omnipackage-0.1.16-1.x86_64.rpm");
+    }
+
+    #[test]
+    fn select_fresh_returns_none_when_all_retained() {
+        let dir = tempdir().unwrap();
+        let old = dir.path().join("omnipackage-0.1.15-1.x86_64.rpm");
+        fs::write(&old, b"").unwrap();
+
+        let skip = HashSet::from([old.clone()]);
+        assert!(select_fresh_artefact(&[old], &skip, dir.path()).unwrap().is_none());
     }
 }

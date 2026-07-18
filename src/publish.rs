@@ -218,8 +218,9 @@ impl Publish {
 
     fn package_download_url(&self) -> Result<String, anyhow::Error> {
         let dir = self.package.repository_output_dir();
-        let package_files = artefacts::find_artefacts_in_repository_dir(&self.package.artefacts(), &dir).with_context(|| anyhow::anyhow!("cannot find packages in {}", dir.display()))?;
-        let package_file = package_files.first().ok_or_else(|| anyhow::anyhow!("no packages found in repository dir"))?;
+        let package_file = artefacts::select_fresh_artefact(&self.package.artefacts(), &self.skip_upload, &dir)
+            .with_context(|| anyhow::anyhow!("cannot find packages in {}", dir.display()))?
+            .ok_or_else(|| anyhow::anyhow!("no packages found in repository dir"))?;
 
         Ok(format!("{}/{}", self.distro_url().trim_end_matches('/'), package_file.relative_path.display()))
     }
