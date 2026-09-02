@@ -34,11 +34,6 @@ pub fn find_artefacts_in_repository_dir(artefacts: &[PathBuf], repository_dir: &
     Ok(results)
 }
 
-pub fn select_fresh_artefact(artefacts: &[PathBuf], skip: &HashSet<PathBuf>, repository_dir: &Path) -> Result<Option<ArtefactMatch>, anyhow::Error> {
-    let fresh: Vec<PathBuf> = artefacts.iter().filter(|p| !skip.contains(*p)).cloned().collect();
-    Ok(find_artefacts_in_repository_dir(&fresh, repository_dir)?.into_iter().next())
-}
-
 pub fn copy_dir_recursive(src: &Path, dst: &Path, skip: &HashSet<PathBuf>) -> Result<()> {
     std::fs::create_dir_all(dst)?;
 
@@ -114,37 +109,26 @@ mod tests {
     }
 
     #[test]
-    fn select_fresh_skips_retained_old_package() {
+    fn finds_built_artefact_next_to_retained_packages() {
         let dir = tempdir().unwrap();
-        let old = dir.path().join("omnipackage-0.1.15-1.x86_64.rpm");
-        let new = dir.path().join("omnipackage-0.1.16-1.x86_64.rpm");
-        fs::write(&old, b"").unwrap();
-        fs::write(&new, b"").unwrap();
+        fs::write(dir.path().join("omnipackage-0.1.15-1.x86_64.rpm"), b"").unwrap();
+        fs::write(dir.path().join("omnipackage-0.1.16-1.x86_64.rpm"), b"").unwrap();
 
-        let artefacts = vec![old.clone(), new.clone()];
-        let skip = HashSet::from([old]);
+        let built = PathBuf::from("/build/RPMS/x86_64/omnipackage-0.1.16-1.x86_64.rpm");
+        let matches = find_artefacts_in_repository_dir(&[built], dir.path()).unwrap();
 
-        let selected = select_fresh_artefact(&artefacts, &skip, dir.path()).unwrap().unwrap();
-        assert_eq!(selected.filename, "omnipackage-0.1.16-1.x86_64.rpm");
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0].filename, "omnipackage-0.1.16-1.x86_64.rpm");
     }
 
     #[test]
-    fn select_fresh_returns_only_artefact_without_retention() {
+    fn finds_built_artefact_republished_over_a_retained_copy() {
         let dir = tempdir().unwrap();
-        let only = dir.path().join("omnipackage-0.1.16-1.x86_64.rpm");
-        fs::write(&only, b"").unwrap();
+        fs::write(dir.path().join("omnipackage-0.1.16-1.x86_64.rpm"), b"").unwrap();
 
-        let selected = select_fresh_artefact(&[only], &HashSet::new(), dir.path()).unwrap().unwrap();
-        assert_eq!(selected.filename, "omnipackage-0.1.16-1.x86_64.rpm");
-    }
+        let built = PathBuf::from("/build/RPMS/x86_64/omnipackage-0.1.16-1.x86_64.rpm");
+        let matches = find_artefacts_in_repository_dir(&[built], dir.path()).unwrap();
 
-    #[test]
-    fn select_fresh_returns_none_when_all_retained() {
-        let dir = tempdir().unwrap();
-        let old = dir.path().join("omnipackage-0.1.15-1.x86_64.rpm");
-        fs::write(&old, b"").unwrap();
-
-        let skip = HashSet::from([old.clone()]);
-        assert!(select_fresh_artefact(&[old], &skip, dir.path()).unwrap().is_none());
+        assert_eq!(matches.len(), 1);
     }
 }

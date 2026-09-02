@@ -23,7 +23,7 @@ chrono = "0.4"
 glob = "0"
 dotenvy = "0.15"
 aws-sdk-s3 = { version = "1", features = ["behavior-version-latest"] }
-tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "time"] }
 base64 = "0.22"
 reqwest = { version = "0.13", features = ["json", "blocking"] }
 anyhow = "1"

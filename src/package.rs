@@ -38,6 +38,12 @@ pub fn make_package(
     }
 }
 
+fn glob_packages(dir: &Path, extension: &str) -> Vec<PathBuf> {
+    let pattern = dir.join(format!("**/*.{extension}"));
+
+    glob::glob(pattern.to_str().unwrap()).unwrap().filter_map(Result::ok).collect()
+}
+
 #[derive(PartialEq, Debug, Clone)]
 pub enum SetupStage {
     Build,
@@ -81,8 +87,6 @@ pub trait Package {
     }
 
     fn artefacts(&self) -> Vec<PathBuf> {
-        let ext = self.distro().package_type.extension();
-
         let stage = self.setup_stages();
         let dir = if stage.contains(&SetupStage::Repository) {
             self.repository_output_dir()
@@ -92,9 +96,12 @@ pub trait Package {
             panic!("package not set up")
         };
 
-        let pattern = dir.join(format!("**/*.{}", ext));
+        glob_packages(&dir, self.distro().package_type.extension())
+    }
 
-        glob::glob(pattern.to_str().unwrap()).unwrap().filter_map(Result::ok).collect()
+    // only what this build produced; artefacts() also sees older releases retention prepopulated into the repository dir
+    fn built_artefacts(&self) -> Vec<PathBuf> {
+        glob_packages(&self.build_output_dir(), self.distro().package_type.extension())
     }
 
     fn before_build_script(&self, relative_to: &str, config: &Build) -> Option<String> {

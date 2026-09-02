@@ -127,7 +127,7 @@ impl Package for Rpm {
             "mv public.key repodata/repomd.xml.key".to_string(),
         ]);
 
-        self.build_output_dir = repo_dir.clone();
+        self.build_output_dir = self.output_path().join("RPMS");
         self.setup_stages.push(SetupStage::Repository);
         self.gpgkey = Some(gpgkey);
 
@@ -499,7 +499,7 @@ mod tests {
 
         rpm.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
 
-        let repo_file = rpm.build_output_dir().join("myapp.repo");
+        let repo_file = rpm.repository_output_dir().join("myapp.repo");
         assert!(repo_file.exists());
         let content = std::fs::read_to_string(repo_file).unwrap();
         assert!(content.contains("[myapp]"));
@@ -518,7 +518,7 @@ mod tests {
         rpm.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
 
         let home_dir = rpm.distro_build_dir().join("home");
-        let repo_dir = rpm.build_output_dir();
+        let repo_dir = rpm.repository_output_dir();
         assert!(home_dir.join("key.priv").exists());
         assert!(repo_dir.join("public.key").exists());
     }

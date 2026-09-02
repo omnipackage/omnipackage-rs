@@ -177,7 +177,7 @@ impl Package for Deb {
             "mv ../public.key Release.key".to_string(),
         ]);
 
-        self.build_output_dir = repo_dir.clone();
+        self.build_output_dir = self.output_path();
         self.setup_stages.push(SetupStage::Repository);
         self.gpgkey = Some(gpgkey);
 
@@ -595,7 +595,7 @@ mod tests {
         deb.setup_repository(make_repository_config(&gpg_key.priv_key)).unwrap();
 
         let home_dir = deb.distro_build_dir().join("home");
-        let repo_dir = deb.build_output_dir();
+        let repo_dir = deb.repository_output_dir();
         assert!(home_dir.join("key.priv").exists());
         assert!(repo_dir.join("public.key").exists());
     }

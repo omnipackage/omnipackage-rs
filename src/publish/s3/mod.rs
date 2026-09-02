@@ -1,15 +1,20 @@
 use crate::config::S3Config;
+use crate::logger::Logger;
 use anyhow::{Context, Result};
 use aws_sdk_s3::config::retry::RetryConfig;
-use aws_sdk_s3::config::{BehaviorVersion, Credentials, Region, RequestChecksumCalculation, ResponseChecksumValidation};
+use aws_sdk_s3::config::{BehaviorVersion, Credentials, Region, RequestChecksumCalculation, ResponseChecksumValidation, StalledStreamProtectionConfig};
 use aws_sdk_s3::error::{DisplayErrorContext, SdkError};
 use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::{Client, Config};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
+use std::time::Duration;
 
 mod probe;
+
+const BODY_READ_ATTEMPTS: u32 = 5;
+const STALL_GRACE_PERIOD: Duration = Duration::from_secs(30);
 
 pub struct S3 {
     client: Client,
@@ -59,6 +64,7 @@ fn build_client(config: &S3Config) -> Client {
         .response_checksum_validation(ResponseChecksumValidation::WhenRequired)
         .behavior_version(BehaviorVersion::latest())
         .retry_config(RetryConfig::adaptive().with_max_attempts(10))
+        .stalled_stream_protection(StalledStreamProtectionConfig::enabled().grace_period(STALL_GRACE_PERIOD).build())
         .build();
 
     Client::from_conf(s3_config)
@@ -110,16 +116,7 @@ impl S3 {
                     std::fs::create_dir_all(parent).with_context(|| format!("cannot create dir {}", parent.display()))?;
                 }
 
-                let response = self
-                    .client
-                    .get_object()
-                    .bucket(&self.bucket)
-                    .key(&key)
-                    .send()
-                    .await
-                    .with_context(|| format!("cannot download {}", key))?;
-
-                let bytes = response.body.collect().await.with_context(|| format!("cannot read body of {}", key))?.into_bytes();
+                let (bytes, _) = self.get_object_body(&key).await?.ok_or_else(|| anyhow::anyhow!("cannot download {}: object is gone", key))?;
 
                 std::fs::write(&local_path, bytes).with_context(|| format!("cannot write {}", local_path.display()))?;
             }
@@ -188,16 +185,7 @@ impl S3 {
         block(async {
             let full_key = format!("{}/{}", self.path.trim_end_matches('/'), key.trim_start_matches('/'));
 
-            let response = self
-                .client
-                .get_object()
-                .bucket(&self.bucket)
-                .key(&full_key)
-                .send()
-                .await
-                .with_context(|| format!("cannot download {}", full_key))?;
-
-            let bytes = response.body.collect().await.with_context(|| format!("cannot read body of {}", full_key))?.into_bytes().to_vec();
+            let (bytes, _) = self.get_object_body(&full_key).await?.ok_or_else(|| anyhow::anyhow!("cannot download {}: not found", full_key))?;
             Ok(bytes)
         })
     }
@@ -220,23 +208,7 @@ impl S3 {
         block(async {
             let full_key = format!("{}/{}", self.path.trim_end_matches('/'), key.trim_start_matches('/'));
 
-            let response = match self.client.get_object().bucket(&self.bucket).key(&full_key).send().await {
-                Ok(r) => r,
-                Err(e) => {
-                    if matches!(http_status_from_get_err(&e), Some(404)) {
-                        return Ok((vec![], None));
-                    }
-                    let svc = e.into_service_error();
-                    if svc.is_no_such_key() {
-                        return Ok((vec![], None));
-                    }
-                    return Err(anyhow::anyhow!("cannot download {}: {}", full_key, svc));
-                }
-            };
-
-            let etag = response.e_tag().map(|s| s.to_string());
-            let bytes = response.body.collect().await.with_context(|| format!("cannot read body of {}", full_key))?.into_bytes().to_vec();
-            Ok((bytes, etag))
+            Ok(self.get_object_body(&full_key).await?.unwrap_or((vec![], None)))
         })
     }
 
@@ -265,6 +237,39 @@ impl S3 {
                 }
             }
         })
+    }
+
+    async fn get_object_body(&self, key: &str) -> Result<Option<(Vec<u8>, Option<String>)>, anyhow::Error> {
+        let mut attempt: u32 = 1;
+
+        loop {
+            let response = match self.client.get_object().bucket(&self.bucket).key(key).send().await {
+                Ok(r) => r,
+                Err(e) => {
+                    if matches!(http_status_from_get_err(&e), Some(404)) {
+                        return Ok(None);
+                    }
+                    if let SdkError::ServiceError(svc) = &e
+                        && svc.err().is_no_such_key()
+                    {
+                        return Ok(None);
+                    }
+                    return Err(anyhow::anyhow!("cannot download {}: {}", key, DisplayErrorContext(&e)));
+                }
+            };
+
+            let etag = response.e_tag().map(|s| s.to_string());
+
+            match response.body.collect().await {
+                Ok(body) => return Ok(Some((body.into_bytes().to_vec(), etag))),
+                Err(e) if attempt < BODY_READ_ATTEMPTS => {
+                    Logger::new().warn(format!("interrupted read of {} ({}), retrying {}/{}", key, DisplayErrorContext(&e), attempt + 1, BODY_READ_ATTEMPTS));
+                    tokio::time::sleep(Duration::from_secs(1u64 << (attempt - 1))).await;
+                    attempt += 1;
+                }
+                Err(e) => return Err(anyhow::Error::new(e).context(format!("cannot read body of {}", key))),
+            }
+        }
     }
 
     async fn list_objects(&self) -> Result<Vec<String>, anyhow::Error> {
@@ -309,4 +314,72 @@ fn http_status_from_get_err(e: &SdkError<aws_sdk_s3::operation::get_object::GetO
         return Some(svc.raw().status().as_u16());
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{BufRead, BufReader, Write};
+    use std::net::TcpListener;
+
+    fn serve(listener: TcpListener, responses: Vec<&'static [u8]>) -> std::thread::JoinHandle<()> {
+        std::thread::spawn(move || {
+            for response in responses {
+                let (mut stream, _) = listener.accept().unwrap();
+                let mut reader = BufReader::new(stream.try_clone().unwrap());
+                let mut line = String::new();
+                while reader.read_line(&mut line).unwrap() > 2 {
+                    line.clear();
+                }
+                stream.write_all(response).unwrap();
+                stream.flush().unwrap();
+            }
+        })
+    }
+
+    fn config(port: u16) -> S3Config {
+        S3Config {
+            bucket: "bucket".to_string(),
+            path_in_bucket: Some("path".to_string()),
+            bucket_public_url: None,
+            endpoint: format!("http://127.0.0.1:{port}"),
+            access_key_id: "key".to_string(),
+            secret_access_key: "secret".to_string(),
+            region: Some("auto".to_string()),
+            force_path_style: true,
+            cloudflare_zone_id: None,
+            cloudflare_api_token: None,
+        }
+    }
+
+    #[test]
+    fn retries_a_body_read_cut_short() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let cut_short: &[u8] = b"HTTP/1.1 200 OK\r\nContent-Length: 11\r\nETag: \"abc\"\r\n\r\nhello";
+        let complete: &[u8] = b"HTTP/1.1 200 OK\r\nContent-Length: 11\r\nETag: \"abc\"\r\n\r\nhello world";
+        let server = serve(listener, vec![cut_short, complete]);
+
+        let s3 = S3::new(&config(port), "path");
+        let (bytes, etag) = s3.download_file_with_etag("install.html").unwrap();
+
+        assert_eq!(bytes, b"hello world");
+        assert_eq!(etag.as_deref(), Some("\"abc\""));
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn missing_object_reads_as_empty() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let not_found: &[u8] = b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
+        let server = serve(listener, vec![not_found]);
+
+        let s3 = S3::new(&config(port), "path");
+        let (bytes, etag) = s3.download_file_with_etag("install.html").unwrap();
+
+        assert!(bytes.is_empty());
+        assert!(etag.is_none());
+        server.join().unwrap();
+    }
 }

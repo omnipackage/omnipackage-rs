@@ -90,14 +90,14 @@ impl Publish {
                 if !s3.bucket_exists()? {
                     return Err(anyhow::anyhow!("bucket '{}' does not exist", s3_config.bucket));
                 }
-                s3.upload_all(&dir, &self.skip_upload)?;
+                s3.upload_all(&dir, &self.retained_untouched_by_build()?)?;
                 s3.delete_deleted_files(&dir)?;
                 Ok(())
             }
             RepositoryProvider::LocalFs => {
                 let localfs_config = self.config.localfs();
                 let dst = localfs_config.repository_path().join(&self.package.distro().id);
-                artefacts::copy_dir_recursive(&dir, &dst, &self.skip_upload)?;
+                artefacts::copy_dir_recursive(&dir, &dst, &self.retained_untouched_by_build()?)?;
                 // intentional, mirrors S3: retain_packages prepopulates src, so anything in dst but not src is stale
                 artefacts::delete_dst_files_not_in_src(&dir, &dst)?;
                 Ok(())
@@ -216,10 +216,25 @@ impl Publish {
         }
     }
 
-    fn package_download_url(&self) -> Result<String, anyhow::Error> {
+    fn built_artefacts_in_repository(&self) -> Result<Vec<artefacts::ArtefactMatch>, anyhow::Error> {
         let dir = self.package.repository_output_dir();
-        let package_file = artefacts::select_fresh_artefact(&self.package.artefacts(), &self.skip_upload, &dir)
-            .with_context(|| anyhow::anyhow!("cannot find packages in {}", dir.display()))?
+
+        artefacts::find_artefacts_in_repository_dir(&self.package.built_artefacts(), &dir).with_context(|| anyhow::anyhow!("cannot find packages in {}", dir.display()))
+    }
+
+    // republishing a version rebuilds a package retention already prepopulated: those bytes changed and must be uploaded
+    fn retained_untouched_by_build(&self) -> Result<HashSet<PathBuf>, anyhow::Error> {
+        let dir = self.package.repository_output_dir();
+        let rebuilt: HashSet<PathBuf> = self.built_artefacts_in_repository()?.into_iter().map(|a| dir.join(a.relative_path)).collect();
+
+        Ok(self.skip_upload.difference(&rebuilt).cloned().collect())
+    }
+
+    fn package_download_url(&self) -> Result<String, anyhow::Error> {
+        let package_file = self
+            .built_artefacts_in_repository()?
+            .into_iter()
+            .next()
             .ok_or_else(|| anyhow::anyhow!("no packages found in repository dir"))?;
 
         Ok(format!("{}/{}", self.distro_url().trim_end_matches('/'), package_file.relative_path.display()))
