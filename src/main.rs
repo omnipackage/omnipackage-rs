@@ -29,7 +29,7 @@ use logger::{LogOutput, Logger};
 #[derive(Debug, Args)]
 struct GlobalOpts {
     /// Container runtime, autodetect by default
-    #[arg(long, global = true, value_parser = ["docker", "podman"])]
+    #[arg(long, global = true, value_parser = ["docker", "podman", "host"])]
     container_runtime: Option<String>,
 }
 
