@@ -255,6 +255,11 @@ builds:
     before_build_script: ".omnipackage/install_rust.sh"
     <<: *deb
 
+  - distro: "ubuntu_26.10"
+    build_dependencies: ["curl", "build-essential"]
+    before_build_script: ".omnipackage/install_rust.sh"
+    <<: *deb
+
   - distro: "almalinux_8"
     build_dependencies: ["curl", "gcc", "make"]
     before_build_script: ".omnipackage/install_rust.sh"

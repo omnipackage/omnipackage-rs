@@ -229,6 +229,12 @@ distros:
     <<: *debian
     image_info_url: "https://hub.docker.com/_/ubuntu"
 
+  - id: "ubuntu_26.10"
+    name: "Ubuntu 26.10"
+    image: "ubuntu:26.10"
+    <<: *debian
+    image_info_url: "https://hub.docker.com/_/ubuntu"
+
   - id: "mageia_9"
     name: "Mageia 9"
     image: "mageia:9"
