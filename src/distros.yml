@@ -153,7 +153,13 @@ distros:
     name: "Debian 11"
     image: "debian:11"
     <<: *debian
+    setup:
+      - "echo 'deb http://archive.debian.org/debian bullseye main' > /etc/apt/sources.list"
+      - "echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20260831T211327Z bullseye-security main' >> /etc/apt/sources.list"
+      - "DEBIAN_FRONTEND=noninteractive apt-get update"
+      - "DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential debhelper ca-certificates rsync %{build_dependencies}"
     image_info_url: "https://hub.docker.com/_/debian"
+    deprecated: 'LTS ended in <a href="https://endoflife.date/debian" target="_blank">August 2026</a>. Security repository stopped working in September 2026'
 
   - id: "debian_12"
     name: "Debian 12"
