@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 pub fn refresh(args: PrimeArgs) -> Result<(), anyhow::Error> {
+    anyhow::ensure!(!crate::shell::is_host_runtime(), "prime requires podman or docker, host runtime is not supported");
     let config = args.project.load_config(false)?;
     let ic = config
         .image_caches

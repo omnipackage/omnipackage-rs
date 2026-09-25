@@ -163,6 +163,14 @@ pub struct InfoArgs {
     #[arg(long)]
     list_distros: bool,
 
+    /// Print each distro's container image next to its id (list_distros only)
+    #[arg(long)]
+    show_images: bool,
+
+    /// Image cache name from config.yml, used by --show-images instead of the distro base image
+    #[arg(long, short)]
+    image_cache: Option<String>,
+
     /// Show install page url
     #[arg(long)]
     show_install_page_url: bool,

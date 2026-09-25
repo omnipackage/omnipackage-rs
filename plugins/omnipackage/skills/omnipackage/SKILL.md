@@ -182,6 +182,8 @@ Full, current documentation (this skill is intentionally thin — read the docs 
 - **CLI reference**: <https://docs.omnipackage.org/cli/>
 - **CI/CD** (GitHub Actions matrix; install the CLI with `uses: omnipackage/omnipackage-rs@stable`;
   image-cache priming with `omnipackage prime`): <https://docs.omnipackage.org/guides/cicd/>
+- **GitLab CI** (container-only runners, no nested containers: `OMNIPACKAGE_CONTAINER_RUNTIME=host`
+  inside per-distro job images, GitLab Registry image cache): <https://docs.omnipackage.org/guides/gitlab_ci/>
 - Reference configs: [mpz](https://github.com/olegantonyan/mpz/tree/master/.omnipackage),
   [rssguard](https://github.com/olegantonyan/rssguard/tree/master/.omnipackage),
   [pulsar (Electron)](https://github.com/olegantonyan/pulsar/tree/master/.omnipackage).
