@@ -97,7 +97,13 @@ impl Package for Pacman {
             "useradd -m -s /bin/bash omnibuild 2>/dev/null || true".to_string(),
             // NOPASSWD:SETENV lets the `sudo -E` below carry the injected build secrets through.
             "echo 'omnibuild ALL=(ALL) NOPASSWD:SETENV: ALL' > /etc/sudoers.d/omnibuild".to_string(),
-            "chown -R omnibuild:omnibuild /work /output".to_string(),
+            // trailing slashes make chown -R follow host runtime symlinks
+            if crate::shell::is_host_runtime() {
+                "chown -R omnibuild:omnibuild /work/ /output/"
+            } else {
+                "chown -R omnibuild:omnibuild /work /output"
+            }
+            .to_string(),
             // HOME/PKGDEST are set inline so makepkg writes to omnibuild's home and drops the
             // package into the bind-mounted output dir.
             "sudo -E -u omnibuild bash -c 'cd /work && HOME=/home/omnibuild PKGDEST=/output makepkg -f --nodeps'".to_string(),

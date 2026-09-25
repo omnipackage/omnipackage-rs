@@ -90,6 +90,7 @@ impl Runner {
 
         if let Some(image_cache) = self.package.image_cache() {
             match image_cache.provider {
+                ImageCacheProvider::Registry if crate::shell::is_host_runtime() => {}
                 ImageCacheProvider::Registry => login_to_registry(image_cache.clone(), self.container_logger(), Some(&log_path)).map_err(|e| (e, log_path.clone()))?,
                 ImageCacheProvider::Local => args.push("--pull=never".to_string()),
             };

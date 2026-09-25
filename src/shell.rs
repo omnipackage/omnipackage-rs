@@ -1,5 +1,6 @@
 use crate::logger::Logger;
-use anyhow::Result;
+use anyhow::{Context, Result};
+use std::collections::HashMap;
 use std::error::Error;
 use std::fs::OpenOptions;
 use std::io::BufReader;
@@ -39,6 +40,16 @@ pub fn set_container_runtime(runtime: impl Into<String>) {
 
 fn container_runtime() -> &'static str {
     CONTAINER_RUNTIME.get_or_init(detect_container_runtime)
+}
+
+const HOST_RUNTIME: &str = "host";
+
+pub fn is_host_runtime() -> bool {
+    CONTAINER_RUNTIME
+        .get()
+        .cloned()
+        .or_else(|| std::env::var("OMNIPACKAGE_CONTAINER_RUNTIME").ok())
+        .is_some_and(|runtime| runtime == HOST_RUNTIME)
 }
 
 type StdinFn = Box<dyn FnOnce(&mut dyn std::io::Write)>;
@@ -149,6 +160,11 @@ impl Command {
     }
 
     pub fn run(self) -> Result<(), anyhow::Error> {
+        if self.program == HOST_RUNTIME {
+            let (cmd, _links) = self.into_host()?;
+            return cmd.run();
+        }
+
         self.logger.cmd(&self.program, &self.args, &self.env_vars);
 
         let mut log_file = self.log_file.as_ref().map(|path| {
@@ -204,6 +220,11 @@ impl Command {
     }
 
     pub fn run_interactive(self) -> Result<(), anyhow::Error> {
+        if self.program == HOST_RUNTIME {
+            let (cmd, _links) = self.into_host()?;
+            return cmd.run_interactive();
+        }
+
         self.logger.cmd(&self.program, &self.args, &self.env_vars);
 
         let mut cmd = std::process::Command::new(&self.program);
@@ -218,6 +239,68 @@ impl Command {
 
         let status = cmd.status()?;
         if status.success() { Ok(()) } else { Err(anyhow::anyhow!(ExitError(status.code().unwrap_or(1)))) }
+    }
+
+    fn into_host(self) -> Result<(Command, Symlinks), anyhow::Error> {
+        let mut args = self.args.into_iter();
+        anyhow::ensure!(args.next().as_deref() == Some("run"), "host runtime supports only \"run\"");
+
+        let mut program = None;
+        let mut env_vars = self.env_vars;
+        let mut links = Symlinks(vec![]);
+        while let Some(arg) = args.next() {
+            match arg.as_str() {
+                "--rm" | "-it" | "--pull=never" => {}
+                "--entrypoint" => program = args.next(),
+                "-e" => {
+                    let var = args.next().unwrap_or_default();
+                    let (k, v) = var.split_once('=').with_context(|| format!("invalid env var {var}"))?;
+                    env_vars.push((k.to_string(), v.to_string()));
+                }
+                "--mount" => links.add(&args.next().unwrap_or_default())?,
+                _ if arg.starts_with('-') => anyhow::bail!("host runtime does not support {arg}"),
+                _ => break,
+            }
+        }
+
+        let cmd = Command {
+            program: program.context("host runtime requires --entrypoint")?,
+            args: args.collect(),
+            log_file: self.log_file,
+            logger: self.logger,
+            stdin_fn: self.stdin_fn,
+            env_vars,
+            current_dir: self.current_dir,
+        };
+        Ok((cmd, links))
+    }
+}
+
+struct Symlinks(Vec<PathBuf>);
+
+impl Symlinks {
+    fn add(&mut self, mount: &str) -> Result<(), anyhow::Error> {
+        let opts: HashMap<&str, &str> = mount.split(',').filter_map(|kv| kv.split_once('=')).collect();
+        let (Some(source), Some(target)) = (opts.get("source"), opts.get("target")) else {
+            anyhow::bail!("invalid mount {mount}");
+        };
+
+        let link = PathBuf::from(target.trim_end_matches('/'));
+        if link.is_symlink() {
+            std::fs::remove_file(&link)?;
+        }
+        let source = std::fs::canonicalize(source).with_context(|| format!("cannot resolve mount source {source}"))?;
+        std::os::unix::fs::symlink(&source, &link).with_context(|| format!("cannot link {} to {}", link.display(), source.display()))?;
+        self.0.push(link);
+        Ok(())
+    }
+}
+
+impl Drop for Symlinks {
+    fn drop(&mut self) {
+        for link in &self.0 {
+            let _ = std::fs::remove_file(link);
+        }
     }
 }
 
@@ -277,5 +360,38 @@ mod tests {
         std::fs::write(&script, "#!/bin/sh\nexit 0\n").unwrap();
         std::fs::set_permissions(&script, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
         let _ = set_container_runtime(script.to_string_lossy().to_string());
+    }
+
+    #[test]
+    fn test_host_run_links_mounts_and_passes_env() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source");
+        std::fs::create_dir(&source).unwrap();
+        std::fs::write(source.join("file"), "").unwrap();
+        let target = dir.path().join("mnt");
+
+        Command::new(HOST_RUNTIME)
+            .args([
+                "run".to_string(),
+                "--rm".to_string(),
+                "--entrypoint".to_string(),
+                "/bin/sh".to_string(),
+                "--mount".to_string(),
+                format!("type=bind,source={},target={}/", source.display(), target.display()),
+                "-e".to_string(),
+                "FOO=bar".to_string(),
+                "image".to_string(),
+                "-c".to_string(),
+                format!("test -f {}/file && test \"$FOO\" = bar", target.display()),
+            ])
+            .run()
+            .unwrap();
+
+        assert!(!target.is_symlink());
+    }
+
+    #[test]
+    fn test_host_run_rejects_other_commands() {
+        assert!(Command::new(HOST_RUNTIME).args(["login"]).run().is_err());
     }
 }

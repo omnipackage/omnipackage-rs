@@ -116,8 +116,10 @@ impl Package for Deb {
         self.prepare_build_dir()?;
         let debian_folder_template_path = config.deb.clone().ok_or_else(|| anyhow::anyhow!("deb config is missing"))?.debian_templates;
 
-        let build_path = self.distro_build_dir().join("build");
+        let host_runtime = crate::shell::is_host_runtime();
         let output_path = self.output_path();
+        // host runtime symlinks can't nest mounts, and dpkg-buildpackage writes packages to the physical ..
+        let build_path = if host_runtime { output_path.join("build") } else { self.distro_build_dir().join("build") };
         std::fs::create_dir_all(&build_path).with_context(|| format!("cannot create directory {}", build_path.display()))?;
         std::fs::create_dir_all(&output_path).with_context(|| format!("cannot create directory {}", output_path.display()))?;
 
@@ -126,7 +128,9 @@ impl Package for Deb {
         self.render_templates(template_vars, self.source_dir.join(&debian_folder_template_path), build_path.join("debian"))?;
 
         self.mounts.insert(self.source_dir.to_string_lossy().to_string(), "/source".to_string());
-        self.mounts.insert(build_path.to_string_lossy().to_string(), "/output/build".to_string());
+        if !host_runtime {
+            self.mounts.insert(build_path.to_string_lossy().to_string(), "/output/build".to_string());
+        }
         self.mounts.insert(self.output_path().to_string_lossy().to_string(), "/output/".to_string());
 
         if self.image_cache.is_none() {

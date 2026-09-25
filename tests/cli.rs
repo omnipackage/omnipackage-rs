@@ -306,3 +306,20 @@ fn init_empty_dir_falls_back_to_generic() {
         .success()
         .stdout(predicate::str::contains("generic"));
 }
+
+#[test]
+fn info_list_distros_show_images() {
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/sample_project");
+    Command::cargo_bin("omnipackage")
+        .unwrap()
+        .args(["info", dir, "--list-distros", "--show-images"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("opensuse_15.3 opensuse/leap:15.3\n"));
+    Command::cargo_bin("omnipackage")
+        .unwrap()
+        .args(["info", dir, "--list-distros", "--show-images", "--image-cache", "local", "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(r#"{"distro":"opensuse_15.3","image":"opensuse_15.3:sample-project-latest"}"#));
+}
