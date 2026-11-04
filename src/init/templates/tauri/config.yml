@@ -104,6 +104,9 @@ builds:
   - distro: "opensuse_16.0"
     build_dependencies: ["rust", "cargo", "make", "webkit2gtk3-soup2-devel", "libopenssl-devel", "curl", "wget", "file", "libappindicator3-1", "librsvg-devel", "glib2-devel", "libsoup-devel", "libjavascriptcoregtk-4_1-0", "libwebkit2gtk-4_1-0", "webkit2gtk4-devel", "libsoup2-devel", "webkit2gtk3-devel"]
     <<: *rpm
+  - distro: "opensuse_16.1"
+    build_dependencies: ["rust", "cargo", "make", "webkit2gtk3-soup2-devel", "libopenssl-devel", "curl", "wget", "file", "libappindicator3-1", "librsvg-devel", "glib2-devel", "libsoup-devel", "libjavascriptcoregtk-4_1-0", "libwebkit2gtk-4_1-0", "webkit2gtk4-devel", "libsoup2-devel", "webkit2gtk3-devel"]
+    <<: *rpm
   - distro: "opensuse_tumbleweed"
     build_dependencies: ["rust", "cargo", "make", "webkit2gtk3-soup2-devel", "libopenssl-devel", "curl", "wget", "file", "libappindicator3-1", "librsvg-devel", "glib2-devel", "libsoup-devel", "libjavascriptcoregtk-4_1-0", "libwebkit2gtk-4_1-0", "webkit2gtk4-devel", "libsoup2-devel", "webkit2gtk3-devel"]
     <<: *rpm
@@ -128,6 +131,9 @@ builds:
     build_dependencies: ["rust", "cargo", "make", "webkit2gtk4.1-devel", "openssl-devel", "curl", "wget", "file", "libappindicator-gtk3-devel", "librsvg2-devel"]
     <<: *rpm
   - distro: "fedora_44"
+    build_dependencies: ["rust", "cargo", "make", "webkit2gtk4.1-devel", "openssl-devel", "curl", "wget", "file", "libappindicator-gtk3-devel", "librsvg2-devel"]
+    <<: *rpm
+  - distro: "fedora_45"
     build_dependencies: ["rust", "cargo", "make", "webkit2gtk4.1-devel", "openssl-devel", "curl", "wget", "file", "libappindicator-gtk3-devel", "librsvg2-devel"]
     <<: *rpm
   - distro: "fedora_rawhide"

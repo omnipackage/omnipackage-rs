@@ -88,6 +88,12 @@ distros:
     <<: *opensuse
     image_info_url: "https://hub.docker.com/r/opensuse/leap"
 
+  - id: "opensuse_16.1"
+    name: "openSUSE Leap 16.1"
+    image: "opensuse/leap:16.1"
+    <<: *opensuse
+    image_info_url: "https://hub.docker.com/r/opensuse/leap"
+
   - id: "opensuse_tumbleweed"
     name: "openSUSE Tumbleweed"
     image: "opensuse/tumbleweed"
@@ -133,6 +139,12 @@ distros:
   - id: "fedora_44"
     name: "Fedora 44"
     image: "fedora:44"
+    <<: *redhat
+    image_info_url: "https://hub.docker.com/_/fedora"
+
+  - id: "fedora_45"
+    name: "Fedora 45"
+    image: "fedora:45"
     <<: *redhat
     image_info_url: "https://hub.docker.com/_/fedora"
 

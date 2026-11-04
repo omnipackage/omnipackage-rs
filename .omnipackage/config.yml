@@ -159,6 +159,11 @@ builds:
     before_build_script: ".omnipackage/install_rust.sh"
     <<: *rpm
 
+  - distro: "opensuse_16.1"
+    build_dependencies: ["curl", "gcc", "make"]
+    before_build_script: ".omnipackage/install_rust.sh"
+    <<: *rpm
+
   - distro: "opensuse_tumbleweed"
     build_dependencies: ["rust", "cargo", "make"]
     <<: *rpm
@@ -192,6 +197,10 @@ builds:
     <<: *rpm
 
   - distro: "fedora_44"
+    build_dependencies: ["rust", "cargo", "make"]
+    <<: *rpm
+
+  - distro: "fedora_45"
     build_dependencies: ["rust", "cargo", "make"]
     <<: *rpm
 

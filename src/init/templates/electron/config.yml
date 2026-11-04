@@ -108,6 +108,8 @@ builds:
     <<: *rpm
   - distro: "opensuse_16.0"
     <<: *rpm
+  - distro: "opensuse_16.1"
+    <<: *rpm
   - distro: "opensuse_tumbleweed"
     <<: *rpm
   - distro: "fedora_38"
@@ -123,6 +125,8 @@ builds:
   - distro: "fedora_43"
     <<: *rpm
   - distro: "fedora_44"
+    <<: *rpm
+  - distro: "fedora_45"
     <<: *rpm
   - distro: "fedora_rawhide"
     <<: *rpm

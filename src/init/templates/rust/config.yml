@@ -101,6 +101,9 @@ builds:
   - distro: "opensuse_16.0"
     build_dependencies: ["rust", "cargo", "make"]
     <<: *rpm
+  - distro: "opensuse_16.1"
+    build_dependencies: ["rust", "cargo", "make"]
+    <<: *rpm
   - distro: "opensuse_tumbleweed"
     build_dependencies: ["rust", "cargo", "make"]
     <<: *rpm
@@ -123,6 +126,9 @@ builds:
     build_dependencies: ["rust", "cargo", "make"]
     <<: *rpm
   - distro: "fedora_44"
+    build_dependencies: ["rust", "cargo", "make"]
+    <<: *rpm
+  - distro: "fedora_45"
     build_dependencies: ["rust", "cargo", "make"]
     <<: *rpm
   - distro: "fedora_rawhide"
