@@ -96,7 +96,7 @@ There should be no `macos/src/`: sources are never published.
    If the build succeeds, network is allowed. If it fails, check `homebrew.log` for the curl error.
 3. **Developer mode is restored.** `brew bottle` silently turns developer mode on, and omnipackage turns it back off if it was off. Run `brew developer` before and after a build; the state should be the same.
 4. **Older-bottle fallback (only if you have two macOS versions).** Does a bottle built on the older macOS get poured on the newer one?
-5. **The install page.** Open the printed install page URL. A "macOS" group with the Homebrew icon should list the `brew tap …` / `brew install …` steps, and the badge should say `… 1 BREW`.
+5. **The install page.** Open the printed install page URL. A "macOS" group with the Apple logo should list the `brew tap …` / `brew install …` steps, and the badge should say `… 1 BREW`.
 
 ## 6. Troubleshooting
 
