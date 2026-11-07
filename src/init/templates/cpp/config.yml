@@ -87,6 +87,14 @@ pacman: &pacman
   pacman:
     pkgbuild_template: ".omnipackage/PKGBUILD.liquid"
 
+# macOS: Homebrew formula + bottles, built natively on a macOS host.
+# build_dependencies/runtime_dependencies here are Homebrew formula names (rendered as depends_on).
+homebrew: &homebrew
+  <<: *common
+  build_dependencies: []
+  homebrew:
+    formula_template: ".omnipackage/homebrew/formula.rb.liquid"
+
 builds:
   - distro: "arch"
     <<: *pacman
@@ -160,3 +168,6 @@ builds:
     <<: *rpm
   - distro: "mageia_cauldron"
     <<: *rpm
+  # Uncomment to publish a Homebrew tap; build on a macOS host: omnipackage release --distros macos
+  # - distro: "macos"
+  #   <<: *homebrew

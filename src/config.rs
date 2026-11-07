@@ -55,6 +55,11 @@ pub struct PacmanConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct HomebrewConfig {
+    pub formula_template: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum AnyValue {
     String(String),
@@ -78,6 +83,7 @@ pub struct Build {
     pub rpm: Option<RpmConfig>,
     pub deb: Option<DebConfig>,
     pub pacman: Option<PacmanConfig>,
+    pub homebrew: Option<HomebrewConfig>,
     #[serde(flatten, default)]
     pub rest: HashMap<String, AnyValue>,
 }

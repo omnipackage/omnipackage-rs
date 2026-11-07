@@ -8,16 +8,15 @@ const BADGE_TEMPLATE_SVG: &str = include_str!("badge.svg.liquid");
 pub fn render(repositories: &Repositories, config: &RepoConfig) -> Result<String, anyhow::Error> {
     let mut vars = config.to_template_vars();
 
-    let (rpm_count, deb_count, pacman_count) = repositories.iter().fold((0, 0, 0), |(rpm, deb, pacman), r| match r.get("package_type").map(|t| t.as_str()) {
-        Some("rpm") => (rpm + 1, deb, pacman),
-        Some("deb") => (rpm, deb + 1, pacman),
-        Some("pacman") => (rpm, deb, pacman + 1),
-        _ => (rpm, deb, pacman),
-    });
+    let count = |package_type: &str| repositories.iter().filter(|r| r.get("package_type").is_some_and(|t| t == package_type)).count();
+    let (rpm_count, deb_count, pacman_count, homebrew_count) = (count("rpm"), count("deb"), count("pacman"), count("homebrew"));
 
     let mut aux = format!("{rpm_count} RPM {deb_count} DEB");
     if pacman_count > 0 {
         aux.push_str(&format!(" {pacman_count} PAC"));
+    }
+    if homebrew_count > 0 {
+        aux.push_str(&format!(" {homebrew_count} BREW"));
     }
     vars.extend(badge_vars(config.name.clone(), aux));
 

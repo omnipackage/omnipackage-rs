@@ -20,6 +20,7 @@ mod publish;
 mod release;
 mod runner;
 mod shell;
+mod target;
 mod template;
 
 use anyhow::Result;

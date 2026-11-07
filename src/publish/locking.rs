@@ -5,7 +5,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const MAX_RETRY_ATTEMPTS: u32 = 10;
 
-pub type DerivedFile = (&'static str, &'static str, Vec<u8>);
+pub type DerivedFile = (String, &'static str, Vec<u8>);
 
 pub fn commit_anchored<F>(s3: &S3, anchor_key: &str, anchor_content_type: &str, mut build: F) -> Result<()>
 where

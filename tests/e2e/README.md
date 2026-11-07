@@ -101,3 +101,26 @@ Common failure modes:
   (dnf). Add to `runtime_dependencies:` in the template.
 - **binary not found**: the spec/rules `%files` or `install` paths don't
   match the slug. Rare, but indicates a template bug.
+
+## macOS (Homebrew) target
+
+`tests/e2e/macos.sh` is a separate manual test for the `macos` target. Run it on a Mac with Homebrew:
+
+```sh
+cargo build && sh tests/e2e/macos.sh
+```
+
+It uses the fixture `tests/fixtures/macos_project` and does the following:
+1. `release` 1.0.0.
+2. `build` 1.0.1 into a separate build dir. The build host must not have the package installed, because the build taps and installs it under the same tap name the users get.
+3. As an end user: `brew tap` and `brew install` 1.0.0, asserting the bottle was poured.
+4. `publish` 1.0.1, then `brew update && brew upgrade` (poured again), then `brew test`.
+5. Reinstalls through the generated `install.sh`.
+
+| Env var      | Default            | Notes |
+|--------------|--------------------|-------|
+| `REPOSITORY` | `R2 test`          | Or `Local test`, which writes to `/tmp/omnipackage-macos-repo` |
+| `ENV_FILE`   | `<repo>/.env`      | Must provide the `CLOUDFLARE_R2_*` vars for `R2 test` |
+| `OMNIPACKAGE_BIN` | `target/debug/omnipackage` | |
+
+Remove the published files afterwards with `ruby scripts/clear_bucket.rb repositories-test macos-e2e`.

@@ -15,7 +15,8 @@ pub fn render(distros: &Repositories, package_name: &str, repo_base_url: &str, r
         };
         ids.push(id.clone());
         let quoted = steps.replace('\'', "'\\''");
-        steps_case.push_str(&format!("  {id})\n    STEPS='{quoted}'\n    ;;\n"));
+        let as_root = if entry.get("install_as_root").is_some_and(|v| v == "false") { "\n    AS_ROOT=0" } else { "" };
+        steps_case.push_str(&format!("  {id})\n    STEPS='{quoted}'{as_root}\n    ;;\n"));
     }
 
     let vars: HashMap<String, Var> = HashMap::from([
@@ -144,6 +145,37 @@ mod tests {
 
         let syntax = std::process::Command::new("sh").arg("-n").arg(&path).output().unwrap();
         assert!(syntax.status.success(), "sh -n failed on pacman steps: {}", String::from_utf8_lossy(&syntax.stderr));
+    }
+
+    #[test]
+    fn test_render_non_root_arm_runs_without_sudo_or_arch_check() {
+        let mut repos = script_fixture_distros();
+        repos.push(Repository::from([
+            ("distro_id".to_string(), "macos".to_string()),
+            ("install_steps".to_string(), "echo brew-steps-ran".to_string()),
+            ("install_as_root".to_string(), "false".to_string()),
+        ]));
+        let script = render(&repos, "omnipackage", "https://example.test/stable", "riscv64").unwrap();
+        assert!(script.contains("  macos)\n    STEPS='echo brew-steps-ran'\n    AS_ROOT=0\n    ;;"), "{script}");
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("install.sh");
+        std::fs::write(&path, &script).unwrap();
+        let syntax = std::process::Command::new("sh").arg("-n").arg(&path).output().unwrap();
+        assert!(syntax.status.success(), "sh -n failed: {}", String::from_utf8_lossy(&syntax.stderr));
+
+        let out = std::process::Command::new("sh")
+            .arg(&path)
+            .arg("-y")
+            .arg("--distro")
+            .arg("macos")
+            .env("PATH", "/usr/bin:/bin")
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "script failed: {}", String::from_utf8_lossy(&out.stderr));
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        assert!(stdout.contains("brew-steps-ran"), "steps not executed: {stdout}");
+        assert!(!stdout.contains("requires root"), "non-root arm must not ask for root: {stdout}");
     }
 
     #[test]

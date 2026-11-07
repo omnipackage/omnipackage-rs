@@ -160,6 +160,45 @@ fn init_retain_packages_flag_sets_value() {
 }
 
 #[test]
+fn init_scaffolds_commented_macos_target() {
+    let d = TempDir::new().unwrap();
+    fs::write(d.path().join("Cargo.toml"), "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n").unwrap();
+    run_init(d.path(), "rust");
+    let formula = fs::read_to_string(d.path().join(".omnipackage/homebrew/formula.rb.liquid")).unwrap();
+    assert!(formula.contains("sha256 \"{{ sha256 }}\""), "{formula}");
+
+    let config_path = d.path().join(".omnipackage/config.yml");
+    let config = fs::read_to_string(&config_path).unwrap();
+    assert!(config.contains("  # - distro: \"macos\"\n  #   <<: *homebrew"), "{config}");
+    fs::write(&config_path, config.replace("  # - distro: \"macos\"\n  #   <<: *homebrew", "  - distro: \"macos\"\n    <<: *homebrew")).unwrap();
+
+    let out = Command::cargo_bin("omnipackage")
+        .unwrap()
+        .args(["info", d.path().to_str().unwrap(), "--list-distros"])
+        .assert()
+        .success();
+    assert!(String::from_utf8_lossy(&out.get_output().stdout).lines().any(|l| l == "macos"));
+}
+
+#[test]
+fn macos_fixture_config_parses() {
+    let out = Command::cargo_bin("omnipackage")
+        .unwrap()
+        .args(["info", "tests/fixtures/macos_project", "--list-distros"])
+        .assert()
+        .success();
+    assert_eq!(String::from_utf8_lossy(&out.get_output().stdout).trim(), "macos");
+}
+
+#[test]
+fn init_python_has_no_homebrew_formula() {
+    let d = TempDir::new().unwrap();
+    fs::write(d.path().join("main.py"), "VERSION = \"0.1.0\"\n").unwrap();
+    run_init(d.path(), "python");
+    assert!(!d.path().join(".omnipackage/homebrew").exists());
+}
+
+#[test]
 fn init_go_generates_parseable_config() {
     let d = TempDir::new().unwrap();
     fs::write(d.path().join("go.mod"), "module example.com/demo\n").unwrap();

@@ -1,0 +1,19 @@
+class {{ formula_class }} < Formula
+  desc "{{ description }}"
+  homepage "{{ homepage }}"
+  url "{{ url }}"
+  sha256 "{{ sha256 }}"
+  version "{{ version }}"
+{% for dep in build_dependencies %}  depends_on "{{ dep }}" => :build
+{% endfor %}{% for dep in runtime_dependencies %}  depends_on "{{ dep }}"
+{% endfor %}
+  def install
+    system "make"
+    system "make", "install", "INSTALL_ROOT=#{buildpath}/_install"
+    prefix.install Dir["_install/usr/*"]
+  end
+
+  test do
+    assert_match "{{ package_name }} {{ version }}", shell_output("#{bin}/{{ package_name }}")
+  end
+end

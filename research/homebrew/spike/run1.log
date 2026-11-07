@@ -1,0 +1,477 @@
+Trying to pull ghcr.io/homebrew/brew:latest...
+Getting image source signatures
+Copying blob sha256:7a48b8f0e5c73d0cc2a85b008978396aa19d253dc1b96fdb0b769ee6dcbeca4a
+Copying blob sha256:b263b9c1e7bdfcc4840bd48131e82f497b8f367317663c264a7f6a4cd2b68a41
+Copying blob sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1
+Copying blob sha256:a84ff07ae8d70088edffd7d21aef3858e821b4714298e39b01f459242c699d0b
+Copying blob sha256:741a9a56f25978ed4f0bd675d415bf5c7db693de89506f7f14fc880de9ab2e1f
+Copying blob sha256:8b16e2b8108923d0a4ac1d149570894de44f207b4db875a6dffcef86fede583d
+Copying blob sha256:8f02ee8526526a25a4f2b98081dc6b7773c9b9612a8a9c553d11036b5fd94096
+Copying config sha256:d6a414c00d999f4d97c2a0480207dc2205f047c2166441ed58200133fa073aec
+Writing manifest to image destination
+
+===== versions =====
+Homebrew 7.0.12
+Homebrew/homebrew-core (git revision b665a4681f5; last commit 2026-11-02)
+git version 2.56.0
+
+===== install rclone =====
+==> Downloading Homebrew API data
+✔︎ JSON API packages.x86_64_linux.jws.json
+==> Downloading bottle manifests
+✔︎ Bottle Manifest rclone (1.75.2)
+==> Fetching downloads for: rclone
+✔︎ Bottle rclone (1.75.2)
+2026/11/06 16:35:11 NOTICE: Config file "/home/linuxbrew/.config/rclone/rclone.conf" not found - using defaults
+warning: You appear to have cloned an empty repository.
+
+===== tap local bare repo as omnitest/spike =====
+==> Tapping omnitest/spike
+Cloning into '/home/linuxbrew/.linuxbrew/Homebrew/Library/Taps/omnitest/homebrew-spike'...
+done.
+Tapped 2 formulae (16 files, 89KB).
+
+===== build bottle 1.0 (brew install --build-bottle) =====
+==> Trusted formula omnitest/spike/ophello
+==> Fetching downloads for: ophello
+✔︎ Formula ophello (1.0)
+==> Installing ophello from omnitest/spike
+[34m==>[0m [1mmake install PREFIX=/home/linuxbrew/.linuxbrew/Cellar/ophello/1.0[0m
+==> Not running 'post_install' as we're building a bottle
+You can run it manually using:
+  brew postinstall omnitest/spike/ophello
+🍺  /home/linuxbrew/.linuxbrew/Cellar/ophello/1.0: 3 files, 29.6KB, built in 0 seconds
+
+===== brew bottle =====
+Warning: bottle is a developer command, so Homebrew's
+developer mode has been automatically turned on.
+To turn developer mode off, run:
+  brew developer off
+
+==> Determining omnitest/spike/ophello bottle rebuild...
+==> Bottling ophello--1.0.x86_64_linux.bottle.1.tar.gz...
+./ophello--1.0.x86_64_linux.bottle.1.tar.gz
+  bottle do
+    root_url "https://repositories-test.omnipackage.org/homebrew-spike/bottles"
+    rebuild 1
+    sha256 cellar: :any, x86_64_linux: "3d6328c327b330dd9f9f64b4f23646acf89bea47385eccdd1a4c940c0e3f510f"
+  end
+total 16
+drwxr-xr-x 2 linuxbrew linuxbrew 4096 Nov  6 16:35 .
+drwxr-xr-x 3 linuxbrew linuxbrew 4096 Nov  6 16:35 ..
+-rw-r--r-- 1 linuxbrew linuxbrew 3879 Nov  6 16:35 ophello--1.0.x86_64_linux.bottle.1.tar.gz
+-rw-r--r-- 1 linuxbrew linuxbrew 2781 Nov  6 16:35 ophello--1.0.x86_64_linux.bottle.json
+{
+  "omnitest/spike/ophello": {
+    "formula": {
+      "name": "ophello",
+      "pkg_version": "1.0",
+      "path": "Library/Taps/omnitest/homebrew-spike/Formula/ophello.rb",
+      "tap_git_path": "Formula/ophello.rb",
+      "tap_git_revision": "f2afcd6717f34d54e7654ae1d26446ada79e962a",
+      "tap_git_remote": "/tmp/w/tap.git",
+      "desc": "omnipackage homebrew spike",
+      "license": "MIT",
+      "homepage": "https://omnipackage.org"
+    },
+    "bottle": {
+      "root_url": "https://repositories-test.omnipackage.org/homebrew-spike/bottles",
+      "cellar": "any",
+      "rebuild": 1,
+      "date": "2026-11-06T16:35:17Z",
+      "tags": {
+        "x86_64_linux": {
+          "filename": "ophello-1.0.x86_64_linux.bottle.1.tar.gz",
+          "local_filename": "ophello--1.0.x86_64_linux.bottle.1.tar.gz",
+          "sha256": "3d6328c327b330dd9f9f64b4f23646acf89bea47385eccdd1a4c940c0e3f510f",
+          "tab": {
+            "homebrew_version": "7.0.12",
+            "changed_files": [
+              "INSTALL_RECEIPT.json"
+            ],
+            "linkage_files": [
+              "bin/ophello"
+            ],
+            "binary_relocation_files": [],
+            "source_modified_time": 1793982911,
+            "compiler": "gcc-13",
+            "runtime_dependencies": [],
+            "arch": "x86_64",
+            "built_on": {
+              "os": "Linux",
+              "os_version": "Ubuntu 24.04.5 LTS",
+              "cpu_family": "zen3",
+              "glibc_version": "2.39",
+              "oldest_cpu_family": "core2"
+            }
+          },
+          "binary_relocation_diagnostics": [],
+          "sbom": {
+            "documentDescribes": [
+              "SPDXRef-Compiler"
+            ],
+            "packages": [
+              {
+                "SPDXID": "SPDXRef-Compiler",
+                "name": "gcc-13",
+                "versionInfo": "NOASSERTION",
+                "filesAnalyzed": false,
+                "licenseDeclared": "NOASSERTION",
+                "licenseConcluded": "NOASSERTION",
+                "copyrightText": "NOASSERTION",
+                "downloadLocation": "NOASSERTION",
+                "checksums": [],
+                "externalRefs": []
+              }
+            ],
+            "relationships": [
+              {
+                "spdxElementId": "SPDXRef-Compiler",
+                "relationshipType": "BUILD_TOOL_OF",
+                "relatedSpdxElement": "SPDXRef-Archive-ophello-src"
+              }
+            ]
+          },
+          "path_exec_files": [
+            "bin/ophello"
+          ],
+          "all_files": [
+            ".brew/ophello.rb",
+            "INSTALL_RECEIPT.json",
+            "bin/ophello",
+            "sbom.spdx.json"
+          ],
+          "installed_size": 30390
+        }
+      }
+    }
+  }
+}local=./ophello--1.0.x86_64_linux.bottle.1.tar.gz remote=ophello-1.0.x86_64_linux.bottle.1.tar.gz
+2026/11/06 16:35:17 NOTICE: Config file "/home/linuxbrew/.config/rclone/rclone.conf" not found - using defaults
+
+===== merge bottle block into formula =====
+==> omnitest/spike/ophello
+  bottle do
+    root_url "https://repositories-test.omnipackage.org/homebrew-spike/bottles"
+    rebuild 1
+    sha256 cellar: :any, x86_64_linux: "3d6328c327b330dd9f9f64b4f23646acf89bea47385eccdd1a4c940c0e3f510f"
+  end
+class Ophello < Formula
+  desc "omnipackage homebrew spike"
+  homepage "https://omnipackage.org"
+  url "https://repositories-test.omnipackage.org/homebrew-spike/src/ophello-1.0.tar.gz"
+  sha256 "22f22f0f84d19a867d27dfcdfec1217d4fb8d2518beb082b87a2494b7e3b687a"
+  license "MIT"
+
+  bottle do
+    root_url "https://repositories-test.omnipackage.org/homebrew-spike/bottles"
+    rebuild 1
+    sha256 cellar: :any, x86_64_linux: "3d6328c327b330dd9f9f64b4f23646acf89bea47385eccdd1a4c940c0e3f510f"
+  end
+
+  def install
+    system "make", "install", "PREFIX=#{prefix}"
+  end
+
+  test do
+    assert_match "ophello 1.0", shell_output("#{bin}/ophello")
+  end
+end
+2026/11/06 16:35:20 NOTICE: Config file "/home/linuxbrew/.config/rclone/rclone.conf" not found - using defaults
+
+===== published 1.0 =====
+2026/11/06 16:35:22 NOTICE: Config file "/home/linuxbrew/.config/rclone/rclone.conf" not found - using defaults
+     3879 2026-11-06 16:35:17.294394314 bottles/ophello-1.0.x86_64_linux.bottle.1.tar.gz
+       21 2026-11-06 16:35:12.505968895 homebrew-tap.git/HEAD
+       66 2026-11-06 16:35:12.505573851 homebrew-tap.git/config
+       73 2026-11-06 16:35:12.502353986 homebrew-tap.git/description
+      478 2026-11-06 16:35:12.504354002 homebrew-tap.git/hooks/applypatch-msg.sample
+     1972 2026-11-06 16:35:12.503353994 homebrew-tap.git/hooks/commit-msg.sample
+     4611 2026-11-06 16:35:12.504354002 homebrew-tap.git/hooks/fsmonitor-watchman.sample
+      189 2026-11-06 16:35:12.503353994 homebrew-tap.git/hooks/post-update.sample
+      424 2026-11-06 16:35:12.502353986 homebrew-tap.git/hooks/pre-applypatch.sample
+     1649 2026-11-06 16:35:12.503353994 homebrew-tap.git/hooks/pre-commit.sample
+      416 2026-11-06 16:35:12.503353994 homebrew-tap.git/hooks/pre-merge-commit.sample
+     1374 2026-11-06 16:35:12.503353994 homebrew-tap.git/hooks/pre-push.sample
+     4898 2026-11-06 16:35:12.503353994 homebrew-tap.git/hooks/pre-rebase.sample
+      544 2026-11-06 16:35:12.503353994 homebrew-tap.git/hooks/pre-receive.sample
+     1492 2026-11-06 16:35:12.503353994 homebrew-tap.git/hooks/prepare-commit-msg.sample
+     2783 2026-11-06 16:35:12.504354002 homebrew-tap.git/hooks/push-to-checkout.sample
+     2308 2026-11-06 16:35:12.504354002 homebrew-tap.git/hooks/sendemail-validate.sample
+     3650 2026-11-06 16:35:12.504354002 homebrew-tap.git/hooks/update.sample
+      240 2026-11-06 16:35:12.502353986 homebrew-tap.git/info/exclude
+       57 2026-11-06 16:35:19.982499643 homebrew-tap.git/info/refs
+       50 2026-11-06 16:35:12.532354238 homebrew-tap.git/objects/00/329e171892660e8f28f21348ac3d6aeadc8c43
+       83 2026-11-06 16:35:12.532354238 homebrew-tap.git/objects/04/f95f5b211a9233f370f5e9cc961cfb9a8690ed
+      324 2026-11-06 16:35:19.960416751 homebrew-tap.git/objects/52/49225d11a03a9096169e463a2740de645b2ecf
+      407 2026-11-06 16:35:19.972416852 homebrew-tap.git/objects/57/d17a5becb28055ba1da98b0df9ec0c36ba4e66
+      156 2026-11-06 16:35:19.972416852 homebrew-tap.git/objects/57/e6ba7a175cb511a5614e86e550996d2c678e1a
+       82 2026-11-06 16:35:19.972416852 homebrew-tap.git/objects/5f/9a73597951a088d9a516a26e2cb85e3c61fa9d
+      306 2026-11-06 16:35:12.532354238 homebrew-tap.git/objects/6f/5b4360af69ebc4c108ba59a241cb4b2e29d4f9
+       49 2026-11-06 16:35:19.972416852 homebrew-tap.git/objects/c7/7d77bd1e206bf9765d36abaf1394cbd5875fca
+      122 2026-11-06 16:35:12.532354238 homebrew-tap.git/objects/f2/afcd6717f34d54e7654ae1d26446ada79e962a
+        1 2026-11-06 16:35:19.982572631 homebrew-tap.git/objects/info/packs
+       41 2026-11-06 16:35:19.978446696 homebrew-tap.git/refs/heads/main
+      324 2026-11-06 16:35:11.826348297 src/ophello-1.0.tar.gz
+
+===== versions =====
+Homebrew 7.0.12
+Homebrew/homebrew-core (git revision b665a4681f5; last commit 2026-11-02)
+
+===== brew tap via dumb HTTP from S3 =====
+==> Downloading Homebrew API data
+✔︎ JSON API packages.x86_64_linux.jws.json
+==> Tapping omnitest/spike
+Cloning into '/home/linuxbrew/.linuxbrew/Homebrew/Library/Taps/omnitest/homebrew-spike'...
+Tapped 2 formulae (20 files, 102.5KB).
+exit=0
+"trusted": false
+
+===== install by short name (expect tap-trust refusal) =====
+Error: Refusing to load formula omnitest/spike/ophello from untrusted tap omnitest/spike.
+Run `brew trust --formula omnitest/spike/ophello` or `brew trust omnitest/spike` to trust it.
+exit=1
+
+===== install fully-qualified (expect bottle pour from S3) =====
+==> Trusted formula omnitest/spike/ophello
+==> Fetching downloads for: ophello
+✔︎ Bottle ophello (1.0)
+==> Installing ophello from omnitest/spike
+==> Pouring ophello-1.0.x86_64_linux.bottle.1.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/ophello/1.0: 4 files, 36.4KB
+exit=0
+ophello 1.0
+==> omnitest/spike/ophello: stable 1.0 (bottled)
+omnipackage homebrew spike
+https://omnipackage.org
+Installed (on request)
+From: https://repositories-test.omnipackage.org/homebrew-spike/homebrew-tap.git/Formula/ophello.rb
+2026/11/06 16:35:34 NOTICE: Config file "/home/linuxbrew/.config/rclone/rclone.conf" not found - using defaults
+Uninstalling /home/linuxbrew/.linuxbrew/Cellar/ophello/1.0... (4 files, 36.3KB)
+
+===== build bottle 1.1 (brew install --build-bottle) =====
+==> Trusted formula omnitest/spike/ophello
+==> Fetching downloads for: ophello
+✔︎ Formula ophello (1.1)
+==> Installing ophello from omnitest/spike
+[34m==>[0m [1mmake install PREFIX=/home/linuxbrew/.linuxbrew/Cellar/ophello/1.1[0m
+==> Not running 'post_install' as we're building a bottle
+You can run it manually using:
+  brew postinstall omnitest/spike/ophello
+🍺  /home/linuxbrew/.linuxbrew/Cellar/ophello/1.1: 3 files, 29.6KB, built in 0 seconds
+
+===== brew bottle =====
+==> Determining omnitest/spike/ophello bottle rebuild...
+==> Bottling ophello--1.1.x86_64_linux.bottle.tar.gz...
+./ophello--1.1.x86_64_linux.bottle.tar.gz
+  bottle do
+    root_url "https://repositories-test.omnipackage.org/homebrew-spike/bottles"
+    sha256 cellar: :any, x86_64_linux: "64c3a2a4f7c75ef5dd1e25d3e0c545bbb7da5750ebcab7f402ce2eb26a765bcd"
+  end
+total 16
+drwxr-xr-x 2 linuxbrew linuxbrew 4096 Nov  6 16:35 .
+drwxr-xr-x 4 linuxbrew linuxbrew 4096 Nov  6 16:35 ..
+-rw-r--r-- 1 linuxbrew linuxbrew 2777 Nov  6 16:35 ophello--1.1.x86_64_linux.bottle.json
+-rw-r--r-- 1 linuxbrew linuxbrew 3879 Nov  6 16:35 ophello--1.1.x86_64_linux.bottle.tar.gz
+{
+  "omnitest/spike/ophello": {
+    "formula": {
+      "name": "ophello",
+      "pkg_version": "1.1",
+      "path": "Library/Taps/omnitest/homebrew-spike/Formula/ophello.rb",
+      "tap_git_path": "Formula/ophello.rb",
+      "tap_git_revision": "57e6ba7a175cb511a5614e86e550996d2c678e1a",
+      "tap_git_remote": "/tmp/w/tap.git",
+      "desc": "omnipackage homebrew spike",
+      "license": "MIT",
+      "homepage": "https://omnipackage.org"
+    },
+    "bottle": {
+      "root_url": "https://repositories-test.omnipackage.org/homebrew-spike/bottles",
+      "cellar": "any",
+      "rebuild": 0,
+      "date": "2026-11-06T16:35:38Z",
+      "tags": {
+        "x86_64_linux": {
+          "filename": "ophello-1.1.x86_64_linux.bottle.tar.gz",
+          "local_filename": "ophello--1.1.x86_64_linux.bottle.tar.gz",
+          "sha256": "64c3a2a4f7c75ef5dd1e25d3e0c545bbb7da5750ebcab7f402ce2eb26a765bcd",
+          "tab": {
+            "homebrew_version": "7.0.12",
+            "changed_files": [
+              "INSTALL_RECEIPT.json"
+            ],
+            "linkage_files": [
+              "bin/ophello"
+            ],
+            "binary_relocation_files": [],
+            "source_modified_time": 1793982934,
+            "compiler": "gcc-13",
+            "runtime_dependencies": [],
+            "arch": "x86_64",
+            "built_on": {
+              "os": "Linux",
+              "os_version": "Ubuntu 24.04.5 LTS",
+              "cpu_family": "zen3",
+              "glibc_version": "2.39",
+              "oldest_cpu_family": "core2"
+            }
+          },
+          "binary_relocation_diagnostics": [],
+          "sbom": {
+            "documentDescribes": [
+              "SPDXRef-Compiler"
+            ],
+            "packages": [
+              {
+                "SPDXID": "SPDXRef-Compiler",
+                "name": "gcc-13",
+                "versionInfo": "NOASSERTION",
+                "filesAnalyzed": false,
+                "licenseDeclared": "NOASSERTION",
+                "licenseConcluded": "NOASSERTION",
+                "copyrightText": "NOASSERTION",
+                "downloadLocation": "NOASSERTION",
+                "checksums": [],
+                "externalRefs": []
+              }
+            ],
+            "relationships": [
+              {
+                "spdxElementId": "SPDXRef-Compiler",
+                "relationshipType": "BUILD_TOOL_OF",
+                "relatedSpdxElement": "SPDXRef-Archive-ophello-src"
+              }
+            ]
+          },
+          "path_exec_files": [
+            "bin/ophello"
+          ],
+          "all_files": [
+            ".brew/ophello.rb",
+            "INSTALL_RECEIPT.json",
+            "bin/ophello",
+            "sbom.spdx.json"
+          ],
+          "installed_size": 30390
+        }
+      }
+    }
+  }
+}local=./ophello--1.1.x86_64_linux.bottle.tar.gz remote=ophello-1.1.x86_64_linux.bottle.tar.gz
+2026/11/06 16:35:39 NOTICE: Config file "/home/linuxbrew/.config/rclone/rclone.conf" not found - using defaults
+
+===== merge bottle block into formula =====
+==> omnitest/spike/ophello
+  bottle do
+    root_url "https://repositories-test.omnipackage.org/homebrew-spike/bottles"
+    sha256 cellar: :any, x86_64_linux: "64c3a2a4f7c75ef5dd1e25d3e0c545bbb7da5750ebcab7f402ce2eb26a765bcd"
+  end
+class Ophello < Formula
+  desc "omnipackage homebrew spike"
+  homepage "https://omnipackage.org"
+  url "https://repositories-test.omnipackage.org/homebrew-spike/src/ophello-1.1.tar.gz"
+  sha256 "69feec99a56ea9f57997be285f3b82a995ea40eed497a156a65fd938f9dd77d5"
+  license "MIT"
+
+  bottle do
+    root_url "https://repositories-test.omnipackage.org/homebrew-spike/bottles"
+    sha256 cellar: :any, x86_64_linux: "64c3a2a4f7c75ef5dd1e25d3e0c545bbb7da5750ebcab7f402ce2eb26a765bcd"
+  end
+
+  def install
+    system "make", "install", "PREFIX=#{prefix}"
+  end
+
+  test do
+    assert_match "ophello 1.1", shell_output("#{bin}/ophello")
+  end
+end
+2026/11/06 16:35:40 NOTICE: Config file "/home/linuxbrew/.config/rclone/rclone.conf" not found - using defaults
+
+===== published 1.1 =====
+2026/11/06 16:35:42 NOTICE: Config file "/home/linuxbrew/.config/rclone/rclone.conf" not found - using defaults
+     3879 2026-11-06 16:35:17.294394314 bottles/ophello-1.0.x86_64_linux.bottle.1.tar.gz
+     3879 2026-11-06 16:35:38.598573606 bottles/ophello-1.1.x86_64_linux.bottle.tar.gz
+       21 2026-11-06 16:35:12.505968895 homebrew-tap.git/HEAD
+       66 2026-11-06 16:35:12.505573851 homebrew-tap.git/config
+       73 2026-11-06 16:35:12.502353986 homebrew-tap.git/description
+      478 2026-11-06 16:35:12.504354002 homebrew-tap.git/hooks/applypatch-msg.sample
+     1972 2026-11-06 16:35:12.503353994 homebrew-tap.git/hooks/commit-msg.sample
+     4611 2026-11-06 16:35:12.504354002 homebrew-tap.git/hooks/fsmonitor-watchman.sample
+      189 2026-11-06 16:35:12.503353994 homebrew-tap.git/hooks/post-update.sample
+      424 2026-11-06 16:35:12.502353986 homebrew-tap.git/hooks/pre-applypatch.sample
+     1649 2026-11-06 16:35:12.503353994 homebrew-tap.git/hooks/pre-commit.sample
+      416 2026-11-06 16:35:12.503353994 homebrew-tap.git/hooks/pre-merge-commit.sample
+     1374 2026-11-06 16:35:12.503353994 homebrew-tap.git/hooks/pre-push.sample
+     4898 2026-11-06 16:35:12.503353994 homebrew-tap.git/hooks/pre-rebase.sample
+      544 2026-11-06 16:35:12.503353994 homebrew-tap.git/hooks/pre-receive.sample
+     1492 2026-11-06 16:35:12.503353994 homebrew-tap.git/hooks/prepare-commit-msg.sample
+     2783 2026-11-06 16:35:12.504354002 homebrew-tap.git/hooks/push-to-checkout.sample
+     2308 2026-11-06 16:35:12.504354002 homebrew-tap.git/hooks/sendemail-validate.sample
+     3650 2026-11-06 16:35:12.504354002 homebrew-tap.git/hooks/update.sample
+      240 2026-11-06 16:35:12.502353986 homebrew-tap.git/info/exclude
+       57 2026-11-06 16:35:40.734591583 homebrew-tap.git/info/refs
+       50 2026-11-06 16:35:12.532354238 homebrew-tap.git/objects/00/329e171892660e8f28f21348ac3d6aeadc8c43
+       83 2026-11-06 16:35:12.532354238 homebrew-tap.git/objects/04/f95f5b211a9233f370f5e9cc961cfb9a8690ed
+       82 2026-11-06 16:35:40.725591507 homebrew-tap.git/objects/12/5e0e5a364d35fe5a8ce8d745a39677c1c45201
+      324 2026-11-06 16:35:40.712591398 homebrew-tap.git/objects/52/49225d11a03a9096169e463a2740de645b2ecf
+      407 2026-11-06 16:35:19.972416852 homebrew-tap.git/objects/57/d17a5becb28055ba1da98b0df9ec0c36ba4e66
+      156 2026-11-06 16:35:19.972416852 homebrew-tap.git/objects/57/e6ba7a175cb511a5614e86e550996d2c678e1a
+       82 2026-11-06 16:35:19.972416852 homebrew-tap.git/objects/5f/9a73597951a088d9a516a26e2cb85e3c61fa9d
+      395 2026-11-06 16:35:40.725591507 homebrew-tap.git/objects/6b/294e7ee6f18f65d1c584a33f894409a1e41050
+       49 2026-11-06 16:35:40.724591499 homebrew-tap.git/objects/6d/7510ac12e3636bccba0924cc930101e0300a23
+      306 2026-11-06 16:35:12.532354238 homebrew-tap.git/objects/6f/5b4360af69ebc4c108ba59a241cb4b2e29d4f9
+       49 2026-11-06 16:35:19.972416852 homebrew-tap.git/objects/c7/7d77bd1e206bf9765d36abaf1394cbd5875fca
+      156 2026-11-06 16:35:40.724591499 homebrew-tap.git/objects/dc/a3d590a0dee6063a74fd310790b1d74fc005be
+      122 2026-11-06 16:35:12.532354238 homebrew-tap.git/objects/f2/afcd6717f34d54e7654ae1d26446ada79e962a
+        1 2026-11-06 16:35:19.982572631 homebrew-tap.git/objects/info/packs
+       41 2026-11-06 16:35:40.730591549 homebrew-tap.git/refs/heads/main
+      324 2026-11-06 16:35:11.826348297 src/ophello-1.0.tar.gz
+      323 2026-11-06 16:35:34.097535726 src/ophello-1.1.tar.gz
+
+===== brew update (dumb HTTP fetch) =====
+==> Updating Homebrew...
+==> Homebrew's analytics have entirely moved to our InfluxDB instance in the EU.
+We gather less data than before and have destroyed all Google Analytics data:
+  https://docs.brew.sh/Analytics
+Please reconsider re-enabling analytics to help our volunteer maintainers with:
+  brew analytics on
+==> Homebrew is run entirely by unpaid volunteers. Please consider donating:
+  https://github.com/Homebrew/brew#-donations
+
+Updated 1 tap (omnitest/spike).
+==> Outdated Formulae
+ophello
+
+You have 1 outdated formula installed.
+You can upgrade it with brew upgrade
+or list it with brew outdated.
+exit=0
+omnitest/spike/ophello
+
+===== brew upgrade =====
+==> Fetching downloads for: omnitest/spike/ophello
+==> Would upgrade 1 outdated package
+omnitest/spike/ophello 1.0 -> 1.1
+✔︎ Bottle ophello (1.1)
+==> Upgrading omnitest/spike/ophello
+  1.0 -> 1.1 
+==> Pouring ophello-1.1.x86_64_linux.bottle.tar.gz
+🍺  /home/linuxbrew/.linuxbrew/Cellar/ophello/1.1: 4 files, 36.4KB
+exit=0
+ophello 1.1
+
+===== trust state after upgrade =====
+All official taps and commands are trusted.
+Trusted formulae:
+  https://repositories-test.omnipackage.org/homebrew-spike/homebrew-tap.git/ophello
+
+===== network during build (opnet) =====
+==> Trusted formula omnitest/spike/opnet
+==> Fetching downloads for: opnet
+✔︎ Formula opnet (1.0)
+==> Installing opnet from omnitest/spike
+[34m==>[0m [1mcurl -fsS -o /dev/null https://example.com[0m
+🍺  /home/linuxbrew/.linuxbrew/Cellar/opnet/1.0: 4 files, 15.9KB, built in 1 second
+RESULT: network AVAILABLE during install

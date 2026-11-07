@@ -7,14 +7,18 @@ use std::path::PathBuf;
 
 mod artefacts;
 mod cloudflare;
+pub mod index;
 mod locking;
-mod repo_files;
+pub mod repo_files;
 mod retention;
 mod s3;
+pub mod store;
 
 use cloudflare::CloudflareApi;
+use index::InstallPageBadge;
 use s3::S3;
 
+pub use index::install_page_url;
 pub use retention::prepopulate_with_retention;
 
 pub struct Publish {
@@ -22,17 +26,6 @@ pub struct Publish {
     pub package: Box<dyn Package>,
     pub custom_install_page: Option<PathBuf>,
     pub skip_upload: HashSet<PathBuf>,
-}
-
-const INSTALL_PAGE_NAME: &str = "install.html";
-const INSTALL_JSON_NAME: &str = "install.json";
-const INSTALL_SCRIPT_NAME: &str = "install.sh";
-const BADGE_NAME: &str = "badge.svg";
-
-#[derive(Debug, Clone)]
-struct InstallPageBadge {
-    pub page_url: String,
-    pub badge_md: String,
 }
 
 impl Publish {
@@ -156,64 +149,9 @@ impl Publish {
             ("package_type".to_string(), self.package.distro().package_type.to_string()),
             ("timestamp".to_string(), chrono::Utc::now().to_rfc3339()),
         ]);
-        let arch = std::env::consts::ARCH;
-        let base_entries: repo_files::Repositories = vec![entry];
-        let entries = enrich_for_json(&base_entries, arch, &self.config.package_name);
         let custom_template = self.custom_install_page.as_deref().map(std::fs::read_to_string).transpose()?;
 
-        match self.config.provider {
-            RepositoryProvider::S3 => {
-                let s3_config = self.config.s3();
-                let path = PathBuf::from(s3_config.path_in_bucket.as_deref().unwrap_or(""));
-                let s3 = S3::new(s3_config, path.to_string_lossy().to_string());
-                let base_url = s3_config.base_bucket_url();
-
-                locking::commit_anchored(&s3, INSTALL_PAGE_NAME, "text/html", |existing_html| {
-                    let existing = repo_files::html::parse(&String::from_utf8_lossy(existing_html)).unwrap_or_default();
-                    let merged = repo_files::upsert_from(existing, &entries);
-                    let html = repo_files::html::render_page(&merged, &self.config, custom_template.clone())?;
-                    Ok((html.into_bytes(), vec![]))
-                })?;
-
-                locking::commit_anchored(&s3, INSTALL_JSON_NAME, "application/json", |existing_json| {
-                    let existing = repo_files::json::parse(&String::from_utf8_lossy(existing_json));
-                    let merged = repo_files::upsert_from(existing, &entries);
-                    let json = repo_files::json::to_json(&merged)?;
-                    let sh = repo_files::sh::render(&merged, &self.config.package_name, &base_url, arch)?;
-                    let badge = repo_files::badge::render(&merged, &self.config)?;
-                    Ok((
-                        json.into_bytes(),
-                        vec![(INSTALL_SCRIPT_NAME, "text/x-shellscript", sh.into_bytes()), (BADGE_NAME, "image/svg+xml", badge.into_bytes())],
-                    ))
-                })?;
-
-                let page_url = install_page_url(&self.config).ok_or_else(|| anyhow::anyhow!("install page url cannot be generated"))?;
-                let badge_url = format!("{}/{}", s3_config.base_bucket_url(), BADGE_NAME);
-                let badge_md = format!("[![OmniPackage repositories badge]({badge_url})]({page_url})");
-
-                Ok(InstallPageBadge { page_url, badge_md })
-            }
-            RepositoryProvider::LocalFs => {
-                let localfs_config = self.config.localfs();
-                let repo_dir = localfs_config.repository_path();
-                let base_url = repo_dir.to_string_lossy().into_owned();
-
-                let existing_html = std::fs::read_to_string(repo_dir.join(INSTALL_PAGE_NAME)).unwrap_or_default();
-                let html_merged = repo_files::upsert_from(repo_files::html::parse(&existing_html).unwrap_or_default(), &entries);
-                std::fs::write(repo_dir.join(INSTALL_PAGE_NAME), repo_files::html::render_page(&html_merged, &self.config, custom_template)?)?;
-
-                let existing_json = std::fs::read_to_string(repo_dir.join(INSTALL_JSON_NAME)).unwrap_or_default();
-                let json_merged = repo_files::upsert_from(repo_files::json::parse(&existing_json), &entries);
-                std::fs::write(repo_dir.join(INSTALL_JSON_NAME), repo_files::json::to_json(&json_merged)?)?;
-                std::fs::write(repo_dir.join(INSTALL_SCRIPT_NAME), repo_files::sh::render(&json_merged, &self.config.package_name, &base_url, arch)?)?;
-                std::fs::write(repo_dir.join(BADGE_NAME), repo_files::badge::render(&json_merged, &self.config)?)?;
-
-                Ok(InstallPageBadge {
-                    page_url: repo_dir.join(INSTALL_PAGE_NAME).to_string_lossy().to_string(),
-                    badge_md: "".to_string(),
-                })
-            }
-        }
+        index::publish_entry(&self.config, entry, custom_template, Some(std::env::consts::ARCH))
     }
 
     fn built_artefacts_in_repository(&self) -> Result<Vec<artefacts::ArtefactMatch>, anyhow::Error> {
@@ -238,28 +176,5 @@ impl Publish {
             .ok_or_else(|| anyhow::anyhow!("no packages found in repository dir"))?;
 
         Ok(format!("{}/{}", self.distro_url().trim_end_matches('/'), package_file.relative_path.display()))
-    }
-}
-
-fn enrich_for_json(entries: &repo_files::Repositories, arch: &str, package_name: &str) -> repo_files::Repositories {
-    entries
-        .iter()
-        .map(|e| {
-            let mut m = e.clone();
-            m.insert("arch".to_string(), arch.to_string());
-            m.insert("package_name".to_string(), package_name.to_string());
-            m
-        })
-        .collect()
-}
-
-pub fn install_page_url(repository: &Repository) -> Option<String> {
-    match repository.provider {
-        RepositoryProvider::S3 => {
-            let s3_config = repository.s3();
-            let page_url = format!("{}/{}", s3_config.base_bucket_url(), INSTALL_PAGE_NAME);
-            Some(page_url)
-        }
-        _ => None,
     }
 }

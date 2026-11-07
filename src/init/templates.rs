@@ -36,7 +36,25 @@ fn shared_deb() -> [TemplateFile; 3] {
 pub fn template_set_for(t: ProjectType) -> Vec<TemplateFile> {
     let mut files: Vec<TemplateFile> = shared_deb().to_vec();
     files.extend(per_type(t));
+    files.extend(homebrew_formula(t));
     files
+}
+
+fn homebrew_formula(t: ProjectType) -> Option<TemplateFile> {
+    let content = match t {
+        ProjectType::C | ProjectType::Cpp => include_str!("templates/c/homebrew/formula.rb.liquid"),
+        ProjectType::CMake => include_str!("templates/cmake/homebrew/formula.rb.liquid"),
+        ProjectType::Rust => include_str!("templates/rust/homebrew/formula.rb.liquid"),
+        ProjectType::Go => include_str!("templates/go/homebrew/formula.rb.liquid"),
+        ProjectType::Crystal => include_str!("templates/crystal/homebrew/formula.rb.liquid"),
+        ProjectType::Generic => include_str!("templates/generic/homebrew/formula.rb.liquid"),
+        ProjectType::Python | ProjectType::Ruby | ProjectType::Electron | ProjectType::Tauri => return None,
+    };
+    Some(TemplateFile {
+        dest: "homebrew/formula.rb.liquid",
+        content,
+        executable: false,
+    })
 }
 
 fn per_type(t: ProjectType) -> Vec<TemplateFile> {

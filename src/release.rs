@@ -1,31 +1,18 @@
-use crate::config::{Build, Config, ImageCache, Repository};
+use crate::config::{Build, Config, ImageCache};
 use crate::distros::Distros;
-use crate::logger::Logger;
 use crate::package::{Package, make_package};
-use crate::publish::{Publish, prepopulate_with_retention};
-use crate::runner::Runner;
+use crate::target::{self, TargetContext};
 use crate::{BuildArgs, JobArgs, ProjectArgs, PublishArgs, ReleaseArgs};
 use crate::{extract_version, job_variables};
 use anyhow::{Context, Result};
-use std::collections::HashSet;
 use std::path::PathBuf;
 
-fn apply_retention(repository_config: &Repository, pkg: &dyn Package) -> Result<HashSet<PathBuf>, anyhow::Error> {
-    match prepopulate_with_retention(repository_config, pkg)? {
-        Some(stats) => {
-            Logger::new().info(format!("retention for {}: kept {}, removed {}", pkg.distro().id, stats.kept, stats.removed));
-            Ok(stats.retained_files.into_iter().collect())
-        }
-        None => Ok(HashSet::new()),
-    }
-}
-
-struct JobSetup {
-    job_variables: job_variables::JobVariables,
-    build_dir: PathBuf,
-    source_dir: PathBuf,
-    image_cache: Option<ImageCache>,
-    ignore_source_files: Vec<String>,
+pub struct JobSetup {
+    pub job_variables: job_variables::JobVariables,
+    pub build_dir: PathBuf,
+    pub source_dir: PathBuf,
+    pub image_cache: Option<ImageCache>,
+    pub ignore_source_files: Vec<String>,
 }
 
 impl JobSetup {
@@ -65,18 +52,15 @@ impl JobSetup {
 pub fn build(args: BuildArgs) -> Result<(), anyhow::Error> {
     let config = args.project.load_config(false)?;
     let setup = JobSetup::new(&args.project, &args.job, &config, &args.version_extractor)?;
+    let ctx = TargetContext {
+        job: &setup,
+        logging: &args.logging,
+        fail_fast: args.job.fail_fast,
+    };
     let mut any_failed = false;
 
     for build_config in detect_builds(args.job.clone(), config) {
-        let mut pkg = setup.make_package(&build_config.distro, &build_config.package_name)?;
-        pkg.setup_build(build_config.clone())?;
-
-        let builder = Runner::new(pkg.clone(), args.logging.clone(), setup.job_variables.clone());
-        let build_ok = fail_fast_or_continue(builder.run(), args.job.fail_fast)?;
-
-        if !build_ok {
-            any_failed = true;
-        }
+        any_failed |= !target::make(&ctx, build_config)?.build(&ctx)?;
     }
 
     if any_failed { Err(anyhow::anyhow!("build one or more distros failed")) } else { Ok(()) }
@@ -86,22 +70,15 @@ pub fn publish(args: PublishArgs) -> Result<(), anyhow::Error> {
     let config = args.project.load_config(false)?;
     let setup = JobSetup::new(&args.project, &args.job, &config, &None)?;
     let repository_config = config.repositories.find_by_name_or_default(args.repository.as_deref())?.clone();
+    let ctx = TargetContext {
+        job: &setup,
+        logging: &args.logging,
+        fail_fast: args.job.fail_fast,
+    };
     let mut any_failed = false;
 
     for build_config in detect_builds(args.job.clone(), config) {
-        let mut pkg = setup.make_package(&build_config.distro, &build_config.package_name)?;
-        pkg.setup_repository(repository_config.clone())?;
-        let skip_upload = apply_retention(&repository_config, pkg.as_ref())?;
-
-        let runner = Runner::new(pkg.clone(), args.logging.clone(), setup.job_variables.clone());
-        let build_ok = fail_fast_or_continue(runner.run(), args.job.fail_fast)?;
-        if build_ok {
-            let publisher = Publish::new(pkg.clone(), repository_config.clone(), args.custom_install_page.clone(), skip_upload);
-            let publish_ok = fail_fast_or_continue(publisher.run(), args.job.fail_fast)?;
-            any_failed |= !publish_ok;
-        } else {
-            any_failed = true;
-        }
+        any_failed |= !target::make(&ctx, build_config)?.publish(&ctx, &repository_config, args.custom_install_page.clone())?;
     }
 
     if any_failed { Err(anyhow::anyhow!("publish one or more distros failed")) } else { Ok(()) }
@@ -111,23 +88,15 @@ pub fn release(args: ReleaseArgs) -> Result<(), anyhow::Error> {
     let config = args.project.load_config(false)?;
     let setup = JobSetup::new(&args.project, &args.job, &config, &args.version_extractor)?;
     let repository_config = config.repositories.find_by_name_or_default(args.repository.as_deref())?.clone();
+    let ctx = TargetContext {
+        job: &setup,
+        logging: &args.logging,
+        fail_fast: args.job.fail_fast,
+    };
     let mut any_failed = false;
 
     for build_config in detect_builds(args.job.clone(), config) {
-        let mut pkg = setup.make_package(&build_config.distro, &build_config.package_name)?;
-        pkg.setup_build(build_config.clone())?;
-        pkg.setup_repository(repository_config.clone())?;
-        let skip_upload = apply_retention(&repository_config, pkg.as_ref())?;
-
-        let runner = Runner::new(pkg.clone(), args.logging.clone(), setup.job_variables.clone());
-        let build_ok = fail_fast_or_continue(runner.run(), args.job.fail_fast)?;
-        if build_ok {
-            let publisher = Publish::new(pkg.clone(), repository_config.clone(), args.custom_install_page.clone(), skip_upload);
-            let publish_ok = fail_fast_or_continue(publisher.run(), args.job.fail_fast)?;
-            any_failed |= !publish_ok;
-        } else {
-            any_failed = true;
-        }
+        any_failed |= !target::make(&ctx, build_config)?.release(&ctx, &repository_config, args.custom_install_page.clone())?;
     }
 
     if any_failed { Err(anyhow::anyhow!("release one or more distros failed")) } else { Ok(()) }
@@ -145,7 +114,7 @@ pub fn detect_builds(job: JobArgs, config: Config) -> impl Iterator<Item = Build
     config
         .builds
         .into_iter()
-        .filter(move |build| Distros::get().contains(&build.distro))
+        .filter(move |build| target::is_supported(&build.distro))
         .filter(move |build| job.distros.is_empty() || job.distros.contains(&build.distro))
 }
 
@@ -187,6 +156,7 @@ mod tests {
             rpm: None,
             deb: None,
             pacman: None,
+            homebrew: None,
             rest: HashMap::new(),
         }
     }
@@ -225,6 +195,14 @@ mod tests {
         let detected: Vec<_> = detect_builds(make_job(vec!["fedora_40".to_string()]), config).collect();
         assert_eq!(detected.len(), 1);
         assert_eq!(detected[0].distro, "fedora_40");
+    }
+
+    #[test]
+    fn test_detect_builds_keeps_host_targets() {
+        let config = make_config(vec![make_build("debian_12"), make_build("macos")]);
+        let detected: Vec<_> = detect_builds(make_job(vec!["macos".to_string()]), config).collect();
+        assert_eq!(detected.len(), 1);
+        assert_eq!(detected[0].distro, "macos");
     }
 
     #[test]
