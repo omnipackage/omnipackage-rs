@@ -11,7 +11,7 @@ Build and distribute RPM, DEB & Arch packages [easily](https://omnipackage.org/a
 | **Stable** (recommended for most users) | [![stable repository](https://repositories.omnipackage.org/omnipackage-rs/stable/badge.svg)](https://repositories.omnipackage.org/omnipackage-rs/stable/install.html) | [![stable aarch64 repository](https://repositories.omnipackage.org/omnipackage-rs/stable-aarch64/badge.svg)](https://repositories.omnipackage.org/omnipackage-rs/stable-aarch64/install.html) |
 | **Master** (unstable builds from master) | [![master repository](https://repositories.omnipackage.org/omnipackage-rs/master/badge.svg)](https://repositories.omnipackage.org/omnipackage-rs/master/install.html) | [![master aarch64 repository](https://repositories.omnipackage.org/omnipackage-rs/master-aarch64/badge.svg)](https://repositories.omnipackage.org/omnipackage-rs/master-aarch64/install.html) |
 
-- [experimental] macOS 15+ (Homebrew): Intel on the x86_64 install page, Apple Silicon on the aarch64 one. The macOS version is only for building Homebrew packages for macOS
+- [experimental] macOS 15+ Homebrew: Intel on the x86_64 install page, Apple Silicon on the aarch64 one. The macOS version is only for building Homebrew packages for macOS
 - [AUR](https://aur.archlinux.org/packages/omnipackage) (Arch Linux users who prefer AUR)
 - From sources `cargo build --release`
 
