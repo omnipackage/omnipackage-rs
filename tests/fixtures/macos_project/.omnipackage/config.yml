@@ -1,0 +1,52 @@
+# Fixture for the `macos` (Homebrew) target. Driven by tests/e2e/macos.sh on a macOS host.
+
+version_extractors:
+  - name: default
+    provider: file
+    file:
+      file: "version.h"
+      regex: 'VERSION "(.+)"'
+
+common: &common
+  package_name: "omnipackage-macos-hello"
+  maintainer: "OmniPackage <test@omnipackage.org>"
+  homepage: "https://omnipackage.org/"
+  description: "Hello world for the omnipackage macos target"
+
+ignore_source_files:
+  - .git
+  - .DS_Store
+  - omnipackage-macos-hello
+
+repositories:
+  - name: "R2 test"
+    provider: s3
+    gpg_private_key_base64: "unused-by-macos"
+    <<: *common
+    s3:
+      bucket: repositories-test
+      path_in_bucket: "macos-e2e"
+      bucket_public_url: "https://repositories-test.omnipackage.org"
+      endpoint: "${CLOUDFLARE_R2_ENDPOINT}"
+      access_key_id: "${CLOUDFLARE_R2_ACCESS_KEY_ID}"
+      secret_access_key: "${CLOUDFLARE_R2_SECRET_ACCESS_KEY}"
+      region: auto
+      force_path_style: true
+      cloudflare_zone_id: "${CLOUDFLARE_ZONE_ID}"
+      cloudflare_api_token: "${CLOUDFLARE_API_TOKEN}"
+
+  - name: "Local test"
+    provider: localfs
+    gpg_private_key_base64: "unused-by-macos"
+    <<: *common
+    localfs:
+      path: "/tmp/omnipackage-macos-repo"
+
+homebrew: &homebrew
+  <<: *common
+  homebrew:
+    formula_template: ".omnipackage/homebrew/formula.rb.liquid"
+
+builds:
+  - distro: "macos"
+    <<: *homebrew

@@ -4,6 +4,7 @@ use crate::distros::Distros;
 use crate::logger::Logger;
 use crate::release;
 use crate::shell::Command;
+use crate::target;
 use anyhow::{Context, Result};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -18,6 +19,10 @@ pub fn refresh(args: PrimeArgs) -> Result<(), anyhow::Error> {
     let mut any_failed = false;
 
     for build_config in release::detect_builds(args.job.clone(), config.clone()) {
+        if !target::is_container(&build_config.distro) {
+            Logger::new().info(format!("skipping image cache refresh for {}: not a container target", build_config.distro));
+            continue;
+        }
         Logger::new().info(format!("starting image cache refresh for {}", build_config.distro));
         let started_at = Instant::now();
         let res = refresh_distro(args.clone(), build_config.clone(), ic.clone());

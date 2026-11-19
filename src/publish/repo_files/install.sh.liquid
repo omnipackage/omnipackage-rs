@@ -35,18 +35,10 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-machine="$(uname -m)"
-case "$machine" in
-  x86_64|amd64) host_arch=x86_64 ;;
-  aarch64|arm64) host_arch=aarch64 ;;
-  *) err "unsupported CPU architecture: $machine" ;;
-esac
-if [ "$host_arch" != "$REPO_ARCH" ]; then
-  err "this installer targets $REPO_ARCH, but this machine is $host_arch; use the $host_arch repository's install command instead"
-fi
-
 if [ -n "$OVERRIDE_DISTRO" ]; then
   DISTRO="$OVERRIDE_DISTRO"
+elif [ "$(uname -s)" = Darwin ]; then
+  DISTRO=macos
 else
   [ -r /etc/os-release ] || err "cannot read /etc/os-release; re-run with --distro <id>"
   . /etc/os-release
@@ -69,15 +61,28 @@ else
 fi
 
 STEPS=''
+AS_ROOT=1
 case "$DISTRO" in
 {{ steps_case }}
   *) err "'$DISTRO' is not available in this repository ($BASE). Supported: {{ supported_ids }}" ;;
 esac
 
+if [ "$AS_ROOT" -eq 1 ]; then
+  machine="$(uname -m)"
+  case "$machine" in
+    x86_64|amd64) host_arch=x86_64 ;;
+    aarch64|arm64) host_arch=aarch64 ;;
+    *) err "unsupported CPU architecture: $machine" ;;
+  esac
+  if [ "$host_arch" != "$REPO_ARCH" ]; then
+    err "this installer targets $REPO_ARCH, but this machine is $host_arch; use the $host_arch repository's install command instead"
+  fi
+fi
+
 printf '%s will be installed on %s (%s) with:\n\n%s\n\n' "$PKG" "$DISTRO" "$REPO_ARCH" "$STEPS"
 
 NEED_SUDO=0
-if [ "$(id -u)" -ne 0 ]; then
+if [ "$AS_ROOT" -eq 1 ] && [ "$(id -u)" -ne 0 ]; then
   echo "install.sh: installing $PKG requires root privileges."
   command -v sudo >/dev/null 2>&1 || err "root privileges are required and sudo is not available; re-run this script as root"
   NEED_SUDO=1

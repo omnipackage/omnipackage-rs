@@ -1,0 +1,15 @@
+# Homebrew formula for the `macos` target, rendered at build time with variables from config.yml.
+# omnipackage inserts the bottle block right after the source sha256 line: keep that line as is.
+class {{ formula_class }} < Formula
+  desc "{{ description }}"
+  homepage "{{ homepage }}"
+  url "{{ url }}"
+  sha256 "{{ sha256 }}"
+  version "{{ version }}"
+{% for dep in build_dependencies %}  depends_on "{{ dep }}" => :build
+{% endfor %}{% for dep in runtime_dependencies %}  depends_on "{{ dep }}"
+{% endfor %}
+  def install
+    system "go", "build", *std_go_args(output: bin/"__INIT_PACKAGE_NAME__", ldflags: "-s -w")
+  end
+end

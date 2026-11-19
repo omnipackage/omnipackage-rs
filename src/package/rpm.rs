@@ -232,6 +232,7 @@ mod tests {
             }),
             deb: None,
             pacman: None,
+            homebrew: None,
             rest: HashMap::new(),
         }
     }

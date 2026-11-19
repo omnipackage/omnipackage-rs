@@ -293,6 +293,7 @@ mod tests {
             rpm: None,
             deb: Some(DebConfig { debian_templates }),
             pacman: None,
+            homebrew: None,
             rest: HashMap::new(),
         }
     }

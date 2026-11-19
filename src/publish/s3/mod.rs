@@ -9,7 +9,7 @@ use aws_sdk_s3::{Client, Config};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 mod probe;
 
@@ -181,6 +181,30 @@ impl S3 {
         })
     }
 
+    pub fn list_modified(&self) -> Result<Vec<(String, SystemTime)>, anyhow::Error> {
+        block(async {
+            let objects = self.list_objects_modified().await?;
+            Ok(objects
+                .into_iter()
+                .map(|(key, modified)| (key.strip_prefix(&self.path).unwrap_or(&key).trim_start_matches('/').to_string(), modified))
+                .collect())
+        })
+    }
+
+    pub fn delete_file(&self, key: &str) -> Result<(), anyhow::Error> {
+        block(async {
+            let full_key = format!("{}/{}", self.path.trim_end_matches('/'), key.trim_start_matches('/'));
+            self.client
+                .delete_object()
+                .bucket(&self.bucket)
+                .key(&full_key)
+                .send()
+                .await
+                .with_context(|| format!("cannot delete {}", full_key))?;
+            Ok(())
+        })
+    }
+
     pub fn download_file(&self, key: &str) -> Result<Vec<u8>, anyhow::Error> {
         block(async {
             let full_key = format!("{}/{}", self.path.trim_end_matches('/'), key.trim_start_matches('/'));
@@ -273,6 +297,10 @@ impl S3 {
     }
 
     async fn list_objects(&self) -> Result<Vec<String>, anyhow::Error> {
+        Ok(self.list_objects_modified().await?.into_iter().map(|(key, _)| key).collect())
+    }
+
+    async fn list_objects_modified(&self) -> Result<Vec<(String, SystemTime)>, anyhow::Error> {
         let mut keys = vec![];
         let mut continuation_token: Option<String> = None;
 
@@ -287,7 +315,8 @@ impl S3 {
 
             for obj in response.contents() {
                 if let Some(key) = obj.key() {
-                    keys.push(key.to_string());
+                    let modified = obj.last_modified().and_then(|t| SystemTime::try_from(*t).ok()).unwrap_or(SystemTime::UNIX_EPOCH);
+                    keys.push((key.to_string(), modified));
                 }
             }
 

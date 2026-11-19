@@ -1,0 +1,19 @@
+class {{ formula_class }} < Formula
+  desc "{{ description }}"
+  homepage "{{ homepage }}"
+  url "{{ url }}"
+  sha256 "{{ sha256 }}"
+  version "{{ version }}"
+  license "GPL-3.0-or-later"
+{% for dep in build_dependencies %}  depends_on "{{ dep }}" => :build
+{% endfor %}{% for dep in runtime_dependencies %}  depends_on "{{ dep }}"
+{% endfor %}
+  def install
+    ENV["PACKAGE_VERSION"] = "{{ version }}"
+    system "cargo", "install", *std_cargo_args
+  end
+
+  test do
+    assert_match "{{ version }}", shell_output("#{bin}/omnipackage --version")
+  end
+end

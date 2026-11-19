@@ -1,0 +1,16 @@
+cask "{{ cask_token }}" do
+  version "{{ version }}"
+  sha256 "{{ sha256 }}"
+
+  url "{{ url }}"
+  name "Omnipackage Hello"
+  desc "{{ description }}"
+  homepage "{{ homepage }}"
+
+  app "Omnipackage Hello.app"
+
+  caveats <<~EOS
+    Omnipackage Hello is not notarized. After installing or upgrading, run:
+      xattr -dr com.apple.quarantine "#{appdir}/Omnipackage Hello.app"
+  EOS
+end

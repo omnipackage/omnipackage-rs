@@ -320,6 +320,12 @@ builds:
   - distro: "manjaro"
     <<: *pacman
 
+  - distro: "macos"
+    build_dependencies: ["rust"]
+    homebrew:
+      formula_template: ".omnipackage/homebrew/formula.rb.liquid"
+    <<: *common
+
 ignore_source_files:
   - .git
   - .env
