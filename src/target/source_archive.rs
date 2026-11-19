@@ -9,15 +9,9 @@ pub struct SourceArchive {
     pub sha256: String,
 }
 
-// ignore_source_files semantics (same as the rsync excludes in containers): "name" and "*.ext" match a basename at any depth, "/name" only at the root
 pub fn create(source_dir: &Path, ignore: &[String], folder_name: &str, stage_root: &Path, out_dir: &Path) -> Result<SourceArchive> {
-    let stage = stage_root.join(folder_name);
-    if stage.exists() {
-        std::fs::remove_dir_all(&stage)?;
-    }
-    std::fs::create_dir_all(&stage)?;
+    stage(source_dir, ignore, &stage_root.join(folder_name))?;
     std::fs::create_dir_all(out_dir)?;
-    copy_filtered(source_dir, &stage, Path::new(""), ignore)?;
 
     let path = out_dir.join(format!("{folder_name}.tar.gz"));
     Command::new("tar")
@@ -34,6 +28,15 @@ pub fn create(source_dir: &Path, ignore: &[String], folder_name: &str, stage_roo
 
     let sha256 = sha256_file(&path)?;
     Ok(SourceArchive { path, sha256 })
+}
+
+// ignore_source_files semantics (same as the rsync excludes in containers): "name" and "*.ext" match a basename at any depth, "/name" only at the root
+pub fn stage(source_dir: &Path, ignore: &[String], dest: &Path) -> Result<()> {
+    if dest.exists() {
+        std::fs::remove_dir_all(dest)?;
+    }
+    std::fs::create_dir_all(dest)?;
+    copy_filtered(source_dir, dest, Path::new(""), ignore)
 }
 
 pub fn sha256_file(path: &Path) -> Result<String> {

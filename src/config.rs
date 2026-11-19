@@ -56,7 +56,9 @@ pub struct PacmanConfig {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct HomebrewConfig {
-    pub formula_template: String,
+    pub formula_template: Option<String>,
+    pub cask_template: Option<String>,
+    pub build_script: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

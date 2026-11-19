@@ -1,5 +1,6 @@
 use crate::InfoArgs;
 use crate::publish;
+use crate::target;
 use anyhow::Result;
 
 pub fn info(args: InfoArgs) -> Result<(), anyhow::Error> {
@@ -9,7 +10,7 @@ pub fn info(args: InfoArgs) -> Result<(), anyhow::Error> {
         let page_url = publish::install_page_url(&repository_config).unwrap_or_default();
         println!("{}", page_url);
     } else if args.list_distros {
-        let distros: Vec<&str> = config.builds.iter().map(|b| b.distro.as_str()).collect();
+        let distros: Vec<&str> = config.builds.iter().map(|b| b.distro.as_str()).filter(|d| target::is_native(d)).collect();
         match args.format.as_str() {
             "json" => println!("{}", serde_json::to_string(&distros)?),
             _ => distros.iter().for_each(|d| println!("{}", d)),

@@ -111,11 +111,13 @@ pub fn fail_fast_or_continue(result: Result<(), anyhow::Error>, fail_fast: bool)
 }
 
 pub fn detect_builds(job: JobArgs, config: Config) -> impl Iterator<Item = Build> {
-    config
-        .builds
-        .into_iter()
-        .filter(move |build| target::is_supported(&build.distro))
-        .filter(move |build| job.distros.is_empty() || job.distros.contains(&build.distro))
+    config.builds.into_iter().filter(move |build| target::is_supported(&build.distro)).filter(move |build| {
+        if job.distros.is_empty() {
+            target::is_native(&build.distro)
+        } else {
+            job.distros.contains(&build.distro)
+        }
+    })
 }
 
 #[cfg(test)]
@@ -206,9 +208,10 @@ mod tests {
     }
 
     #[test]
-    fn test_detect_builds_empty_filter_keeps_all_known() {
-        let config = make_config(vec![make_build("debian_12"), make_build("fedora_40")]);
-        let detected: Vec<_> = detect_builds(make_job(vec![]), config).collect();
-        assert_eq!(detected.len(), 2);
+    fn test_detect_builds_empty_filter_keeps_native_only() {
+        let config = make_config(vec![make_build("debian_12"), make_build("fedora_40"), make_build("macos")]);
+        let detected: Vec<_> = detect_builds(make_job(vec![]), config).map(|b| b.distro).collect();
+        let expected = if cfg!(target_os = "macos") { vec!["macos"] } else { vec!["debian_12", "fedora_40"] };
+        assert_eq!(detected, expected);
     }
 }

@@ -22,17 +22,29 @@ pub trait Target {
     fn release(&mut self, ctx: &TargetContext, repository: &Repository, custom_install_page: Option<PathBuf>) -> Result<bool>;
 }
 
-const HOST_TARGETS: &[&str] = &[mac::ID];
-
 pub fn make(ctx: &TargetContext, build: Build) -> Result<Box<dyn Target>> {
     if build.distro == mac::ID {
-        return Ok(Box::new(mac::MacTarget::new(build)));
+        return Ok(Box::new(mac::MacTarget::new(build)?));
     }
     Ok(Box::new(linux::LinuxTarget::new(ctx, build)?))
 }
 
 pub fn is_supported(id: &str) -> bool {
-    is_container(id) || HOST_TARGETS.contains(&id)
+    host_os(id).is_some()
+}
+
+pub fn is_native(id: &str) -> bool {
+    host_os(id) == Some(std::env::consts::OS)
+}
+
+fn host_os(id: &str) -> Option<&'static str> {
+    if id == mac::ID {
+        Some("macos")
+    } else if is_container(id) {
+        Some("linux")
+    } else {
+        None
+    }
 }
 
 pub fn is_container(id: &str) -> bool {
@@ -48,5 +60,8 @@ mod tests {
         assert!(is_supported("debian_13") && is_container("debian_13"));
         assert!(is_supported("macos") && !is_container("macos"));
         assert!(!is_supported("nonexistent_99"));
+        assert_eq!(is_native("debian_13"), !cfg!(target_os = "macos"));
+        assert_eq!(is_native("macos"), cfg!(target_os = "macos"));
+        assert!(!is_native("nonexistent_99"));
     }
 }

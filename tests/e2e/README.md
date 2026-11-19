@@ -124,3 +124,18 @@ It uses the fixture `tests/fixtures/macos_project` and does the following:
 | `OMNIPACKAGE_BIN` | `target/debug/omnipackage` | |
 
 Remove the published files afterwards with `ruby scripts/clear_bucket.rb repositories-test macos-e2e`.
+
+## macOS cask mode (GUI app)
+
+`tests/e2e/macos_gui.sh` tests the `macos` target in cask mode. Run it on a Mac with Homebrew and the Xcode Command Line Tools:
+
+```sh
+cargo build && sh tests/e2e/macos_gui.sh
+```
+
+It uses the fixture `tests/fixtures/macos_gui_project`: a Swift/AppKit hello world that `build.sh` turns into a universal, ad-hoc signed `.dmg`. The script:
+1. `release` 1.0.0, then `brew install --cask` it as an end user, removes the quarantine flag, checks the version and that the app launches.
+2. `release` 1.0.1, then `brew update && brew upgrade --cask`, same checks.
+3. Reinstalls through `install.sh`, which runs the `xattr` step itself.
+
+Same env vars as the formula test. `Local test` writes to `/tmp/omnipackage-macos-gui-repo`. Clean up with `ruby scripts/clear_bucket.rb repositories-test macos-gui-e2e`.

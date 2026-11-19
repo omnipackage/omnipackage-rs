@@ -214,6 +214,6 @@ builds:
     build_dependencies: ["curl", "gcc", "make"]
     before_build_script: ".omnipackage/install_rust.sh"
     <<: *rpm
-  # Uncomment to publish a Homebrew tap; build on a macOS host: omnipackage release --distros macos
+  # Uncomment to publish a Homebrew tap; built only by `omnipackage release` on a macOS host, Linux hosts skip it
   # - distro: "macos"
   #   <<: *homebrew

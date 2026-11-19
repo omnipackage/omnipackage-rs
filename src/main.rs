@@ -63,7 +63,7 @@ pub struct ProjectArgs {
 
 #[derive(Args, Clone, Debug)]
 pub struct JobArgs {
-    /// Distros to build/publish, e.g. opensuse_15.6, debian_12, fedora_40, by default build for all configured distros
+    /// Distros to build/publish, e.g. opensuse_15.6, debian_12, fedora_40, by default all configured distros buildable on this host
     #[arg(short, long, num_args = 0..)]
     distros: Vec<String>,
 
@@ -160,7 +160,7 @@ pub struct InfoArgs {
     #[command(flatten)]
     project: ProjectArgs,
 
-    /// List all configured distros in project
+    /// List configured distros buildable on this host
     #[arg(long)]
     list_distros: bool,
 

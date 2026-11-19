@@ -177,17 +177,17 @@ fn init_scaffolds_commented_macos_target() {
         .args(["info", d.path().to_str().unwrap(), "--list-distros"])
         .assert()
         .success();
-    assert!(String::from_utf8_lossy(&out.get_output().stdout).lines().any(|l| l == "macos"));
+    let listed = String::from_utf8_lossy(&out.get_output().stdout).lines().any(|l| l == "macos");
+    assert_eq!(listed, cfg!(target_os = "macos"));
 }
 
 #[test]
-fn macos_fixture_config_parses() {
-    let out = Command::cargo_bin("omnipackage")
-        .unwrap()
-        .args(["info", "tests/fixtures/macos_project", "--list-distros"])
-        .assert()
-        .success();
-    assert_eq!(String::from_utf8_lossy(&out.get_output().stdout).trim(), "macos");
+fn macos_fixture_configs_parse() {
+    for fixture in ["tests/fixtures/macos_project", "tests/fixtures/macos_gui_project"] {
+        let out = Command::cargo_bin("omnipackage").unwrap().args(["info", fixture, "--list-distros"]).assert().success();
+        let expected = if cfg!(target_os = "macos") { "macos" } else { "" };
+        assert_eq!(String::from_utf8_lossy(&out.get_output().stdout).trim(), expected, "{fixture}");
+    }
 }
 
 #[test]

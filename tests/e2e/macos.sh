@@ -15,6 +15,7 @@ PROJECT=$WORK/project
 
 step() { printf '\n===== %s =====\n' "$*"; }
 fail() { echo "macos e2e: FAIL: $*" >&2; exit 1; }
+gone() { case "$1" in http*) ! curl -fsI "$1" >/dev/null 2>&1 ;; *) [ ! -e "$1" ] ;; esac; }
 cleanup() {
   brew uninstall --force "$TAP/$PKG" >/dev/null 2>&1 || true
   brew untap "$TAP" >/dev/null 2>&1 || true
@@ -53,6 +54,8 @@ grep -q "Pouring" "$WORK/install.log" || fail "1.0.0 was not poured from a bottl
 
 step "publish 1.0.1, consumer: brew update && brew upgrade"
 omni publish --distros macos --repository "$REPOSITORY" --build-dir "$WORK/build-2"
+OLD_BOTTLE=$(basename "$(ls "$WORK"/build-1/*/output/*.bottle*.tar.gz)" | sed "s/--/-/")
+gone "$BASE/macos/bottles/1.0.0/$OLD_BOTTLE" || fail "retention did not remove the 1.0.0 bottle"
 brew update
 brew upgrade "$TAP/$PKG" 2>&1 | tee "$WORK/upgrade.log"
 grep -q "Pouring" "$WORK/upgrade.log" || fail "1.0.1 was not poured from a bottle"

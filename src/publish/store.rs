@@ -6,6 +6,7 @@ use crate::config::{Repository, RepositoryProvider, S3Config};
 use anyhow::{Context, Result};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
 #[derive(Debug, Clone)]
 pub enum Store {
@@ -70,6 +71,35 @@ impl Store {
         }
     }
 
+    pub fn list_modified(&self) -> Result<Vec<(String, SystemTime)>> {
+        match self {
+            Store::S3 { config, root } => S3::new(config, root.clone()).list_modified(),
+            Store::LocalFs { root } => {
+                let mut files = vec![];
+                if root.exists() {
+                    list_local(root, Path::new(""), &mut files)?;
+                }
+                Ok(files)
+            }
+        }
+    }
+
+    pub fn delete(&self, key: &str) -> Result<()> {
+        match self {
+            Store::S3 { config, root } => S3::new(config, root.clone()).delete_file(key),
+            Store::LocalFs { root } => {
+                let path = root.join(key);
+                std::fs::remove_file(&path).with_context(|| format!("cannot delete {}", path.display()))?;
+                for dir in path.ancestors().skip(1).take_while(|d| *d != root.as_path()) {
+                    if std::fs::remove_dir(dir).is_err() {
+                        break;
+                    }
+                }
+                Ok(())
+            }
+        }
+    }
+
     pub fn commit_anchored<F>(&self, anchor_key: &str, anchor_content_type: &str, mut build: F) -> Result<()>
     where
         F: FnMut(&[u8]) -> Result<(Vec<u8>, Vec<DerivedFile>)>,
@@ -107,6 +137,19 @@ fn join_key(root: &str, key: &str) -> String {
         (_, true) => root.to_string(),
         _ => format!("{}/{}", root.trim_end_matches('/'), key.trim_start_matches('/')),
     }
+}
+
+fn list_local(root: &Path, rel: &Path, out: &mut Vec<(String, SystemTime)>) -> Result<()> {
+    for entry in std::fs::read_dir(root.join(rel))? {
+        let entry = entry?;
+        let child = rel.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            list_local(root, &child, out)?;
+        } else {
+            out.push((child.to_string_lossy().into_owned(), entry.metadata()?.modified()?));
+        }
+    }
+    Ok(())
 }
 
 fn write_file(path: &Path, data: &[u8]) -> Result<()> {
@@ -166,6 +209,23 @@ mod tests {
         assert_eq!(store.public_url("tap.git"), dir.path().join("macos/tap.git").to_string_lossy());
 
         store.commit_anchored("tap.git/info/refs", "text/plain", |existing| Ok((existing.to_vec(), vec![]))).unwrap();
+    }
+
+    #[test]
+    fn localfs_list_and_delete_prunes_empty_dirs() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::LocalFs { root: dir.path().to_path_buf() }.scoped("casks");
+        store.put("1.0/a.dmg", b"a".to_vec(), None).unwrap();
+        store.put("2.0/b.dmg", b"b".to_vec(), None).unwrap();
+
+        let mut keys: Vec<String> = store.list_modified().unwrap().into_iter().map(|(k, _)| k).collect();
+        keys.sort();
+        assert_eq!(keys, vec!["1.0/a.dmg", "2.0/b.dmg"]);
+
+        store.delete("1.0/a.dmg").unwrap();
+        assert!(!dir.path().join("casks/1.0").exists());
+        assert!(dir.path().join("casks/2.0/b.dmg").exists());
+        assert!(Store::LocalFs { root: dir.path().join("nope") }.list_modified().unwrap().is_empty());
     }
 
     #[test]
