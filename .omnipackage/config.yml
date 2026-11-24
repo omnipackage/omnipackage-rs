@@ -321,8 +321,9 @@ builds:
     <<: *pacman
 
   - distro: "macos"
-    build_dependencies: ["rust"]
     homebrew:
+      image: "ghcr.io/rust-cross/cargo-zigbuild:0.21.4"
+      build_script: 'rustup update stable && rustup target add aarch64-apple-darwin x86_64-apple-darwin && PACKAGE_VERSION="$OMNIPACKAGE_VERSION" cargo zigbuild --release --target universal2-apple-darwin && tar -czf "$OMNIPACKAGE_OUTPUT_DIR/omnipackage-$OMNIPACKAGE_VERSION-macos.tar.gz" -C target/universal2-apple-darwin/release omnipackage'
       formula_template: ".omnipackage/homebrew/formula.rb.liquid"
     <<: *common
 

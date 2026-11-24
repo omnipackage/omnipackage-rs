@@ -111,13 +111,11 @@ pub fn fail_fast_or_continue(result: Result<(), anyhow::Error>, fail_fast: bool)
 }
 
 pub fn detect_builds(job: JobArgs, config: Config) -> impl Iterator<Item = Build> {
-    config.builds.into_iter().filter(move |build| target::is_supported(&build.distro)).filter(move |build| {
-        if job.distros.is_empty() {
-            target::is_native(&build.distro)
-        } else {
-            job.distros.contains(&build.distro)
-        }
-    })
+    config.builds.into_iter().filter(move |build| target::is_supported(&build.distro)).filter(
+        move |build| {
+            if job.distros.is_empty() { target::is_native(build) } else { job.distros.contains(&build.distro) }
+        },
+    )
 }
 
 #[cfg(test)]

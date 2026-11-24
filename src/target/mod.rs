@@ -33,8 +33,8 @@ pub fn is_supported(id: &str) -> bool {
     host_os(id).is_some()
 }
 
-pub fn is_native(id: &str) -> bool {
-    host_os(id) == Some(std::env::consts::OS)
+pub fn is_native(build: &Build) -> bool {
+    host_os(&build.distro) == Some(std::env::consts::OS) || (build.distro == mac::ID && mac::MacTarget::is_containerized(build))
 }
 
 fn host_os(id: &str) -> Option<&'static str> {
@@ -54,14 +54,39 @@ pub fn is_container(id: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::HomebrewConfig;
+
+    fn build(distro: &str, image: Option<&str>) -> Build {
+        Build {
+            distro: distro.to_string(),
+            package_name: "hello".to_string(),
+            maintainer: "m".to_string(),
+            homepage: "h".to_string(),
+            description: "d".to_string(),
+            build_dependencies: vec![],
+            runtime_dependencies: vec![],
+            before_build_script: None,
+            rpm: None,
+            deb: None,
+            pacman: None,
+            homebrew: Some(HomebrewConfig {
+                formula_template: Some("f".to_string()),
+                cask_template: None,
+                build_script: Some("s".to_string()),
+                image: image.map(str::to_string),
+            }),
+            rest: std::collections::HashMap::new(),
+        }
+    }
 
     #[test]
     fn registry_knows_container_and_host_targets() {
         assert!(is_supported("debian_13") && is_container("debian_13"));
         assert!(is_supported("macos") && !is_container("macos"));
         assert!(!is_supported("nonexistent_99"));
-        assert_eq!(is_native("debian_13"), !cfg!(target_os = "macos"));
-        assert_eq!(is_native("macos"), cfg!(target_os = "macos"));
-        assert!(!is_native("nonexistent_99"));
+        assert_eq!(is_native(&build("debian_13", None)), !cfg!(target_os = "macos"));
+        assert_eq!(is_native(&build("macos", None)), cfg!(target_os = "macos"));
+        assert!(is_native(&build("macos", Some("golang:1.25"))));
+        assert!(!is_native(&build("nonexistent_99", None)));
     }
 }

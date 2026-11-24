@@ -165,10 +165,12 @@ fn init_scaffolds_commented_macos_target() {
     fs::write(d.path().join("Cargo.toml"), "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n").unwrap();
     run_init(d.path(), "rust");
     let formula = fs::read_to_string(d.path().join(".omnipackage/homebrew/formula.rb.liquid")).unwrap();
-    assert!(formula.contains("sha256 \"{{ sha256 }}\""), "{formula}");
+    assert!(formula.contains("bin.install \"demo\""), "{formula}");
 
     let config_path = d.path().join(".omnipackage/config.yml");
     let config = fs::read_to_string(&config_path).unwrap();
+    assert!(config.contains("image: \"ghcr.io/rust-cross/cargo-zigbuild:"), "{config}");
+    assert!(config.contains("--target universal2-apple-darwin"), "{config}");
     assert!(config.contains("  # - distro: \"macos\"\n  #   <<: *homebrew"), "{config}");
     fs::write(&config_path, config.replace("  # - distro: \"macos\"\n  #   <<: *homebrew", "  - distro: \"macos\"\n    <<: *homebrew")).unwrap();
 
@@ -177,15 +179,17 @@ fn init_scaffolds_commented_macos_target() {
         .args(["info", d.path().to_str().unwrap(), "--list-distros"])
         .assert()
         .success();
-    let listed = String::from_utf8_lossy(&out.get_output().stdout).lines().any(|l| l == "macos");
-    assert_eq!(listed, cfg!(target_os = "macos"));
+    assert!(
+        String::from_utf8_lossy(&out.get_output().stdout).lines().any(|l| l == "macos"),
+        "a containerized macos build is listed on any host"
+    );
 }
 
 #[test]
 fn macos_fixture_configs_parse() {
-    for fixture in ["tests/fixtures/macos_project", "tests/fixtures/macos_gui_project"] {
+    let host_only = if cfg!(target_os = "macos") { "macos" } else { "" };
+    for (fixture, expected) in [("tests/fixtures/macos_project", "macos"), ("tests/fixtures/macos_gui_project", host_only)] {
         let out = Command::cargo_bin("omnipackage").unwrap().args(["info", fixture, "--list-distros"]).assert().success();
-        let expected = if cfg!(target_os = "macos") { "macos" } else { "" };
         assert_eq!(String::from_utf8_lossy(&out.get_output().stdout).trim(), expected, "{fixture}");
     }
 }

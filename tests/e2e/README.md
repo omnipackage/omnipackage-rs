@@ -104,17 +104,17 @@ Common failure modes:
 
 ## macOS (Homebrew) target
 
-`tests/e2e/macos.sh` is a separate manual test for the `macos` target. Run it on a Mac with Homebrew:
+`tests/e2e/macos.sh` is a separate manual test for the `macos` target. Run it on a Mac with Homebrew and podman or docker:
 
 ```sh
 cargo build && sh tests/e2e/macos.sh
 ```
 
-It uses the fixture `tests/fixtures/macos_project` and does the following:
+It uses the fixture `tests/fixtures/macos_project`, a Go hello world cross-compiled for darwin arm64 and amd64 in a `golang` container. The script:
 1. `release` 1.0.0.
-2. `build` 1.0.1 into a separate build dir. The build host must not have the package installed, because the build taps and installs it under the same tap name the users get.
-3. As an end user: `brew tap` and `brew install` 1.0.0, asserting the bottle was poured.
-4. `publish` 1.0.1, then `brew update && brew upgrade` (poured again), then `brew test`.
+2. `build` 1.0.1 into a separate build dir.
+3. As an end user: `brew tap` and `brew install` 1.0.0. It asserts that the install did not pour a bottle, that the binary is not quarantined, and that it has a valid ad-hoc signature.
+4. `publish` 1.0.1, then `brew update && brew upgrade`, then `brew test`.
 5. Reinstalls through the generated `install.sh`.
 
 | Env var      | Default            | Notes |

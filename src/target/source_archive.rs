@@ -1,34 +1,7 @@
-use crate::shell::Command;
 use anyhow::{Context, Result};
 use sha2::{Digest, Sha256};
 use std::io::Read;
-use std::path::{Path, PathBuf};
-
-pub struct SourceArchive {
-    pub path: PathBuf,
-    pub sha256: String,
-}
-
-pub fn create(source_dir: &Path, ignore: &[String], folder_name: &str, stage_root: &Path, out_dir: &Path) -> Result<SourceArchive> {
-    stage(source_dir, ignore, &stage_root.join(folder_name))?;
-    std::fs::create_dir_all(out_dir)?;
-
-    let path = out_dir.join(format!("{folder_name}.tar.gz"));
-    Command::new("tar")
-        .args([
-            "-czf".to_string(),
-            path.to_string_lossy().into_owned(),
-            "-C".to_string(),
-            stage_root.to_string_lossy().into_owned(),
-            folder_name.to_string(),
-        ])
-        .with_env("COPYFILE_DISABLE", "1")
-        .run()
-        .context("cannot create source tarball")?;
-
-    let sha256 = sha256_file(&path)?;
-    Ok(SourceArchive { path, sha256 })
-}
+use std::path::Path;
 
 // ignore_source_files semantics (same as the rsync excludes in containers): "name" and "*.ext" match a basename at any depth, "/name" only at the root
 pub fn stage(source_dir: &Path, ignore: &[String], dest: &Path) -> Result<()> {
@@ -114,25 +87,20 @@ mod tests {
     }
 
     #[test]
-    fn creates_tarball_with_prefix_dir_and_stable_sha() {
+    fn stages_filtered_copy() {
         let dir = tempfile::tempdir().unwrap();
         let source = dir.path().join("project");
         tree(&source);
         let ignore: Vec<String> = [".git", ".env", "*.log", "/target"].iter().map(|s| s.to_string()).collect();
 
-        let archive = create(&source, &ignore, "hello-1.0", &dir.path().join("stage"), &dir.path().join("out")).unwrap();
-        assert_eq!(archive.path, dir.path().join("out/hello-1.0.tar.gz"));
-        assert_eq!(archive.sha256, sha256_file(&archive.path).unwrap());
-        assert_eq!(archive.sha256.len(), 64);
-
-        let listing = std::process::Command::new("tar").arg("-tzf").arg(&archive.path).output().unwrap();
-        let listing = String::from_utf8_lossy(&listing.stdout);
-        assert!(listing.contains("hello-1.0/main.c"));
-        assert!(listing.contains("hello-1.0/src/target/keep.rs"));
-        assert!(!listing.contains("build.log"));
-        assert!(!listing.contains(".env"));
-        assert!(!listing.contains(".git"));
-        assert!(!listing.contains("hello-1.0/target/"));
+        let dest = dir.path().join("stage/hello-1.0");
+        stage(&source, &ignore, &dest).unwrap();
+        assert!(dest.join("main.c").exists());
+        assert!(dest.join("src/target/keep.rs").exists());
+        assert!(!dest.join("build.log").exists());
+        assert!(!dest.join(".env").exists());
+        assert!(!dest.join("src/.git").exists());
+        assert!(!dest.join("target").exists());
     }
 
     #[test]

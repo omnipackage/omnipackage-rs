@@ -81,12 +81,14 @@ pacman: &pacman
   pacman:
     pkgbuild_template: ".omnipackage/PKGBUILD.liquid"
 
-# macOS: Homebrew formula + bottles, built natively on a macOS host.
-# build_dependencies/runtime_dependencies here are Homebrew formula names (rendered as depends_on).
+# macOS: Homebrew formula installing a universal binary cross-compiled in a container.
+# runtime_dependencies here are Homebrew formula names (rendered as depends_on).
+# Crates linking Apple frameworks (chrono, native-tls, ...) need a macOS SDK: the cargo-zigbuild image ships one.
 homebrew: &homebrew
   <<: *common
-  build_dependencies: ["rust"]
   homebrew:
+    image: "ghcr.io/rust-cross/cargo-zigbuild:0.21.4"
+    build_script: 'cargo zigbuild --release --target universal2-apple-darwin && tar -czf "$OMNIPACKAGE_OUTPUT_DIR/__INIT_PACKAGE_NAME__-$OMNIPACKAGE_VERSION-macos.tar.gz" -C target/universal2-apple-darwin/release __INIT_PACKAGE_NAME__'
     formula_template: ".omnipackage/homebrew/formula.rb.liquid"
 
 builds:
@@ -214,6 +216,6 @@ builds:
     build_dependencies: ["curl", "gcc", "make"]
     before_build_script: ".omnipackage/install_rust.sh"
     <<: *rpm
-  # Uncomment to publish a Homebrew tap; built only by `omnipackage release` on a macOS host, Linux hosts skip it
+  # Uncomment to publish a Homebrew tap; the macOS binary is cross-compiled in homebrew.image on any host
   # - distro: "macos"
   #   <<: *homebrew

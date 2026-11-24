@@ -18,7 +18,6 @@ jobs:
       version_extractor: "git"
       arch: "x86_64"
       runs_on: "ubuntu-24.04"
-      macos_runs_on: "macos-15-intel"
 
   aarch64:
     uses: ./.github/workflows/_release-packages.yml
@@ -28,6 +27,5 @@ jobs:
       version_extractor: "git"
       arch: "aarch64"
       runs_on: "ubuntu-24.04-arm"
-      macos_runs_on: "macos-15"
       # arch: no arm64 image. manjaro: Manjaro ARM repos frozen ~2024, cargo too old for edition2024
       skip_distros: '["arch", "manjaro"]'

@@ -5,12 +5,10 @@ class {{ formula_class }} < Formula
   sha256 "{{ sha256 }}"
   version "{{ version }}"
   license "GPL-3.0-or-later"
-{% for dep in build_dependencies %}  depends_on "{{ dep }}" => :build
-{% endfor %}{% for dep in runtime_dependencies %}  depends_on "{{ dep }}"
+{% for dep in runtime_dependencies %}  depends_on "{{ dep }}"
 {% endfor %}
   def install
-    ENV["PACKAGE_VERSION"] = "{{ version }}"
-    system "cargo", "install", *std_cargo_args
+    bin.install "omnipackage"
   end
 
   test do

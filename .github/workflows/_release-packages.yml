@@ -13,9 +13,6 @@ on:
       runs_on:
         required: true
         type: string
-      macos_runs_on:
-        required: true
-        type: string
       skip_distros:
         required: false
         type: string
@@ -77,16 +74,3 @@ jobs:
           echo "GITHUB_REGISTRY_PASSWORD=${{ secrets.GITHUB_TOKEN }}" >> .env
           echo "GITHUB_REGISTRY_NAMESPACE=${{ github.repository_owner }}" >> .env
       - run:  omnipackage release . --build-dir $RUNNER_TEMP/_omp --repository "${{ inputs.repository }}" --distros "${{ matrix.distro }}" --version-extractor "${{ inputs.version_extractor }}" --image-cache github_${{ inputs.arch }}
-
-  release-macos:
-    runs-on: ${{ inputs.macos_runs_on }}
-    concurrency:
-      group: omnipackage-${{ inputs.repository }}-macos
-      cancel-in-progress: false
-    steps:
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - uses: actions/checkout@v6
-      - run: cargo build --release
-      - run: echo "${{ secrets.OMNIPACKAGE_DOTENV }}" > .env
-      - run: target/release/omnipackage release . --build-dir $RUNNER_TEMP/_omp --repository "${{ inputs.repository }}" --distros macos --version-extractor "${{ inputs.version_extractor }}"

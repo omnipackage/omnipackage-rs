@@ -10,7 +10,7 @@ pub fn info(args: InfoArgs) -> Result<(), anyhow::Error> {
         let page_url = publish::install_page_url(&repository_config).unwrap_or_default();
         println!("{}", page_url);
     } else if args.list_distros {
-        let distros: Vec<&str> = config.builds.iter().map(|b| b.distro.as_str()).filter(|d| target::is_native(d)).collect();
+        let distros: Vec<&str> = config.builds.iter().filter(|b| target::is_native(b)).map(|b| b.distro.as_str()).collect();
         match args.format.as_str() {
             "json" => println!("{}", serde_json::to_string(&distros)?),
             _ => distros.iter().for_each(|d| println!("{}", d)),

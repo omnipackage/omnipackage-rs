@@ -83,12 +83,13 @@ pacman: &pacman
   pacman:
     pkgbuild_template: ".omnipackage/PKGBUILD.liquid"
 
-# macOS: Homebrew formula + bottles, built natively on a macOS host.
-# build_dependencies/runtime_dependencies here are Homebrew formula names (rendered as depends_on).
+# macOS: Homebrew formula installing darwin binaries cross-compiled in a container.
+# runtime_dependencies here are Homebrew formula names (rendered as depends_on).
 homebrew: &homebrew
   <<: *common
-  build_dependencies: ["go"]
   homebrew:
+    image: "golang:1.25"
+    build_script: 'for arch in arm64 amd64; do CGO_ENABLED=0 GOOS=darwin GOARCH=$arch go build -trimpath -ldflags "-s -w" -o dist/__INIT_PACKAGE_NAME__-darwin-$arch || exit 1; done && tar -czf "$OMNIPACKAGE_OUTPUT_DIR/__INIT_PACKAGE_NAME__-$OMNIPACKAGE_VERSION-macos.tar.gz" -C dist __INIT_PACKAGE_NAME__-darwin-arm64 __INIT_PACKAGE_NAME__-darwin-amd64'
     formula_template: ".omnipackage/homebrew/formula.rb.liquid"
 
 builds:
@@ -164,6 +165,6 @@ builds:
     <<: *rpm
   - distro: "mageia_cauldron"
     <<: *rpm
-  # Uncomment to publish a Homebrew tap; built only by `omnipackage release` on a macOS host, Linux hosts skip it
+  # Uncomment to publish a Homebrew tap; the macOS binary is cross-compiled in homebrew.image on any host
   # - distro: "macos"
   #   <<: *homebrew

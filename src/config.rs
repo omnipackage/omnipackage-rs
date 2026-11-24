@@ -59,6 +59,7 @@ pub struct HomebrewConfig {
     pub formula_template: Option<String>,
     pub cask_template: Option<String>,
     pub build_script: Option<String>,
+    pub image: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

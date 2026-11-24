@@ -1,11 +1,11 @@
-# Fixture for the `macos` (Homebrew) target. Driven by tests/e2e/macos.sh on a macOS host.
+# Fixture for the `macos` (Homebrew) target. Driven by tests/e2e/macos.sh.
 
 version_extractors:
   - name: default
     provider: file
     file:
-      file: "version.h"
-      regex: 'VERSION "(.+)"'
+      file: "version.go"
+      regex: 'version = "(.+)"'
 
 common: &common
   package_name: "omnipackage-macos-hello"
@@ -16,7 +16,7 @@ common: &common
 ignore_source_files:
   - .git
   - .DS_Store
-  - omnipackage-macos-hello
+  - dist
 
 repositories:
   - name: "R2 test"
@@ -45,6 +45,8 @@ repositories:
 homebrew: &homebrew
   <<: *common
   homebrew:
+    image: "golang:1.25"
+    build_script: 'for arch in arm64 amd64; do CGO_ENABLED=0 GOOS=darwin GOARCH=$arch go build -trimpath -ldflags "-s -w" -o dist/omnipackage-macos-hello-darwin-$arch || exit 1; done && tar -czf "$OMNIPACKAGE_OUTPUT_DIR/omnipackage-macos-hello-$OMNIPACKAGE_VERSION-macos.tar.gz" -C dist omnipackage-macos-hello-darwin-arm64 omnipackage-macos-hello-darwin-amd64'
     formula_template: ".omnipackage/homebrew/formula.rb.liquid"
 
 builds:

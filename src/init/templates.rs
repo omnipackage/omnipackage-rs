@@ -42,13 +42,9 @@ pub fn template_set_for(t: ProjectType) -> Vec<TemplateFile> {
 
 fn homebrew_formula(t: ProjectType) -> Option<TemplateFile> {
     let content = match t {
-        ProjectType::C | ProjectType::Cpp => include_str!("templates/c/homebrew/formula.rb.liquid"),
-        ProjectType::CMake => include_str!("templates/cmake/homebrew/formula.rb.liquid"),
         ProjectType::Rust => include_str!("templates/rust/homebrew/formula.rb.liquid"),
         ProjectType::Go => include_str!("templates/go/homebrew/formula.rb.liquid"),
-        ProjectType::Crystal => include_str!("templates/crystal/homebrew/formula.rb.liquid"),
-        ProjectType::Generic => include_str!("templates/generic/homebrew/formula.rb.liquid"),
-        ProjectType::Python | ProjectType::Ruby | ProjectType::Electron | ProjectType::Tauri => return None,
+        _ => return None,
     };
     Some(TemplateFile {
         dest: "homebrew/formula.rb.liquid",

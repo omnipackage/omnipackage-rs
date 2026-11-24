@@ -202,7 +202,7 @@ pub trait Package {
     }
 }
 
-fn container_rm_args(dir: &Path, image: &str) -> Vec<String> {
+pub(crate) fn container_rm_args(dir: &Path, image: &str) -> Vec<String> {
     vec![
         "run".to_string(),
         "--rm".to_string(),

@@ -1,7 +1,7 @@
 #!/bin/sh
-# Manual end-to-end test of the `macos` (Homebrew) target. Run on a macOS host from anywhere:
+# Manual end-to-end test of the `macos` (Homebrew) target. Run on a macOS host with podman or docker:
 #   cargo build && sh tests/e2e/macos.sh
-# Builds tests/fixtures/macos_project, publishes it, then installs/upgrades it with brew like an end user.
+# Cross-compiles tests/fixtures/macos_project in a container, publishes it, then installs/upgrades it with brew like an end user.
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
@@ -23,12 +23,13 @@ cleanup() {
 
 [ "$(uname -s)" = Darwin ] || fail "run this on macOS"
 command -v brew >/dev/null || fail "brew not found"
+command -v podman >/dev/null || command -v docker >/dev/null || fail "podman or docker not found"
 [ -x "$BIN" ] || fail "no omnipackage binary at $BIN (cargo build first)"
 cleanup
 trap cleanup EXIT
 
 cp -R "$ROOT/tests/fixtures/macos_project" "$PROJECT"
-set_version() { printf '#define VERSION "%s"\n' "$1" > "$PROJECT/version.h"; }
+set_version() { printf 'package main\n\nconst version = "%s"\n' "$1" > "$PROJECT/version.go"; }
 omni() { "$BIN" "$@" "$PROJECT" --env-file "$ENV_FILE"; }
 
 PAGE=$(omni info --show-install-page-url --repository "$REPOSITORY")
@@ -42,23 +43,24 @@ set_version 1.0.0
 omni release --distros macos --repository "$REPOSITORY" --build-dir "$WORK/build-1"
 ls "$WORK"/build-1/*/output/
 
-step "build 1.0.1 before installing (the build host must not have $PKG installed)"
+step "build 1.0.1"
 set_version 1.0.1
 omni build --distros macos --build-dir "$WORK/build-2"
 
 step "consumer: tap and install 1.0.0"
 brew tap "$TAP" "$TAP_URL"
 brew install "$TAP/$PKG" 2>&1 | tee "$WORK/install.log"
-grep -q "Pouring" "$WORK/install.log" || fail "1.0.0 was not poured from a bottle"
+! grep -q "Pouring" "$WORK/install.log" || fail "1.0.0 was poured from a bottle, expected the prebuilt binary"
+! xattr -p com.apple.quarantine "$(brew --prefix)/bin/$PKG" >/dev/null 2>&1 || fail "binary is quarantined"
+codesign -v "$(brew --prefix)/bin/$PKG" || fail "binary has no valid ad-hoc signature"
 "$(brew --prefix)/bin/$PKG" | grep -q "$PKG 1.0.0" || fail "1.0.0 binary output"
 
 step "publish 1.0.1, consumer: brew update && brew upgrade"
 omni publish --distros macos --repository "$REPOSITORY" --build-dir "$WORK/build-2"
-OLD_BOTTLE=$(basename "$(ls "$WORK"/build-1/*/output/*.bottle*.tar.gz)" | sed "s/--/-/")
-gone "$BASE/macos/bottles/1.0.0/$OLD_BOTTLE" || fail "retention did not remove the 1.0.0 bottle"
+gone "$BASE/macos/formulae/1.0.0/$PKG-1.0.0-macos.tar.gz" || fail "retention did not remove the 1.0.0 archive"
 brew update
 brew upgrade "$TAP/$PKG" 2>&1 | tee "$WORK/upgrade.log"
-grep -q "Pouring" "$WORK/upgrade.log" || fail "1.0.1 was not poured from a bottle"
+! grep -q "Pouring" "$WORK/upgrade.log" || fail "1.0.1 was poured from a bottle, expected the prebuilt binary"
 "$(brew --prefix)/bin/$PKG" | grep -q "$PKG 1.0.1" || fail "1.0.1 binary output"
 brew test "$TAP/$PKG"
 
@@ -71,7 +73,7 @@ esac
 "$(brew --prefix)/bin/$PKG" | grep -q "$PKG 1.0.1" || fail "install.sh did not install 1.0.1"
 
 step "report"
-ls "$WORK"/build-2/*/output/*.bottle*.tar.gz
+ls "$WORK"/build-2/*/output/*.tar.gz
 brew info "$TAP/$PKG" | head -3
 echo "install page: $PAGE"
 echo "macos e2e: PASS (workdir $WORK)"
